@@ -623,6 +623,13 @@ export function ArrayListEditor({
   const canAdd = maxItems === undefined || items.length < maxItems;
   const canRemove = minItems === undefined || items.length > minItems;
 
+  // Check if items are primitive types that can be edited inline
+  const itemsArePrimitive = itemSchema && 
+    ['string', 'integer', 'number', 'boolean'].includes(itemSchema.type);
+  
+  // Check if items are objects (should be shown as cards)
+  const itemsAreObjects = itemSchema?.type === 'object';
+
   const handleRemoveItem = (index: number) => {
     if (!canRemove) return;
     const newItems = items.filter((_, i) => i !== index);
@@ -658,14 +665,30 @@ export function ArrayListEditor({
     const newItems = [...items, defaultValue];
     onChange(newItems);
     
-    // Auto-expand the array and select the new item
-    const basePath = path && path !== 'root' ? path : '';
-    if (!expandedPaths.has(basePath)) {
-      toggleExpanded(basePath);
+    // For non-primitive items, auto-expand and select the new item
+    if (!itemsArePrimitive) {
+      const basePath = path && path !== 'root' ? path : '';
+      if (!expandedPaths.has(basePath)) {
+        toggleExpanded(basePath);
+      }
+      // Select the newly added item
+      const newItemPath = basePath ? `${basePath}[${newItems.length - 1}]` : `[${newItems.length - 1}]`;
+      setTimeout(() => setSelectedPath(newItemPath), 50);
     }
-    // Select the newly added item
-    const newItemPath = basePath ? `${basePath}[${newItems.length - 1}]` : `[${newItems.length - 1}]`;
-    setTimeout(() => setSelectedPath(newItemPath), 50);
+  };
+
+  const handleItemChange = (index: number, newValue: unknown) => {
+    const newItems = [...items];
+    newItems[index] = newValue;
+    onChange(newItems);
+  };
+
+  const handleMoveItem = (from: number, to: number) => {
+    if (to < 0 || to >= items.length) return;
+    const newItems = [...items];
+    const [removed] = newItems.splice(from, 1);
+    newItems.splice(to, 0, removed);
+    onChange(newItems);
   };
 
   const handleNavigateToItem = (index: number) => {
@@ -680,8 +703,15 @@ export function ArrayListEditor({
     setSelectedPath(itemPath);
   };
 
-  // Check if items are objects (should be shown as cards)
-  const itemsAreObjects = itemSchema?.type === 'object';
+  // Get errors for a specific item
+  const getItemErrors = (index: number): FieldError[] => {
+    if (!errors) return [];
+    const basePath = path && path !== 'root' ? path : '';
+    const itemPath = basePath ? `${basePath}[${index}]` : `[${index}]`;
+    return errors.filter(
+      (e) => e.path === itemPath || e.path.startsWith(itemPath + '.')
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -748,8 +778,69 @@ export function ArrayListEditor({
             </div>
           ))}
         </div>
+      ) : itemsArePrimitive && itemSchema ? (
+        // Render primitive items with inline editing
+        <div className="space-y-2">
+          {items.map((item, index) => {
+            const basePath = path && path !== 'root' ? path : '';
+            const itemPath = basePath ? `${basePath}[${index}]` : `[${index}]`;
+            const itemErrors = getItemErrors(index);
+            
+            return (
+              <div key={index} className="flex items-start gap-2 group">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-0.5 pt-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={() => handleMoveItem(index, index - 1)}
+                    disabled={disabled || index === 0}
+                    title="Move up"
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={() => handleMoveItem(index, index + 1)}
+                    disabled={disabled || index === items.length - 1}
+                    title="Move down"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </div>
+                <div className="flex-1">
+                  <FieldRenderer
+                    name={`item_${index}`}
+                    path={itemPath}
+                    schema={{
+                      ...itemSchema,
+                      // Override title to show item index
+                      title: itemSchema.title ? `${itemSchema.title} ${index + 1}` : `Item ${index + 1}`,
+                    }}
+                    value={item}
+                    errors={itemErrors}
+                    disabled={disabled}
+                    onChange={(v) => handleItemChange(index, v)}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive mt-6"
+                  onClick={() => handleRemoveItem(index)}
+                  disabled={disabled || !canRemove}
+                  title="Delete item"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
       ) : (
-        // Render primitive items as a simple list
+        // Render other non-primitive items (like nested arrays) as a simple list with navigation
         <div className="space-y-2">
           {items.map((item, index) => (
             <div

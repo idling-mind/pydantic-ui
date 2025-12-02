@@ -14,6 +14,7 @@ interface TreeNodeProps {
   isSelected: boolean;
   isExpanded: boolean;
   showTypes: boolean;
+  hideSimpleFields?: boolean;
   onSelect: (path: string) => void;
   onToggle: (path: string) => void;
   // Pass these through for children
@@ -32,6 +33,7 @@ interface ConnectedTreeNodeProps {
   schema: SchemaField;
   depth: number;
   showTypes: boolean;
+  hideSimpleFields?: boolean;
   selectedPath: string | null;
   expandedPaths: Set<string>;
   onSelect: (path: string) => void;
@@ -147,6 +149,7 @@ export function TreeNode({
   isSelected,
   isExpanded,
   showTypes,
+  hideSimpleFields = false,
   onSelect,
   onToggle,
   selectedPath,
@@ -180,7 +183,15 @@ export function TreeNode({
   const getChildren = (): [string, SchemaField][] => {
     if (schema.type === 'object' && schema.fields) {
       return Object.entries(schema.fields).filter(
-        ([, field]) => !field.ui_config?.hidden
+        ([, field]) => {
+          // Always filter out hidden fields
+          if (field.ui_config?.hidden) return false;
+          // Filter out simple fields if hideSimpleFields is enabled
+          if (hideSimpleFields && field.type !== 'object' && field.type !== 'array') {
+            return false;
+          }
+          return true;
+        }
       );
     }
     // For arrays, we don't return schema children here anymore
@@ -305,6 +316,7 @@ export function TreeNode({
                 isSelected={selectedPath === childPath}
                 isExpanded={expandedPaths.has(childPath)}
                 showTypes={showTypes}
+                hideSimpleFields={hideSimpleFields}
                 onSelect={onSelect}
                 onToggle={onToggle}
                 selectedPath={selectedPath}
@@ -336,6 +348,7 @@ export function TreeNode({
                   isSelected={selectedPath === itemPath}
                   isExpanded={expandedPaths.has(itemPath)}
                   showTypes={showTypes}
+                  hideSimpleFields={hideSimpleFields}
                   onSelect={onSelect}
                   onToggle={onToggle}
                   selectedPath={selectedPath}
@@ -344,6 +357,11 @@ export function TreeNode({
                   getErrorCountForPath={getErrorCountForPath}
                 />
               );
+            }
+            
+            // Skip primitive array items when hideSimpleFields is enabled
+            if (hideSimpleFields && !itemIsExpandable) {
+              return null;
             }
             
             // Render as leaf node for primitives
@@ -431,6 +449,7 @@ export function ConnectedTreeNode({
   schema,
   depth,
   showTypes,
+  hideSimpleFields = false,
   selectedPath,
   expandedPaths,
   onSelect,
@@ -449,6 +468,7 @@ export function ConnectedTreeNode({
       isSelected={selectedPath === path}
       isExpanded={expandedPaths.has(path)}
       showTypes={showTypes}
+      hideSimpleFields={hideSimpleFields}
       onSelect={onSelect}
       onToggle={onToggle}
       selectedPath={selectedPath}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Search, ChevronRight, Eye, EyeOff, Filter, FilterX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ export function TreePanel({ className }: TreePanelProps) {
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showTypes, setShowTypes] = React.useState(true);
+  const [hideSimpleFields, setHideSimpleFields] = React.useState(false);
 
   const handleSelect = React.useCallback(
     (path: string) => {
@@ -48,9 +49,24 @@ export function TreePanel({ className }: TreePanelProps) {
     [toggleExpanded]
   );
 
-  // Filter function for search
+  // Check if a field is a simple (primitive) field
+  const isSimpleField = React.useCallback((field: SchemaField): boolean => {
+    // Objects and arrays are complex
+    if (field.type === 'object' || field.type === 'array') {
+      return false;
+    }
+    // Everything else (string, number, boolean, etc.) is simple
+    return true;
+  }, []);
+
+  // Filter function for search and hiding simple fields
   const filterSchema = React.useCallback(
     (field: SchemaField, name: string): boolean => {
+      // First check if we should hide simple fields
+      if (hideSimpleFields && isSimpleField(field)) {
+        return false;
+      }
+
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
       
@@ -74,7 +90,7 @@ export function TreePanel({ className }: TreePanelProps) {
       
       return false;
     },
-    [searchQuery]
+    [searchQuery, hideSimpleFields, isSimpleField]
   );
 
   if (!schema) {
@@ -115,22 +131,41 @@ export function TreePanel({ className }: TreePanelProps) {
         <span className="text-xs text-muted-foreground">
           {rootFields.length} field{rootFields.length !== 1 ? 's' : ''}
         </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowTypes(!showTypes)}
-          className="h-7 px-2 text-xs"
-        >
-          {showTypes ? (
-            <>
-              <EyeOff className="h-3 w-3 mr-1" /> Hide types
-            </>
-          ) : (
-            <>
-              <Eye className="h-3 w-3 mr-1" /> Show types
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant={hideSimpleFields ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setHideSimpleFields(!hideSimpleFields)}
+            className="h-7 px-2 text-xs"
+            title={hideSimpleFields ? 'Show simple fields' : 'Hide simple fields'}
+          >
+            {hideSimpleFields ? (
+              <>
+                <FilterX className="h-3 w-3 mr-1" /> Simple
+              </>
+            ) : (
+              <>
+                <Filter className="h-3 w-3 mr-1" /> Simple
+              </>
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowTypes(!showTypes)}
+            className="h-7 px-2 text-xs"
+          >
+            {showTypes ? (
+              <>
+                <EyeOff className="h-3 w-3 mr-1" /> Types
+              </>
+            ) : (
+              <>
+                <Eye className="h-3 w-3 mr-1" /> Types
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <Separator />
@@ -152,6 +187,7 @@ export function TreePanel({ className }: TreePanelProps) {
                 schema={schema}
                 depth={0}
                 showTypes={showTypes}
+                hideSimpleFields={hideSimpleFields}
                 selectedPath={selectedPath}
                 expandedPaths={expandedPaths}
                 onSelect={handleSelect}
@@ -168,6 +204,7 @@ export function TreePanel({ className }: TreePanelProps) {
                   schema={field}
                   depth={1}
                   showTypes={showTypes}
+                  hideSimpleFields={hideSimpleFields}
                   selectedPath={selectedPath}
                   expandedPaths={expandedPaths}
                   onSelect={handleSelect}
