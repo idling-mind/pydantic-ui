@@ -1,7 +1,15 @@
 import React from 'react';
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, Folder } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, Folder, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreVertical } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -320,6 +328,14 @@ export function ArrayEditor({
     onChange(newItems);
   };
 
+  const handleDuplicateItem = (index: number) => {
+    if (!canAdd) return;
+    const itemToDuplicate = JSON.parse(JSON.stringify(items[index]));
+    const newItems = [...items];
+    newItems.splice(index + 1, 0, itemToDuplicate);
+    onChange(newItems);
+  };
+
   const handleMoveItem = (from: number, to: number) => {
     if (to < 0 || to >= items.length) return;
     const newItems = [...items];
@@ -352,6 +368,7 @@ export function ArrayEditor({
                 className="h-6 w-6"
                 onClick={() => handleMoveItem(index, index - 1)}
                 disabled={disabled || index === 0}
+                title="Move up"
               >
                 <ChevronUp className="h-3 w-3" />
               </Button>
@@ -362,6 +379,7 @@ export function ArrayEditor({
                 className="h-6 w-6"
                 onClick={() => handleMoveItem(index, index + 1)}
                 disabled={disabled || index === items.length - 1}
+                title="Move down"
               >
                 <ChevronDown className="h-3 w-3" />
               </Button>
@@ -372,15 +390,28 @@ export function ArrayEditor({
               <CardTitle className="text-xs font-medium text-muted-foreground">
                 Item {index + 1}
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-destructive hover:text-destructive"
-                onClick={() => handleRemoveItem(index)}
-                disabled={disabled || !canRemove}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => handleDuplicateItem(index)}
+                  disabled={disabled || !canAdd}
+                  title="Duplicate"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:text-destructive"
+                  onClick={() => handleRemoveItem(index)}
+                  disabled={disabled || !canRemove}
+                  title="Delete"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="pl-10 pt-0">
@@ -409,6 +440,7 @@ export function ArrayEditor({
             className="h-5 w-5"
             onClick={() => handleMoveItem(index, index - 1)}
             disabled={disabled || index === 0}
+            title="Move up"
           >
             <ChevronUp className="h-3 w-3" />
           </Button>
@@ -418,6 +450,7 @@ export function ArrayEditor({
             className="h-5 w-5"
             onClick={() => handleMoveItem(index, index + 1)}
             disabled={disabled || index === items.length - 1}
+            title="Move down"
           >
             <ChevronDown className="h-3 w-3" />
           </Button>
@@ -433,15 +466,28 @@ export function ArrayEditor({
             onChange={(v) => handleItemChange(index, v)}
           />
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-destructive hover:text-destructive mt-6"
-          onClick={() => handleRemoveItem(index)}
-          disabled={disabled || !canRemove}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex flex-col gap-1 mt-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => handleDuplicateItem(index)}
+            disabled={disabled || !canAdd}
+            title="Duplicate item"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:text-destructive"
+            onClick={() => handleRemoveItem(index)}
+            disabled={disabled || !canRemove}
+            title="Delete item"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     );
   };
@@ -638,6 +684,16 @@ export function ArrayListEditor({
     onChange(newItems);
   };
 
+  const handleDuplicateItem = (index: number) => {
+    if (!canAdd) return;
+    // Deep clone the item to avoid reference issues
+    const itemToDuplicate = JSON.parse(JSON.stringify(items[index]));
+    const newItems = [...items];
+    // Insert the duplicate after the original
+    newItems.splice(index + 1, 0, itemToDuplicate);
+    onChange(newItems);
+  };
+
   const handleAddItem = () => {
     if (!canAdd) return;
     
@@ -764,19 +820,63 @@ export function ArrayListEditor({
                   <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                 </CardContent>
               </Card>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-auto px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  handleRemoveItem(index);
-                }}
-                disabled={disabled || !canRemove}
-                title="Delete item"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-auto px-2"
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMoveItem(index, index - 1);
+                    }}
+                    disabled={disabled || index === 0}
+                  >
+                    <ChevronUp className="h-4 w-4 mr-2" />
+                    Move Up
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMoveItem(index, index + 1);
+                    }}
+                    disabled={disabled || index === items.length - 1}
+                  >
+                    <ChevronDown className="h-4 w-4 mr-2" />
+                    Move Down
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDuplicateItem(index);
+                    }}
+                    disabled={disabled || !canAdd}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveItem(index);
+                    }}
+                    disabled={disabled || !canRemove}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ))}
         </div>
@@ -827,16 +927,28 @@ export function ArrayListEditor({
                     onChange={(v) => handleItemChange(index, v)}
                   />
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive mt-6"
-                  onClick={() => handleRemoveItem(index)}
-                  disabled={disabled || !canRemove}
-                  title="Delete item"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex flex-col gap-1 mt-6">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleDuplicateItem(index)}
+                    disabled={disabled || !canAdd}
+                    title="Duplicate item"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => handleRemoveItem(index)}
+                    disabled={disabled || !canRemove}
+                    title="Delete item"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             );
           })}
@@ -863,19 +975,63 @@ export function ArrayListEditor({
                 className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" 
                 onClick={() => handleNavigateToItem(index)}
               />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  handleRemoveItem(index);
-                }}
-                disabled={disabled || !canRemove}
-                title="Delete item"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMoveItem(index, index - 1);
+                    }}
+                    disabled={disabled || index === 0}
+                  >
+                    <ChevronUp className="h-4 w-4 mr-2" />
+                    Move Up
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMoveItem(index, index + 1);
+                    }}
+                    disabled={disabled || index === items.length - 1}
+                  >
+                    <ChevronDown className="h-4 w-4 mr-2" />
+                    Move Down
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDuplicateItem(index);
+                    }}
+                    disabled={disabled || !canAdd}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveItem(index);
+                    }}
+                    disabled={disabled || !canRemove}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ))}
         </div>
