@@ -22,6 +22,8 @@ interface TreeNodeProps {
   // Error count for this node and its children
   errorCount?: number;
   getErrorCountForPath: (path: string) => number;
+  // Is this the root node?
+  isRoot?: boolean;
 }
 
 interface ConnectedTreeNodeProps {
@@ -35,6 +37,8 @@ interface ConnectedTreeNodeProps {
   onSelect: (path: string) => void;
   onToggle: (path: string) => void;
   getErrorCountForPath: (path: string) => number;
+  // Is this the root node?
+  isRoot?: boolean;
 }
 
 // Helper to get value at a path that may include array indices
@@ -149,6 +153,7 @@ export function TreeNode({
   expandedPaths,
   errorCount = 0,
   getErrorCountForPath,
+  isRoot = false,
 }: TreeNodeProps) {
   const { data } = useData();
   const isExpandable = schema.type === 'object' || schema.type === 'array';
@@ -233,6 +238,48 @@ export function TreeNode({
 
   if (!isExpandable || !hasChildren) {
     return nodeContent;
+  }
+
+  // For root node, only render the toggle-able content without nested children
+  // (children are rendered separately in TreePanel/index.tsx)
+  if (isRoot) {
+    return (
+      <div
+        className={cn(
+          'flex items-center gap-1.5 px-2 py-1.5 cursor-pointer rounded-md text-sm',
+          'hover:bg-accent hover:text-accent-foreground',
+          'transition-colors duration-150',
+          isSelected && 'bg-accent text-accent-foreground font-medium',
+          errorCount > 0 && 'text-destructive'
+        )}
+        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        onClick={handleClick}
+      >
+        <button
+          onClick={handleToggle}
+          className="p-0.5 hover:bg-muted rounded shrink-0"
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </button>
+        <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
+        <span className="truncate flex-1">{schema.ui_config?.label || schema.title || name}</span>
+        {errorCount > 0 && (
+          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 shrink-0 flex items-center gap-0.5">
+            <AlertCircle className="h-3 w-3" />
+            {errorCount}
+          </Badge>
+        )}
+        {showTypes && (
+          <Badge variant={getTypeBadgeVariant(schema.type)} className="text-[10px] px-1.5 py-0 h-5 shrink-0">
+            {schema.type}
+          </Badge>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -389,6 +436,7 @@ export function ConnectedTreeNode({
   onSelect,
   onToggle,
   getErrorCountForPath,
+  isRoot = false,
 }: ConnectedTreeNodeProps) {
   const errorCount = getErrorCountForPath(path);
   
@@ -407,6 +455,7 @@ export function ConnectedTreeNode({
       expandedPaths={expandedPaths}
       errorCount={errorCount}
       getErrorCountForPath={getErrorCountForPath}
+      isRoot={isRoot}
     />
   );
 }

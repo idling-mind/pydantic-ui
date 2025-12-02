@@ -60,7 +60,12 @@ export function DetailPanel({ className }: DetailPanelProps) {
 
   // Get the schema and value for the selected path
   const getSelectedSchema = () => {
-    if (!schema || !selectedPath) {
+    if (!schema || selectedPath === null) {
+      return { selectedSchema: schema, selectedValue: data, basePath: '', isArrayItem: false, arrayPath: '', arrayIndex: -1 };
+    }
+
+    // Empty path means root selection
+    if (selectedPath === '') {
       return { selectedSchema: schema, selectedValue: data, basePath: '', isArrayItem: false, arrayPath: '', arrayIndex: -1 };
     }
 

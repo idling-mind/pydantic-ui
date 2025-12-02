@@ -138,17 +138,18 @@ export function TreePanel({ className }: TreePanelProps) {
       {/* Tree Content */}
       <ScrollArea className="flex-1">
         <div className="py-2">
-          {rootFields.length === 0 ? (
+          {rootFields.length === 0 && !searchQuery ? (
             <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-              {searchQuery ? 'No fields match your search' : 'No fields available'}
+              No fields available
             </div>
           ) : (
-            rootFields.map(([name, field]) => (
+            <>
+              {/* Root object node */}
               <ConnectedTreeNode
-                key={name}
-                name={name}
-                path={name}
-                schema={field}
+                key="__root__"
+                name={schema.title || schema.name || 'Root'}
+                path=""
+                schema={schema}
                 depth={0}
                 showTypes={showTypes}
                 selectedPath={selectedPath}
@@ -156,8 +157,30 @@ export function TreePanel({ className }: TreePanelProps) {
                 onSelect={handleSelect}
                 onToggle={handleToggle}
                 getErrorCountForPath={getErrorCountForPath}
+                isRoot
               />
-            ))
+              {/* Child fields when root is expanded */}
+              {expandedPaths.has('') && rootFields.map(([name, field]) => (
+                <ConnectedTreeNode
+                  key={name}
+                  name={name}
+                  path={name}
+                  schema={field}
+                  depth={1}
+                  showTypes={showTypes}
+                  selectedPath={selectedPath}
+                  expandedPaths={expandedPaths}
+                  onSelect={handleSelect}
+                  onToggle={handleToggle}
+                  getErrorCountForPath={getErrorCountForPath}
+                />
+              ))}
+              {searchQuery && rootFields.length === 0 && (
+                <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+                  No fields match your search
+                </div>
+              )}
+            </>
           )}
         </div>
       </ScrollArea>

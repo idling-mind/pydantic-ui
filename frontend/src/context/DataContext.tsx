@@ -40,7 +40,7 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['root']));
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set([''])); // Root path is empty string
 
   // Helper to normalize a path from backend format (users.0.name) to frontend format (users[0].name)
   const normalizePathToFrontend = useCallback((path: string): string => {
@@ -203,7 +203,7 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
     
     // Helper to build all parent paths from a normalized path
     const buildParentPaths = (normalizedPath: string): string[] => {
-      const parts: string[] = [];
+      const parts: string[] = [''];  // Start with root (empty string)
       const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
       let match;
       let currentPath = '';
@@ -227,10 +227,10 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
       // Errors are already normalized to frontend format
       const normalizedPath = error.path;
       
-      // Build all path segments including the full path
+      // Build all path segments including the full path and root
       const allPaths = buildParentPaths(normalizedPath);
       
-      // Count for all paths (leaf node and all parent paths)
+      // Count for all paths (leaf node and all parent paths including root)
       for (const path of allPaths) {
         counts.set(path, (counts.get(path) || 0) + 1);
       }
