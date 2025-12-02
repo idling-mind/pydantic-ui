@@ -231,12 +231,12 @@ def parse_model(
 def model_to_data(model: type[BaseModel], instance: BaseModel | None = None) -> dict[str, Any]:
     """Convert a Pydantic model instance to the nested data format for the UI."""
     if instance is not None:
-        return instance.model_dump(warnings=False)
+        return instance.model_dump(mode="json", warnings=False)
 
     # Create default instance
     try:
         default_instance = model()
-        return default_instance.model_dump(warnings=False)
+        return default_instance.model_dump(mode="json", warnings=False)
     except Exception:
         # Build default data from field defaults
         data = {}

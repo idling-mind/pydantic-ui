@@ -17,15 +17,21 @@ export type { RendererProps };
 // Registry of renderers
 const rendererMap: Record<string, React.ComponentType<RendererProps>> = {
   text: TextInput,
+  text_input: TextInput,
   textarea: TextareaInput,
+  text_area: TextareaInput,
   number: NumberInput,
+  number_input: NumberInput,
   slider: SliderInput,
   checkbox: CheckboxInput,
   toggle: ToggleInput,
   select: SelectInput,
   date: DateInput,
+  date_picker: DateInput,
   datetime: DateInput,
+  datetime_picker: DateInput,
   color: ColorInput,
+  color_picker: ColorInput,
   json: JsonInput,
   // Aliases
   input: TextInput,

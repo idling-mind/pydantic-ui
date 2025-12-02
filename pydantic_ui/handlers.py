@@ -5,7 +5,7 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
 
-from pydantic_ui.config import UIConfig
+from pydantic_ui.config import FieldConfig, UIConfig
 from pydantic_ui.models import (
     ConfigResponse,
     ValidationError as ValidationErrorModel,
@@ -35,7 +35,7 @@ class DataHandler:
 
         # Initialize data
         if initial_data is not None:
-            self._data = initial_data.model_dump(warnings=False)
+            self._data = initial_data.model_dump(mode="json", warnings=False)
         else:
             self._data = model_to_data(model)
 
@@ -48,6 +48,25 @@ class DataHandler:
 
         return schema
 
+    def _match_field_config(self, path: str) -> FieldConfig | None:
+        """Match a field path against field_configs, supporting [] wildcards."""
+        # Direct match
+        if path in self.field_configs:
+            return self.field_configs[path]
+        
+        # Try wildcard patterns - replace array indices with []
+        # e.g., "users.0.age" should match "users.[].age"
+        import re
+        for pattern, config in self.field_configs.items():
+            if "[]" in pattern:
+                # Convert pattern to regex: "users.[].age" -> "users\.\d+\.age"
+                regex_pattern = re.escape(pattern).replace(r"\[\]", r"\d+")
+                regex_pattern = f"^{regex_pattern}$"
+                if re.match(regex_pattern, path):
+                    return config
+        
+        return None
+
     def _apply_field_configs(
         self, fields: dict[str, Any], prefix: str = ""
     ) -> None:
@@ -55,15 +74,15 @@ class DataHandler:
         for field_name, field_schema in fields.items():
             full_path = f"{prefix}{field_name}" if prefix else field_name
 
-            # Check if we have a config for this field
-            if full_path in self.field_configs:
-                config = self.field_configs[full_path]
+            # Check if we have a config for this field (with wildcard support)
+            config = self._match_field_config(full_path)
+            if config:
                 if field_schema.get("ui_config") is None:
                     field_schema["ui_config"] = {}
 
                 # Merge config
                 ui_config = field_schema["ui_config"]
-                if hasattr(config, "renderer"):
+                if hasattr(config, "renderer") and config.renderer:
                     ui_config["renderer"] = (
                         config.renderer.value
                         if hasattr(config.renderer, "value")
@@ -87,6 +106,20 @@ class DataHandler:
                 self._apply_field_configs(
                     field_schema["fields"], f"{full_path}."
                 )
+            
+            # Recurse into array items
+            if field_schema.get("items"):
+                self._apply_field_configs_to_items(
+                    field_schema["items"], f"{full_path}.[]."
+                )
+
+    def _apply_field_configs_to_items(
+        self, item_schema: dict[str, Any], prefix: str
+    ) -> None:
+        """Apply field configurations to array item schema."""
+        # If items is an object with fields, recurse into those fields
+        if item_schema.get("fields"):
+            self._apply_field_configs(item_schema["fields"], prefix)
 
     async def get_data(self) -> dict[str, Any]:
         """Get the current data."""
@@ -97,7 +130,7 @@ class DataHandler:
                 if hasattr(loaded, "__await__"):
                     loaded = await loaded
                 if isinstance(loaded, BaseModel):
-                    self._data = loaded.model_dump(warnings=False)
+                    self._data = loaded.model_dump(mode="json", warnings=False)
                 elif isinstance(loaded, dict):
                     self._data = loaded
             except Exception:
@@ -110,7 +143,7 @@ class DataHandler:
         # Validate with the model
         try:
             instance = self.model.model_validate(data)
-            self._data = instance.model_dump(warnings=False)
+            self._data = instance.model_dump(mode="json", warnings=False)
 
             # Call saver if provided
             if self.data_saver is not None:
@@ -140,7 +173,7 @@ class DataHandler:
         # Validate the entire model
         try:
             instance = self.model.model_validate(new_data)
-            self._data = instance.model_dump(warnings=False)
+            self._data = instance.model_dump(mode="json", warnings=False)
 
             if self.data_saver is not None:
                 result = self.data_saver(instance)

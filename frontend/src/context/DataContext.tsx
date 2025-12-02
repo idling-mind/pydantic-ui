@@ -8,14 +8,15 @@ interface DataContextValue {
   data: Record<string, unknown>;
   errors: FieldError[];
   loading: boolean;
+  dirty: boolean;
   selectedPath: string | null;
   expandedPaths: Set<string>;
   setSelectedPath: (path: string | null) => void;
   toggleExpanded: (path: string) => void;
   expandPath: (path: string) => void;
-  updateValue: (path: string, value: unknown) => Promise<void>;
+  updateValue: (path: string, value: unknown) => void;
   saveData: () => Promise<boolean>;
-  resetData: () => Promise<void>;
+  resetData: () => void;
   refresh: () => Promise<void>;
 }
 
@@ -35,6 +36,7 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
   const [originalData, setOriginalData] = useState<Record<string, unknown>>({});
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dirty, setDirty] = useState(false);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['root']));
 
@@ -51,6 +53,7 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
       setData(dataRes.data);
       setOriginalData(dataRes.data);
       setErrors([]);
+      setDirty(false);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -88,19 +91,30 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
     });
   }, []);
 
-  const updateValue = useCallback(async (path: string, value: unknown) => {
-    try {
-      const result = await api.partialUpdate(path, value);
-      setData(result.data);
-      if (result.errors) {
-        setErrors(result.errors);
-      } else {
-        setErrors([]);
+  const updateValue = useCallback((path: string, value: unknown) => {
+    // Update locally only - no API call until Save
+    setData((prevData) => {
+      const newData = JSON.parse(JSON.stringify(prevData)); // Deep clone
+      const parts = path.split('.');
+      let current: Record<string, unknown> = newData;
+      
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (current[part] === undefined || current[part] === null) {
+          current[part] = {};
+        }
+        current = current[part] as Record<string, unknown>;
       }
-    } catch (error) {
-      console.error('Failed to update value:', error);
-    }
-  }, [api]);
+      
+      const lastPart = parts[parts.length - 1];
+      current[lastPart] = value;
+      
+      return newData;
+    });
+    // Mark as dirty and clear errors when user makes changes
+    setDirty(true);
+    setErrors([]);
+  }, []);
 
   const saveData = useCallback(async (): Promise<boolean> => {
     try {
@@ -109,6 +123,7 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
         setData(result.data);
         setOriginalData(result.data);
         setErrors([]);
+        setDirty(false);
         return true;
       } else {
         setErrors(result.errors || []);
@@ -120,9 +135,10 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
     }
   }, [api, data]);
 
-  const resetData = useCallback(async () => {
+  const resetData = useCallback(() => {
     setData(originalData);
     setErrors([]);
+    setDirty(false);
   }, [originalData]);
 
   return (
@@ -133,6 +149,7 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
         data,
         errors,
         loading,
+        dirty,
         selectedPath,
         expandedPaths,
         setSelectedPath,

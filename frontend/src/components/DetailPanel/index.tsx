@@ -19,6 +19,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
     data,
     errors,
     loading,
+    dirty,
     updateValue,
     saveData,
     resetData,
@@ -42,8 +43,8 @@ export function DetailPanel({ className }: DetailPanelProps) {
     }
   };
 
-  const handleReset = async () => {
-    await resetData();
+  const handleReset = () => {
+    resetData();
   };
 
   // Get the schema and value for the selected path
@@ -219,19 +220,26 @@ export function DetailPanel({ className }: DetailPanelProps) {
 
       {/* Footer Actions */}
       <div className="p-4 flex items-center justify-between bg-muted/30">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleReset}
-          disabled={loading || saving}
-        >
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Reset
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={loading || saving || !dirty}
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reset
+          </Button>
+          {dirty && (
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              Unsaved changes
+            </span>
+          )}
+        </div>
         <Button
           size="sm"
           onClick={handleSave}
-          disabled={loading || saving || (errors && errors.length > 0)}
+          disabled={loading || saving || !dirty}
         >
           {saving ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
