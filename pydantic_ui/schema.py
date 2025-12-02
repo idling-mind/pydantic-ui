@@ -1,6 +1,8 @@
 """Schema parser for converting Pydantic models to UI schema format."""
 
-from typing import Any, Union, get_args, get_origin
+import datetime
+from enum import Enum, StrEnum
+from typing import Any, Literal, Union, get_args, get_origin
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
@@ -26,6 +28,14 @@ def get_json_type(python_type: type) -> str:
     if python_type is type(None):
         return "null"
 
+    # Handle datetime types
+    if python_type in (datetime.datetime, datetime.date, datetime.time):
+        return "string"
+
+    # Handle Enum types (including StrEnum)
+    if isinstance(python_type, type) and issubclass(python_type, Enum):
+        return "string"
+
     # Check direct mapping
     if python_type in type_map:
         return type_map[python_type]
@@ -36,6 +46,24 @@ def get_json_type(python_type: type) -> str:
             return json_type
 
     return "string"
+
+
+def get_format_for_type(python_type: type) -> str | None:
+    """Get JSON schema format for special types."""
+    if python_type is datetime.datetime:
+        return "date-time"
+    if python_type is datetime.date:
+        return "date"
+    if python_type is datetime.time:
+        return "time"
+    return None
+
+
+def get_enum_values(python_type: type) -> list[Any] | None:
+    """Extract enum values from Enum or StrEnum types."""
+    if isinstance(python_type, type) and issubclass(python_type, Enum):
+        return [member.value for member in python_type]
+    return None
 
 
 def extract_field_config(field_info: FieldInfo, field_type: type) -> FieldConfig | None:
@@ -83,8 +111,6 @@ def get_constraints(field_info: FieldInfo, field_type: type) -> dict[str, Any]:
 
     # Check for Literal types (enum values)
     origin = get_origin(field_type)
-    from typing import Literal
-
     if origin is Literal:
         constraints["enum"] = list(get_args(field_type))
 
@@ -125,6 +151,51 @@ def parse_field(
             result["required"] = False
             return result
 
+    # Handle Literal types
+    if origin is Literal:
+        literal_values = list(args)
+        # Determine the type from the literal values
+        first_value = literal_values[0] if literal_values else ""
+        value_type = type(first_value).__name__
+        json_type = "string"
+        if isinstance(first_value, bool):
+            json_type = "boolean"
+        elif isinstance(first_value, int):
+            json_type = "integer"
+        elif isinstance(first_value, float):
+            json_type = "number"
+
+        return {
+            "type": json_type,
+            "title": field_info.title or name.replace("_", " ").title(),
+            "description": field_info.description,
+            "required": field_info.is_required(),
+            "default": field_info.default if field_info.default is not PydanticUndefined else None,
+            "literal_values": literal_values,
+            "ui_config": None,
+        }
+
+    # Handle Enum types (including StrEnum)
+    if isinstance(field_type, type) and issubclass(field_type, Enum):
+        enum_values = get_enum_values(field_type)
+        default_value = None
+        if field_info.default is not PydanticUndefined:
+            default_value = (
+                field_info.default.value
+                if isinstance(field_info.default, Enum)
+                else field_info.default
+            )
+
+        return {
+            "type": get_json_type(field_type),
+            "title": field_info.title or name.replace("_", " ").title(),
+            "description": field_info.description,
+            "required": field_info.is_required(),
+            "default": default_value,
+            "enum": enum_values,
+            "ui_config": None,
+        }
+
     # Handle List/Set/Tuple
     if origin in (list, set, tuple):
         item_type = args[0] if args else str
@@ -153,6 +224,9 @@ def parse_field(
     if isinstance(field_type, type) and issubclass(field_type, BaseModel):
         return parse_model(field_type, max_depth, current_depth + 1)
 
+    # Handle datetime types
+    format_hint = get_format_for_type(field_type)
+
     # Extract field config
     field_config = extract_field_config(field_info, field_type)
     ui_config = None
@@ -175,13 +249,19 @@ def parse_field(
     default_value = None
     if field_info.default is not PydanticUndefined:
         default_value = field_info.default
+        # Handle datetime defaults
+        if isinstance(default_value, (datetime.datetime, datetime.date, datetime.time)):
+            default_value = default_value.isoformat()
     elif field_info.default_factory is not None:
         try:
             default_value = field_info.default_factory()
+            # Handle datetime factory defaults
+            if isinstance(default_value, (datetime.datetime, datetime.date, datetime.time)):
+                default_value = default_value.isoformat()
         except Exception:
             pass
 
-    return {
+    result = {
         "type": get_json_type(field_type),
         "title": field_info.title or name.replace("_", " ").title(),
         "description": field_info.description,
@@ -190,6 +270,12 @@ def parse_field(
         "constraints": get_constraints(field_info, field_type),
         "ui_config": ui_config,
     }
+
+    # Add format for datetime types
+    if format_hint:
+        result["format"] = format_hint
+
+    return result
 
 
 def parse_model(
