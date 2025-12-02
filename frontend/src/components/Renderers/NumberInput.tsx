@@ -1,0 +1,62 @@
+import React from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import type { RendererProps } from './types';
+
+export function NumberInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
+  const hasError = errors && errors.length > 0;
+  const props = schema.ui_config?.props || {};
+  const label = schema.ui_config?.label || schema.title || name;
+  const step = props.step as number | undefined;
+  const min = schema.minimum ?? schema.exclusive_minimum;
+  const max = schema.maximum ?? schema.exclusive_maximum;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val === '') {
+      onChange(null);
+    } else {
+      const num = schema.type === 'integer' ? parseInt(val, 10) : parseFloat(val);
+      if (!isNaN(num)) {
+        onChange(num);
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
+        {label}
+        {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+      </Label>
+      <Input
+        id={path}
+        type="number"
+        value={value !== null && value !== undefined ? String(value) : ''}
+        onChange={handleChange}
+        placeholder={`Enter ${label.toLowerCase()}`}
+        disabled={disabled}
+        step={step || (schema.type === 'integer' ? 1 : 'any')}
+        min={min}
+        max={max}
+        className={cn(hasError && 'border-destructive focus-visible:ring-destructive')}
+      />
+      {schema.description && (
+        <p className="text-xs text-muted-foreground">{schema.description}</p>
+      )}
+      {hasError && (
+        <p className="text-xs text-destructive">{errors[0].message}</p>
+      )}
+      {(min !== undefined || max !== undefined) && (
+        <p className="text-xs text-muted-foreground">
+          {min !== undefined && max !== undefined
+            ? `Range: ${min} - ${max}`
+            : min !== undefined
+            ? `Min: ${min}`
+            : `Max: ${max}`}
+        </p>
+      )}
+    </div>
+  );
+}

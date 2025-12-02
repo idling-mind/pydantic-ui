@@ -1,0 +1,248 @@
+import React from 'react';
+import { Save, RotateCcw, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { useData } from '@/context/DataContext';
+import { ObjectEditor, ArrayEditor } from './ObjectEditor';
+import { FieldRenderer } from '@/components/Renderers';
+
+interface DetailPanelProps {
+  className?: string;
+}
+
+export function DetailPanel({ className }: DetailPanelProps) {
+  const {
+    schema,
+    data,
+    errors,
+    loading,
+    updateValue,
+    saveData,
+    resetData,
+    selectedPath,
+  } = useData();
+
+  const [saving, setSaving] = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveSuccess(false);
+    try {
+      const success = await saveData();
+      if (success) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    await resetData();
+  };
+
+  // Get the schema and value for the selected path
+  const getSelectedSchema = () => {
+    if (!schema || !selectedPath) {
+      return { selectedSchema: schema, selectedValue: data, basePath: '' };
+    }
+
+    const parts = selectedPath.split('.');
+    let currentSchema = schema;
+    let currentValue: unknown = data;
+    let basePath = '';
+
+    for (const part of parts) {
+      if (!currentSchema) break;
+
+      if (currentSchema.type === 'object' && currentSchema.fields) {
+        const fieldSchema = currentSchema.fields[part];
+        if (fieldSchema) {
+          currentSchema = fieldSchema;
+          currentValue = (currentValue as Record<string, unknown>)?.[part];
+          basePath = basePath ? `${basePath}.${part}` : part;
+        } else {
+          break;
+        }
+      } else if (currentSchema.type === 'array' && currentSchema.items) {
+        // Handle array index access
+        const index = parseInt(part, 10);
+        if (!isNaN(index)) {
+          currentSchema = currentSchema.items;
+          currentValue = (currentValue as unknown[])?.[index];
+          basePath = basePath ? `${basePath}[${index}]` : `[${index}]`;
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+
+    return { selectedSchema: currentSchema, selectedValue: currentValue, basePath };
+  };
+
+  const { selectedSchema, selectedValue, basePath } = getSelectedSchema();
+
+  // Get errors for the current selection
+  const getRelevantErrors = () => {
+    if (!errors || !basePath) return errors;
+    return errors.filter(
+      (e) => e.path === basePath || e.path.startsWith(basePath + '.') || e.path.startsWith(basePath + '[')
+    );
+  };
+
+  const relevantErrors = getRelevantErrors();
+
+  const handleChange = (newValue: unknown) => {
+    if (!basePath) {
+      // Root level change - replace entire data
+      if (typeof newValue === 'object' && newValue !== null) {
+        Object.entries(newValue as Record<string, unknown>).forEach(([key, val]) => {
+          updateValue(key, val);
+        });
+      }
+    } else {
+      updateValue(basePath, newValue);
+    }
+  };
+
+  if (!schema) {
+    return (
+      <div className={cn('flex items-center justify-center h-full', className)}>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading schema...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const renderContent = () => {
+    if (!selectedSchema) {
+      return (
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
+          Select a field from the tree to edit
+        </div>
+      );
+    }
+
+    // Handle different schema types
+    if (selectedSchema.type === 'object' && selectedSchema.fields) {
+      return (
+        <ObjectEditor
+          name={basePath || 'root'}
+          path={basePath || 'root'}
+          schema={selectedSchema}
+          value={selectedValue as Record<string, unknown>}
+          errors={relevantErrors}
+          disabled={loading}
+          onChange={handleChange}
+        />
+      );
+    }
+
+    if (selectedSchema.type === 'array') {
+      return (
+        <ArrayEditor
+          name={basePath || 'root'}
+          path={basePath || 'root'}
+          schema={selectedSchema}
+          value={selectedValue as unknown[]}
+          errors={relevantErrors}
+          disabled={loading}
+          onChange={handleChange}
+        />
+      );
+    }
+
+    // Primitive type
+    return (
+      <FieldRenderer
+        name={basePath || 'value'}
+        path={basePath || 'value'}
+        schema={selectedSchema}
+        value={selectedValue}
+        errors={relevantErrors}
+        disabled={loading}
+        onChange={handleChange}
+      />
+    );
+  };
+
+  return (
+    <div className={cn('flex flex-col h-full', className)}>
+      {/* Header */}
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold">
+            {selectedSchema?.ui_config?.label || selectedSchema?.title || (basePath || 'Data Editor')}
+          </h2>
+          <div className="flex items-center gap-2">
+            {errors && errors.length > 0 && (
+              <Badge variant="destructive" className="gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.length} error{errors.length !== 1 ? 's' : ''}
+              </Badge>
+            )}
+            {saveSuccess && (
+              <Badge variant="default" className="gap-1 bg-green-600">
+                <CheckCircle2 className="h-3 w-3" />
+                Saved
+              </Badge>
+            )}
+          </div>
+        </div>
+        {selectedSchema?.description && !basePath && (
+          <p className="text-sm text-muted-foreground">{selectedSchema.description}</p>
+        )}
+        {basePath && (
+          <p className="text-xs text-muted-foreground font-mono">{basePath}</p>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* Content */}
+      <ScrollArea className="flex-1">
+        <div className="p-4">
+          {renderContent()}
+        </div>
+      </ScrollArea>
+
+      <Separator />
+
+      {/* Footer Actions */}
+      <div className="p-4 flex items-center justify-between bg-muted/30">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleReset}
+          disabled={loading || saving}
+        >
+          <RotateCcw className="h-4 w-4 mr-2" />
+          Reset
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={loading || saving || (errors && errors.length > 0)}
+        >
+          {saving ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4 mr-2" />
+          )}
+          {saving ? 'Saving...' : 'Save'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export { ObjectEditor, ArrayEditor };

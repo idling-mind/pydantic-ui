@@ -1,0 +1,7 @@
+# Development dependencies
+fastapi>=0.100.0
+pydantic>=2.0.0
+uvicorn>=0.23.0
+
+# Optional for examples
+python-multipart>=0.0.6
