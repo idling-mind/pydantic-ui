@@ -12,19 +12,41 @@ import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   title?: string;
+  logoText?: string | null;
+  logoUrl?: string | null;
   className?: string;
 }
 
-export function Header({ title = 'Pydantic UI', className }: HeaderProps) {
+export function Header({ title = 'Pydantic UI', logoText, logoUrl, className }: HeaderProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
+
+  // Determine what to show in the logo area
+  const renderLogo = () => {
+    if (logoUrl) {
+      return (
+        <img 
+          src={logoUrl} 
+          alt={title} 
+          className="h-8 w-8 rounded-md object-contain"
+        />
+      );
+    }
+    
+    // Use logoText if provided, otherwise use first letter of title
+    const displayText = logoText || title.charAt(0).toUpperCase();
+    
+    return (
+      <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
+        <span className="text-primary-foreground font-bold text-sm">{displayText}</span>
+      </div>
+    );
+  };
 
   return (
     <header className={cn('border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60', className)}>
       <div className="flex h-14 items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">P</span>
-          </div>
+          {renderLogo()}
           <h1 className="text-lg font-semibold">{title}</h1>
         </div>
 

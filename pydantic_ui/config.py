@@ -80,11 +80,19 @@ class UIConfig(BaseModel):
 
     title: str = Field(
         default="Data Editor",
-        description="Title shown in the header",
+        description="Title shown in the header and as default for root panel",
     )
     description: str = Field(
         default="",
         description="Description shown below the title",
+    )
+    logo_text: str | None = Field(
+        default=None,
+        description="Short text for the logo (e.g., 'P', 'UI'). If not set, uses first letter of title",
+    )
+    logo_url: str | None = Field(
+        default=None,
+        description="URL to a logo image. If set, overrides logo_text",
     )
     theme: str = Field(
         default="system",

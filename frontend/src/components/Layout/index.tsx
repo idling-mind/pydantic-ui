@@ -4,13 +4,14 @@ import { cn } from '@/lib/utils';
 import { Header } from '@/components/Header';
 import { TreePanel } from '@/components/TreePanel';
 import { DetailPanel } from '@/components/DetailPanel';
+import { useData } from '@/context/DataContext';
 
 interface LayoutProps {
-  title?: string;
   children?: React.ReactNode;
 }
 
-export function Layout({ title }: LayoutProps) {
+export function Layout({}: LayoutProps) {
+  const { config } = useData();
   const [panelWidth, setPanelWidth] = React.useState(280);
   const [isDragging, setIsDragging] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -46,7 +47,11 @@ export function Layout({ title }: LayoutProps) {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      <Header title={title} />
+      <Header 
+        title={config?.title} 
+        logoText={config?.logo_text}
+        logoUrl={config?.logo_url}
+      />
       
       <div ref={containerRef} className="flex-1 flex overflow-hidden">
         {/* Tree Panel */}

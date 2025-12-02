@@ -27,6 +27,7 @@ interface DetailPanelProps {
 export function DetailPanel({ className }: DetailPanelProps) {
   const {
     schema,
+    config,
     data,
     errors,
     loading,
@@ -224,7 +225,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">
-            {selectedSchema?.ui_config?.label || selectedSchema?.title || (basePath || 'Data Editor')}
+            {selectedSchema?.ui_config?.label || selectedSchema?.title || basePath || config?.title || 'Data Editor'}
           </h2>
           <div className="flex items-center gap-2">
             {errors && errors.length > 0 && (

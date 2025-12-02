@@ -50,6 +50,8 @@ export interface FieldError {
 export interface UIConfig {
   title: string;
   description: string;
+  logo_text: string | null;
+  logo_url: string | null;
   theme: 'light' | 'dark' | 'system';
   read_only: boolean;
   show_validation: boolean;
