@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, List, Hash, ToggleLeft, Type } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, List, Hash, ToggleLeft, Type, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,9 @@ interface TreeNodeProps {
   // Pass these through for children
   selectedPath: string | null;
   expandedPaths: Set<string>;
+  // Error count for this node and its children
+  errorCount?: number;
+  getErrorCountForPath: (path: string) => number;
 }
 
 interface ConnectedTreeNodeProps {
@@ -31,6 +34,7 @@ interface ConnectedTreeNodeProps {
   expandedPaths: Set<string>;
   onSelect: (path: string) => void;
   onToggle: (path: string) => void;
+  getErrorCountForPath: (path: string) => number;
 }
 
 // Helper to get value at a path that may include array indices
@@ -143,6 +147,8 @@ export function TreeNode({
   onToggle,
   selectedPath,
   expandedPaths,
+  errorCount = 0,
+  getErrorCountForPath,
 }: TreeNodeProps) {
   const { data } = useData();
   const isExpandable = schema.type === 'object' || schema.type === 'array';
@@ -186,7 +192,8 @@ export function TreeNode({
         'flex items-center gap-1.5 px-2 py-1.5 cursor-pointer rounded-md text-sm',
         'hover:bg-accent hover:text-accent-foreground',
         'transition-colors duration-150',
-        isSelected && 'bg-accent text-accent-foreground font-medium'
+        isSelected && 'bg-accent text-accent-foreground font-medium',
+        errorCount > 0 && 'text-destructive'
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
       onClick={handleClick}
@@ -207,6 +214,12 @@ export function TreeNode({
       )}
       <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
       <span className="truncate flex-1">{schema.ui_config?.label || schema.title || name}</span>
+      {errorCount > 0 && (
+        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 shrink-0 flex items-center gap-0.5">
+          <AlertCircle className="h-3 w-3" />
+          {errorCount}
+        </Badge>
+      )}
       {showTypes && (
         <Badge variant={getTypeBadgeVariant(schema.type)} className="text-[10px] px-1.5 py-0 h-5 shrink-0">
           {schema.type}
@@ -234,6 +247,7 @@ export function TreeNode({
           {/* Render object children */}
           {children.map(([childName, childSchema]) => {
             const childPath = `${path}.${childName}`;
+            const childErrorCount = getErrorCountForPath(childPath);
             return (
               <TreeNode
                 key={childPath}
@@ -248,6 +262,8 @@ export function TreeNode({
                 onToggle={onToggle}
                 selectedPath={selectedPath}
                 expandedPaths={expandedPaths}
+                errorCount={childErrorCount}
+                getErrorCountForPath={getErrorCountForPath}
               />
             );
           })}
@@ -256,6 +272,7 @@ export function TreeNode({
             const itemPath = `${path}[${index}]`;
             const itemLabel = getArrayItemLabel(item, index);
             const itemSchema = schema.items || { type: 'object' };
+            const itemErrorCount = getErrorCountForPath(itemPath);
             
             // Check if this array item has nested content (object or array)
             const itemIsExpandable = itemSchema.type === 'object' || itemSchema.type === 'array';
@@ -276,6 +293,8 @@ export function TreeNode({
                   onToggle={onToggle}
                   selectedPath={selectedPath}
                   expandedPaths={expandedPaths}
+                  errorCount={itemErrorCount}
+                  getErrorCountForPath={getErrorCountForPath}
                 />
               );
             }
@@ -291,6 +310,7 @@ export function TreeNode({
                 showTypes={showTypes}
                 itemType={itemSchema.type}
                 onSelect={onSelect}
+                errorCount={itemErrorCount}
               />
             );
           })}
@@ -309,6 +329,7 @@ interface ArrayItemNodeProps {
   showTypes: boolean;
   itemType: string;
   onSelect: (path: string) => void;
+  errorCount?: number;
 }
 
 function ArrayItemNode({
@@ -319,6 +340,7 @@ function ArrayItemNode({
   showTypes,
   itemType,
   onSelect,
+  errorCount = 0,
 }: ArrayItemNodeProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -331,7 +353,8 @@ function ArrayItemNode({
         'flex items-center gap-1.5 px-2 py-1.5 cursor-pointer rounded-md text-sm',
         'hover:bg-accent hover:text-accent-foreground',
         'transition-colors duration-150',
-        isSelected && 'bg-accent text-accent-foreground font-medium'
+        isSelected && 'bg-accent text-accent-foreground font-medium',
+        errorCount > 0 && 'text-destructive'
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
       onClick={handleClick}
@@ -339,6 +362,12 @@ function ArrayItemNode({
       <span className="w-5 shrink-0" />
       <span className="shrink-0">{getTypeIcon(itemType, false)}</span>
       <span className="truncate flex-1">{label}</span>
+      {errorCount > 0 && (
+        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 shrink-0 flex items-center gap-0.5">
+          <AlertCircle className="h-3 w-3" />
+          {errorCount}
+        </Badge>
+      )}
       {showTypes && (
         <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 shrink-0">
           {itemType}
@@ -359,7 +388,10 @@ export function ConnectedTreeNode({
   expandedPaths,
   onSelect,
   onToggle,
+  getErrorCountForPath,
 }: ConnectedTreeNodeProps) {
+  const errorCount = getErrorCountForPath(path);
+  
   return (
     <TreeNode
       name={name}
@@ -373,6 +405,8 @@ export function ConnectedTreeNode({
       onToggle={onToggle}
       selectedPath={selectedPath}
       expandedPaths={expandedPaths}
+      errorCount={errorCount}
+      getErrorCountForPath={getErrorCountForPath}
     />
   );
 }

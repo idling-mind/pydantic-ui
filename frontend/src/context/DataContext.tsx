@@ -18,6 +18,8 @@ interface DataContextValue {
   saveData: () => Promise<boolean>;
   resetData: () => void;
   refresh: () => Promise<void>;
+  getErrorCountForPath: (path: string) => number;
+  errorCountByPath: Map<string, number>;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -39,6 +41,21 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
   const [dirty, setDirty] = useState(false);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['root']));
+
+  // Helper to normalize a path from backend format (users.0.name) to frontend format (users[0].name)
+  const normalizePathToFrontend = useCallback((path: string): string => {
+    // Replace patterns like ".0." or ".0" at end with "[0]." or "[0]"
+    // e.g., "users.0.compensation.amount" -> "users[0].compensation.amount"
+    return path.replace(/\.(\d+)(?=\.|$)/g, '[$1]');
+  }, []);
+
+  // Helper to normalize errors (convert paths to frontend format)
+  const normalizeErrors = useCallback((rawErrors: FieldError[]): FieldError[] => {
+    return rawErrors.map(error => ({
+      ...error,
+      path: normalizePathToFrontend(error.path),
+    }));
+  }, [normalizePathToFrontend]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -149,9 +166,8 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
       
       return newData;
     });
-    // Mark as dirty and clear errors when user makes changes
+    // Mark as dirty - keep errors visible until save
     setDirty(true);
-    setErrors([]);
   }, []);
 
   const saveData = useCallback(async (): Promise<boolean> => {
@@ -164,20 +180,68 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
         setDirty(false);
         return true;
       } else {
-        setErrors(result.errors || []);
+        // Normalize error paths to frontend format
+        setErrors(normalizeErrors(result.errors || []));
         return false;
       }
     } catch (error) {
       console.error('Failed to save data:', error);
       return false;
     }
-  }, [api, data]);
+  }, [api, data, normalizeErrors]);
 
   const resetData = useCallback(() => {
     setData(originalData);
     setErrors([]);
     setDirty(false);
   }, [originalData]);
+
+  // Compute error counts per path (including parent paths)
+  // Note: errors are already normalized to frontend format (users[0].name)
+  const errorCountByPath = useMemo(() => {
+    const counts = new Map<string, number>();
+    
+    // Helper to build all parent paths from a normalized path
+    const buildParentPaths = (normalizedPath: string): string[] => {
+      const parts: string[] = [];
+      const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+      let match;
+      let currentPath = '';
+      
+      while ((match = pathRegex.exec(normalizedPath)) !== null) {
+        if (match[1] !== undefined) {
+          // Regular property
+          currentPath = currentPath ? `${currentPath}.${match[1]}` : match[1];
+          parts.push(currentPath);
+        } else if (match[2] !== undefined) {
+          // Array index
+          currentPath = `${currentPath}[${match[2]}]`;
+          parts.push(currentPath);
+        }
+      }
+      
+      return parts;
+    };
+    
+    for (const error of errors) {
+      // Errors are already normalized to frontend format
+      const normalizedPath = error.path;
+      
+      // Build all path segments including the full path
+      const allPaths = buildParentPaths(normalizedPath);
+      
+      // Count for all paths (leaf node and all parent paths)
+      for (const path of allPaths) {
+        counts.set(path, (counts.get(path) || 0) + 1);
+      }
+    }
+    
+    return counts;
+  }, [errors]);
+
+  const getErrorCountForPath = useCallback((path: string): number => {
+    return errorCountByPath.get(path) || 0;
+  }, [errorCountByPath]);
 
   return (
     <DataContext.Provider
@@ -197,6 +261,8 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
         saveData,
         resetData,
         refresh,
+        getErrorCountForPath,
+        errorCountByPath,
       }}
     >
       {children}

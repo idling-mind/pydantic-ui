@@ -20,6 +20,7 @@ export function TreePanel({ className }: TreePanelProps) {
     expandedPaths,
     setSelectedPath,
     toggleExpanded,
+    getErrorCountForPath,
   } = useData();
 
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -154,6 +155,7 @@ export function TreePanel({ className }: TreePanelProps) {
                 expandedPaths={expandedPaths}
                 onSelect={handleSelect}
                 onToggle={handleToggle}
+                getErrorCountForPath={getErrorCountForPath}
               />
             ))
           )}

@@ -9,8 +9,9 @@ import { SelectInput } from './SelectInput';
 import { DateInput } from './DateInput';
 import { ColorInput } from './ColorInput';
 import { JsonInput } from './JsonInput';
+import { useData } from '@/context/DataContext';
 import type { RendererProps } from './types';
-import type { SchemaField } from '@/types';
+import type { SchemaField, FieldError } from '@/types';
 
 export type { RendererProps };
 
@@ -106,11 +107,35 @@ export function FieldRenderer({
   path,
   schema,
   value,
-  errors,
+  errors: propErrors,
   disabled,
   onChange,
   customRenderers,
 }: FieldRendererProps) {
+  const { errors: contextErrors } = useData();
+  
+  // Get errors for this specific field path from context
+  // This ensures we always have the most up-to-date errors regardless of prop drilling
+  const fieldErrors = React.useMemo((): FieldError[] => {
+    // First check prop errors (for backwards compatibility)
+    if (propErrors && propErrors.length > 0) {
+      // Filter for exact match or child paths
+      const matchingPropErrors = propErrors.filter(
+        e => e.path === path || e.path.startsWith(path + '.') || e.path.startsWith(path + '[')
+      );
+      if (matchingPropErrors.length > 0) {
+        return matchingPropErrors;
+      }
+    }
+    
+    // Fall back to context errors
+    if (!contextErrors || contextErrors.length === 0) return [];
+    
+    return contextErrors.filter(
+      e => e.path === path || e.path.startsWith(path + '.') || e.path.startsWith(path + '[')
+    );
+  }, [propErrors, contextErrors, path]);
+  
   const rendererType = getDefaultRenderer(schema);
   
   // Check custom renderers first
@@ -122,7 +147,7 @@ export function FieldRenderer({
       path={path}
       schema={schema}
       value={value}
-      errors={errors}
+      errors={fieldErrors}
       disabled={disabled}
       onChange={onChange}
     />

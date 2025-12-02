@@ -6,6 +6,7 @@ This example shows how to create a simple data editing UI for a configuration mo
 
 # Import pydantic_ui components
 import sys
+from enum import StrEnum
 from datetime import date, datetime
 from typing import Annotated, Literal, Optional
 
@@ -17,9 +18,22 @@ sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
 from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui
 
+
+class Currency(StrEnum):
+    USD = "USD"
+    EUR = "EUR"
+    GBP = "GBP"
+    JPY = "JPY"
+    SEK = "SEK"
+
+class Compensation(BaseModel):
+    amount: float
+    currency: Currency
 class Person(BaseModel):
     name: str
     age: int
+    birthday: date
+    compensation: Compensation
 
 class MyModel(BaseModel):
     """My model configuration"""
