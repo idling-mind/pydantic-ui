@@ -21,15 +21,19 @@ export function TreePanel({ className }: TreePanelProps) {
     setSelectedPath,
     toggleExpanded,
     getErrorCountForPath,
+    updateValue,
   } = useData();
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showTypes, setShowTypes] = React.useState(true);
   const [hideSimpleFields, setHideSimpleFields] = React.useState(false);
+  const [multiSelectedPaths, setMultiSelectedPaths] = React.useState<Set<string>>(new Set());
 
   const handleSelect = React.useCallback(
     (path: string) => {
       setSelectedPath(path);
+      // Clear multi-select when doing single select
+      setMultiSelectedPaths(new Set());
       // Auto-expand parent paths
       const parts = path.split('.');
       for (let i = 1; i < parts.length; i++) {
@@ -40,6 +44,43 @@ export function TreePanel({ className }: TreePanelProps) {
       }
     },
     [setSelectedPath, expandedPaths, toggleExpanded]
+  );
+
+  const handleMultiSelect = React.useCallback(
+    (path: string, additive: boolean) => {
+      setMultiSelectedPaths((prev) => {
+        const next = new Set(prev);
+        if (additive) {
+          if (next.has(path)) {
+            next.delete(path);
+          } else {
+            next.add(path);
+          }
+        } else {
+          next.clear();
+          next.add(path);
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const handleMultiPaste = React.useCallback(
+    (paths: string[], data: unknown) => {
+      for (const targetPath of paths) {
+        if (targetPath === '') {
+          // Pasting to root - merge the data
+          const merged = data as Record<string, unknown>;
+          for (const key of Object.keys(merged)) {
+            updateValue(key, merged[key]);
+          }
+        } else {
+          updateValue(targetPath, data);
+        }
+      }
+    },
+    [updateValue]
   );
 
   const handleToggle = React.useCallback(
@@ -191,6 +232,9 @@ export function TreePanel({ className }: TreePanelProps) {
                 onToggle={handleToggle}
                 getErrorCountForPath={getErrorCountForPath}
                 isRoot
+                multiSelectedPaths={multiSelectedPaths}
+                onMultiSelect={handleMultiSelect}
+                onMultiPaste={handleMultiPaste}
               />
               {/* Child fields when root is expanded */}
               {expandedPaths.has('') && rootFields.map(([name, field]) => (
@@ -207,6 +251,9 @@ export function TreePanel({ className }: TreePanelProps) {
                   onSelect={handleSelect}
                   onToggle={handleToggle}
                   getErrorCountForPath={getErrorCountForPath}
+                  multiSelectedPaths={multiSelectedPaths}
+                  onMultiSelect={handleMultiSelect}
+                  onMultiPaste={handleMultiPaste}
                 />
               ))}
               {searchQuery && rootFields.length === 0 && (

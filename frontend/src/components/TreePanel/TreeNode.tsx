@@ -2,8 +2,10 @@ import React from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, List, Hash, ToggleLeft, Type, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Badge } from '@/components/ui/badge';
 import { useData } from '@/context/DataContext';
+import { TreeNodeContextMenu } from './TreeNodeContextMenu';
 import type { SchemaField } from '@/types';
 
 interface TreeNodeProps {
@@ -25,6 +27,10 @@ interface TreeNodeProps {
   getErrorCountForPath: (path: string) => number;
   // Is this the root node?
   isRoot?: boolean;
+  // Multi-select support
+  multiSelectedPaths?: Set<string>;
+  onMultiSelect?: (path: string, additive: boolean) => void;
+  onMultiPaste?: (paths: string[], data: unknown) => void;
 }
 
 interface ConnectedTreeNodeProps {
@@ -41,6 +47,10 @@ interface ConnectedTreeNodeProps {
   getErrorCountForPath: (path: string) => number;
   // Is this the root node?
   isRoot?: boolean;
+  // Multi-select support
+  multiSelectedPaths?: Set<string>;
+  onMultiSelect?: (path: string, additive: boolean) => void;
+  onMultiPaste?: (paths: string[], data: unknown) => void;
 }
 
 // Helper to get value at a path that may include array indices
@@ -157,10 +167,14 @@ export function TreeNode({
   errorCount = 0,
   getErrorCountForPath,
   isRoot = false,
+  multiSelectedPaths = new Set(),
+  onMultiSelect,
+  onMultiPaste,
 }: TreeNodeProps) {
   const { data } = useData();
   const isExpandable = schema.type === 'object' || schema.type === 'array';
   const isArray = schema.type === 'array';
+  const isMultiSelected = multiSelectedPaths.has(path);
 
   // Get array data for this path if it's an array
   const arrayData = React.useMemo(() => {
@@ -170,7 +184,12 @@ export function TreeNode({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onSelect(path);
+    // Ctrl/Cmd+click for multi-select
+    if ((e.ctrlKey || e.metaKey) && onMultiSelect) {
+      onMultiSelect(path, true);
+    } else {
+      onSelect(path);
+    }
   };
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -214,13 +233,22 @@ export function TreeNode({
   const children = getChildren();
   const hasChildren = children.length > 0 || (isArray && Array.isArray(arrayData) && arrayData.length > 0);
 
-  const nodeContent = (
+  // Get list of selected paths for context menu (multi-select or single)
+  const selectedPathsForMenu = React.useMemo(() => {
+    if (multiSelectedPaths.size > 0) {
+      return Array.from(multiSelectedPaths);
+    }
+    return [path];
+  }, [multiSelectedPaths, path]);
+
+  const nodeContentInner = (
     <div
       className={cn(
         'flex items-center gap-1.5 px-2 py-1.5 cursor-pointer rounded-md text-sm',
         'hover:bg-accent hover:text-accent-foreground',
         'transition-colors duration-150',
         isSelected && 'bg-accent text-accent-foreground font-medium',
+        isMultiSelected && 'ring-2 ring-primary ring-inset',
         errorCount > 0 && 'text-destructive'
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -259,6 +287,20 @@ export function TreeNode({
     </div>
   );
 
+  const nodeContent = (
+    <TreeNodeContextMenu
+      path={path}
+      schema={schema}
+      nodeName={name}
+      selectedPaths={selectedPathsForMenu}
+      onMultiPaste={onMultiPaste}
+    >
+      <ContextMenuTrigger asChild>
+        {nodeContentInner}
+      </ContextMenuTrigger>
+    </TreeNodeContextMenu>
+  );
+
   if (!isExpandable || !hasChildren) {
     return nodeContent;
   }
@@ -266,13 +308,14 @@ export function TreeNode({
   // For root node, only render the toggle-able content without nested children
   // (children are rendered separately in TreePanel/index.tsx)
   if (isRoot) {
-    return (
+    const rootNodeContent = (
       <div
         className={cn(
           'flex items-center gap-1.5 px-2 py-1.5 cursor-pointer rounded-md text-sm',
           'hover:bg-accent hover:text-accent-foreground',
           'transition-colors duration-150',
           isSelected && 'bg-accent text-accent-foreground font-medium',
+          isMultiSelected && 'ring-2 ring-primary ring-inset',
           errorCount > 0 && 'text-destructive'
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -302,6 +345,20 @@ export function TreeNode({
           </Badge>
         )}
       </div>
+    );
+
+    return (
+      <TreeNodeContextMenu
+        path={path}
+        schema={schema}
+        nodeName={name}
+        selectedPaths={selectedPathsForMenu}
+        onMultiPaste={onMultiPaste}
+      >
+        <ContextMenuTrigger asChild>
+          {rootNodeContent}
+        </ContextMenuTrigger>
+      </TreeNodeContextMenu>
     );
   }
 
@@ -335,6 +392,9 @@ export function TreeNode({
                 expandedPaths={expandedPaths}
                 errorCount={childErrorCount}
                 getErrorCountForPath={getErrorCountForPath}
+                multiSelectedPaths={multiSelectedPaths}
+                onMultiSelect={onMultiSelect}
+                onMultiPaste={onMultiPaste}
               />
             );
           })}
@@ -367,6 +427,9 @@ export function TreeNode({
                   expandedPaths={expandedPaths}
                   errorCount={itemErrorCount}
                   getErrorCountForPath={getErrorCountForPath}
+                  multiSelectedPaths={multiSelectedPaths}
+                  onMultiSelect={onMultiSelect}
+                  onMultiPaste={onMultiPaste}
                 />
               );
             }
@@ -382,12 +445,17 @@ export function TreeNode({
                 key={itemPath}
                 label={itemLabel}
                 path={itemPath}
+                schema={itemSchema}
                 depth={depth + 1}
                 isSelected={selectedPath === itemPath}
+                isMultiSelected={multiSelectedPaths.has(itemPath)}
                 showTypes={showTypes}
                 itemType={itemSchema.type}
                 onSelect={onSelect}
+                onMultiSelect={onMultiSelect}
                 errorCount={itemErrorCount}
+                multiSelectedPaths={multiSelectedPaths}
+                onMultiPaste={onMultiPaste}
               />
             );
           })}
@@ -401,36 +469,60 @@ export function TreeNode({
 interface ArrayItemNodeProps {
   label: string;
   path: string;
+  schema: SchemaField;
   depth: number;
   isSelected: boolean;
+  isMultiSelected: boolean;
   showTypes: boolean;
   itemType: string;
   onSelect: (path: string) => void;
+  onMultiSelect?: (path: string, additive: boolean) => void;
   errorCount?: number;
+  multiSelectedPaths?: Set<string>;
+  onMultiPaste?: (paths: string[], data: unknown) => void;
 }
 
 function ArrayItemNode({
   label,
   path,
+  schema,
   depth,
   isSelected,
+  isMultiSelected,
   showTypes,
   itemType,
   onSelect,
+  onMultiSelect,
   errorCount = 0,
+  multiSelectedPaths = new Set(),
+  onMultiPaste,
 }: ArrayItemNodeProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onSelect(path);
+    // Ctrl/Cmd+click for multi-select
+    if ((e.ctrlKey || e.metaKey) && onMultiSelect) {
+      onMultiSelect(path, true);
+    } else {
+      onSelect(path);
+    }
   };
 
-  return (
+  // Get list of selected paths for context menu
+  const selectedPathsForMenu = React.useMemo(() => {
+    if (multiSelectedPaths.size > 0) {
+      return Array.from(multiSelectedPaths);
+    }
+    return [path];
+  }, [multiSelectedPaths, path]);
+
+  const nodeContent = (
     <div
       className={cn(
         'flex items-center gap-1.5 px-2 py-1.5 cursor-pointer rounded-md text-sm',
         'hover:bg-accent hover:text-accent-foreground',
         'transition-colors duration-150',
         isSelected && 'bg-accent text-accent-foreground font-medium',
+        isMultiSelected && 'ring-2 ring-primary ring-inset',
         errorCount > 0 && 'text-destructive'
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -452,6 +544,20 @@ function ArrayItemNode({
       )}
     </div>
   );
+
+  return (
+    <TreeNodeContextMenu
+      path={path}
+      schema={schema}
+      nodeName={label}
+      selectedPaths={selectedPathsForMenu}
+      onMultiPaste={onMultiPaste}
+    >
+      <ContextMenuTrigger asChild>
+        {nodeContent}
+      </ContextMenuTrigger>
+    </TreeNodeContextMenu>
+  );
 }
 
 // A wrapper that computes isSelected and isExpanded from the context props
@@ -468,6 +574,9 @@ export function ConnectedTreeNode({
   onToggle,
   getErrorCountForPath,
   isRoot = false,
+  multiSelectedPaths = new Set(),
+  onMultiSelect,
+  onMultiPaste,
 }: ConnectedTreeNodeProps) {
   const errorCount = getErrorCountForPath(path);
   
@@ -488,6 +597,9 @@ export function ConnectedTreeNode({
       errorCount={errorCount}
       getErrorCountForPath={getErrorCountForPath}
       isRoot={isRoot}
+      multiSelectedPaths={multiSelectedPaths}
+      onMultiSelect={onMultiSelect}
+      onMultiPaste={onMultiPaste}
     />
   );
 }
