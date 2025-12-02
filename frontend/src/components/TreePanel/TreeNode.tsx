@@ -182,13 +182,25 @@ export function TreeNode({
 
   const getChildren = (): [string, SchemaField][] => {
     if (schema.type === 'object' && schema.fields) {
+      // Get value at current path for filtering optional fields
+      const currentValue = getValueAtPath(data, path);
+      
       return Object.entries(schema.fields).filter(
-        ([, field]) => {
+        ([fieldName, field]) => {
           // Always filter out hidden fields
           if (field.ui_config?.hidden) return false;
           // Filter out simple fields if hideSimpleFields is enabled
           if (hideSimpleFields && field.type !== 'object' && field.type !== 'array') {
             return false;
+          }
+          // For optional nested objects/arrays, only show if they have a value (not null/undefined)
+          if (field.required === false && (field.type === 'object' || field.type === 'array')) {
+            const fieldValue = currentValue && typeof currentValue === 'object' 
+              ? (currentValue as Record<string, unknown>)[fieldName]
+              : undefined;
+            if (fieldValue === null || fieldValue === undefined) {
+              return false;
+            }
           }
           return true;
         }

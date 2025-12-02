@@ -1,6 +1,7 @@
-import { ChevronRight, Folder, List } from 'lucide-react';
+import { ChevronRight, Folder, List, Plus, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { SchemaField } from '@/types';
 
@@ -10,6 +11,8 @@ interface NestedFieldCardProps {
   value: unknown;
   path: string;
   onNavigate: (path: string) => void;
+  onChange?: (value: unknown) => void;
+  disabled?: boolean;
 }
 
 export function NestedFieldCard({
@@ -18,8 +21,12 @@ export function NestedFieldCard({
   value,
   path,
   onNavigate,
+  onChange,
+  disabled = false,
 }: NestedFieldCardProps) {
   const label = schema.ui_config?.label || schema.title || name;
+  const isOptional = schema.required === false;
+  const isEnabled = value !== null && value !== undefined;
   
   const getCardInfo = () => {
     if (schema.type === 'object') {
@@ -28,11 +35,11 @@ export function NestedFieldCard({
         ? Object.keys(value).filter(k => (value as Record<string, unknown>)[k] !== undefined).length
         : 0;
       return {
-        icon: <Folder className="h-5 w-5 text-blue-500" />,
+        icon: <Folder className={cn('h-5 w-5', isEnabled ? 'text-blue-500' : 'text-muted-foreground')} />,
         description: `Object with ${fieldCount} field${fieldCount !== 1 ? 's' : ''}`,
         badge: 'object',
         badgeVariant: 'secondary' as const,
-        subtitle: filledCount > 0 ? `${filledCount} populated` : undefined,
+        subtitle: isEnabled && filledCount > 0 ? `${filledCount} populated` : undefined,
       };
     }
     if (schema.type === 'array') {
@@ -40,8 +47,8 @@ export function NestedFieldCard({
       const itemCount = items.length;
       const itemType = schema.items?.type || 'item';
       return {
-        icon: <List className="h-5 w-5 text-green-500" />,
-        description: `${itemCount} ${itemType}${itemCount !== 1 ? 's' : ''}`,
+        icon: <List className={cn('h-5 w-5', isEnabled ? 'text-green-500' : 'text-muted-foreground')} />,
+        description: isEnabled ? `${itemCount} ${itemType}${itemCount !== 1 ? 's' : ''}` : 'Not set',
         badge: 'array',
         badgeVariant: 'secondary' as const,
         subtitle: schema.min_items !== undefined || schema.max_items !== undefined
@@ -56,8 +63,70 @@ export function NestedFieldCard({
   if (!info) return null;
 
   const handleClick = () => {
-    onNavigate(path);
+    if (isEnabled) {
+      onNavigate(path);
+    }
   };
+
+  const handleEnable = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onChange && !disabled) {
+      // Create default value based on type
+      if (schema.type === 'object') {
+        onChange({});
+      } else if (schema.type === 'array') {
+        onChange([]);
+      }
+    }
+  };
+
+  const handleDisable = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onChange && !disabled) {
+      onChange(null);
+    }
+  };
+
+  // If optional and disabled, show a different card style
+  if (isOptional && !isEnabled) {
+    return (
+      <Card
+        className={cn(
+          'transition-all border-dashed',
+          'hover:border-primary/50',
+          'group'
+        )}
+      >
+        <CardContent className="flex items-center gap-3 p-4">
+          <div className="flex-shrink-0 opacity-50">{info.icon}</div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium truncate text-sm text-muted-foreground">{label}</h3>
+            <p className="text-xs text-muted-foreground/70">
+              Not configured (optional)
+            </p>
+            {schema.description && (
+              <p className="text-xs text-muted-foreground/50 truncate mt-0.5">
+                {schema.description}
+              </p>
+            )}
+          </div>
+          <Badge variant="outline" className="shrink-0 text-muted-foreground">
+            {info.badge}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEnable}
+            disabled={disabled}
+            className="shrink-0"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Enable
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card
@@ -87,6 +156,18 @@ export function NestedFieldCard({
         <Badge variant={info.badgeVariant} className="shrink-0">
           {info.badge}
         </Badge>
+        {isOptional && onChange && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDisable}
+            disabled={disabled}
+            className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+            title="Disable this optional field"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
         <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
       </CardContent>
     </Card>

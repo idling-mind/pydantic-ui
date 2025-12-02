@@ -140,6 +140,8 @@ export function ObjectEditor({
         value={fieldValue}
         path={fieldPath}
         onNavigate={handleNavigateToNested}
+        onChange={(v) => handleFieldChange(fieldName, v)}
+        disabled={disabled}
       />
     );
   };

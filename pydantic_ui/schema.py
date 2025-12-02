@@ -1,6 +1,7 @@
 """Schema parser for converting Pydantic models to UI schema format."""
 
 import datetime
+import types
 from enum import Enum, StrEnum
 from typing import Any, Literal, Union, get_args, get_origin
 
@@ -138,8 +139,8 @@ def parse_field(
         actual_type = args[0]
         return parse_field(name, field_info, actual_type, max_depth, current_depth)
 
-    # Handle Optional (Union with None)
-    if origin is Union:
+    # Handle Optional (Union with None) - supports both typing.Union and types.UnionType (X | Y syntax)
+    if origin is Union or origin is types.UnionType:
         non_none = [a for a in args if a is not type(None)]
         if len(non_none) == 1:
             result = parse_field(name, field_info, non_none[0], max_depth, current_depth)
@@ -222,7 +223,12 @@ def parse_field(
 
     # Handle nested Pydantic models
     if isinstance(field_type, type) and issubclass(field_type, BaseModel):
-        return parse_model(field_type, max_depth, current_depth + 1)
+        result = parse_model(field_type, max_depth, current_depth + 1)
+        # Add title from field_info if available, otherwise use model name
+        result["title"] = field_info.title or result.get("name", name).replace("_", " ").title()
+        # Nested models are required by default unless wrapped in Optional
+        result["required"] = field_info.is_required()
+        return result
 
     # Handle datetime types
     format_hint = get_format_for_type(field_type)
