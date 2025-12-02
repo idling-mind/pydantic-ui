@@ -1,3 +1,4 @@
+examples/basic/user_input/*
 # Python
 __pycache__/
 *.py[cod]

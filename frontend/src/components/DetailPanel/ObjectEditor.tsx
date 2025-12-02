@@ -1,10 +1,13 @@
 import React from 'react';
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { FieldRenderer } from '@/components/Renderers';
+import { NestedFieldCard } from './NestedFieldCard';
 import { useData } from '@/context/DataContext';
 import type { SchemaField, FieldError } from '@/types';
 
@@ -29,6 +32,7 @@ export function ObjectEditor({
   onChange,
   depth = 0,
 }: ObjectEditorProps) {
+  const { setSelectedPath, toggleExpanded, expandedPaths } = useData();
   const [isExpanded, setIsExpanded] = React.useState(depth < 2);
   
   const fields = schema.fields || {};
@@ -55,12 +59,24 @@ export function ObjectEditor({
     ([, field]) => !field.ui_config?.hidden
   );
 
-  // Group fields by group name
-  const groupedFields = React.useMemo(() => {
+  // Separate primitive and nested fields
+  const primitiveFields: [string, SchemaField][] = [];
+  const nestedFields: [string, SchemaField][] = [];
+  
+  visibleFields.forEach(([fieldName, field]) => {
+    if (field.type === 'object' || field.type === 'array') {
+      nestedFields.push([fieldName, field]);
+    } else {
+      primitiveFields.push([fieldName, field]);
+    }
+  });
+
+  // Group primitive fields by group name
+  const groupedPrimitiveFields = React.useMemo(() => {
     const groups: Record<string, [string, SchemaField][]> = {};
     const ungrouped: [string, SchemaField][] = [];
 
-    visibleFields.forEach(([fieldName, field]) => {
+    primitiveFields.forEach(([fieldName, field]) => {
       const group = field.ui_config?.group;
       if (group) {
         if (!groups[group]) {
@@ -73,47 +89,28 @@ export function ObjectEditor({
     });
 
     return { groups, ungrouped };
-  }, [visibleFields]);
+  }, [primitiveFields]);
 
-  const renderField = ([fieldName, fieldSchema]: [string, SchemaField]) => {
+  // Navigate to nested field
+  const handleNavigateToNested = (fieldPath: string) => {
+    // Expand parent paths
+    const parts = fieldPath.split('.');
+    let currentPath = '';
+    for (const part of parts) {
+      currentPath = currentPath ? `${currentPath}.${part}` : part;
+      if (!expandedPaths.has(currentPath)) {
+        toggleExpanded(currentPath);
+      }
+    }
+    // Select the nested field
+    setSelectedPath(fieldPath);
+  };
+
+  const renderPrimitiveField = ([fieldName, fieldSchema]: [string, SchemaField]) => {
     // Build field path - handle empty/root base path
     const fieldPath = path && path !== 'root' ? `${path}.${fieldName}` : fieldName;
     const fieldValue = currentValue[fieldName];
     const fieldErrors = getFieldErrors(fieldPath);
-
-    // Handle nested objects
-    if (fieldSchema.type === 'object' && fieldSchema.fields) {
-      return (
-        <ObjectEditor
-          key={fieldName}
-          name={fieldName}
-          path={fieldPath}
-          schema={fieldSchema}
-          value={fieldValue as Record<string, unknown>}
-          errors={fieldErrors}
-          disabled={disabled}
-          onChange={(v) => handleFieldChange(fieldName, v)}
-          depth={depth + 1}
-        />
-      );
-    }
-
-    // Handle arrays
-    if (fieldSchema.type === 'array') {
-      return (
-        <ArrayEditor
-          key={fieldName}
-          name={fieldName}
-          path={fieldPath}
-          schema={fieldSchema}
-          value={fieldValue as unknown[]}
-          errors={fieldErrors}
-          disabled={disabled}
-          onChange={(v) => handleFieldChange(fieldName, v)}
-          depth={depth + 1}
-        />
-      );
-    }
 
     // Primitive fields
     return (
@@ -131,26 +128,64 @@ export function ObjectEditor({
     );
   };
 
-  if (depth === 0) {
-    // Root level - no card wrapper
+  const renderNestedFieldCard = ([fieldName, fieldSchema]: [string, SchemaField]) => {
+    const fieldPath = path && path !== 'root' ? `${path}.${fieldName}` : fieldName;
+    const fieldValue = currentValue[fieldName];
+
     return (
-      <div className="space-y-4">
-        {groupedFields.ungrouped.map(renderField)}
-        {Object.entries(groupedFields.groups).map(([groupName, fields]) => (
+      <NestedFieldCard
+        key={fieldName}
+        name={fieldName}
+        schema={fieldSchema}
+        value={fieldValue}
+        path={fieldPath}
+        onNavigate={handleNavigateToNested}
+      />
+    );
+  };
+
+  if (depth === 0) {
+    // Root level - render primitive fields directly and nested fields as cards
+    return (
+      <div className="space-y-6">
+        {/* Primitive fields */}
+        {groupedPrimitiveFields.ungrouped.length > 0 && (
+          <div className="space-y-1">
+            {groupedPrimitiveFields.ungrouped.map(renderPrimitiveField)}
+          </div>
+        )}
+        
+        {/* Grouped primitive fields */}
+        {Object.entries(groupedPrimitiveFields.groups).map(([groupName, fields]) => (
           <Card key={groupName}>
             <CardHeader className="py-3">
               <CardTitle className="text-sm font-medium">{groupName}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {fields.map(renderField)}
+            <CardContent className="space-y-1">
+              {fields.map(renderPrimitiveField)}
             </CardContent>
           </Card>
         ))}
+
+        {/* Nested fields as cards */}
+        {nestedFields.length > 0 && (
+          <div className="space-y-3">
+            {(groupedPrimitiveFields.ungrouped.length > 0 || Object.keys(groupedPrimitiveFields.groups).length > 0) && (
+              <>
+                <Separator className="my-4" />
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Nested Objects & Arrays</h3>
+              </>
+            )}
+            <div className="grid gap-3">
+              {nestedFields.map(renderNestedFieldCard)}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  // Nested objects - use collapsible card
+  // Nested objects - use collapsible card (this is for inline expansion if needed)
   return (
     <Card className={cn('border-l-4', depth % 2 === 0 ? 'border-l-blue-500' : 'border-l-green-500')}>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
@@ -174,15 +209,25 @@ export function ObjectEditor({
             {schema.description && (
               <p className="text-xs text-muted-foreground pb-2">{schema.description}</p>
             )}
-            {groupedFields.ungrouped.map(renderField)}
-            {Object.entries(groupedFields.groups).map(([groupName, fields]) => (
+            {/* Primitive fields */}
+            {groupedPrimitiveFields.ungrouped.map(renderPrimitiveField)}
+            
+            {/* Grouped primitive fields */}
+            {Object.entries(groupedPrimitiveFields.groups).map(([groupName, fields]) => (
               <div key={groupName} className="space-y-2">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {groupName}
                 </h4>
-                {fields.map(renderField)}
+                {fields.map(renderPrimitiveField)}
               </div>
             ))}
+            
+            {/* Nested fields as cards */}
+            {nestedFields.length > 0 && (
+              <div className="grid gap-3 pt-2">
+                {nestedFields.map(renderNestedFieldCard)}
+              </div>
+            )}
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
@@ -529,6 +574,36 @@ function formatValue(value: unknown): string {
   return String(value);
 }
 
+// Get a title for an array item based on its schema and value
+function getArrayItemTitle(item: unknown, index: number, itemSchema?: SchemaField): string {
+  if (item === null || item === undefined) {
+    return `Item ${index + 1}`;
+  }
+
+  // If the schema has a title template or specific display field, use it
+  const titleField = itemSchema?.ui_config?.props?.title_field as string | undefined;
+  
+  if (typeof item === 'object' && !Array.isArray(item)) {
+    const obj = item as Record<string, unknown>;
+    
+    // Try to use the title_field from config first
+    if (titleField && obj[titleField] !== undefined) {
+      return String(obj[titleField]);
+    }
+    
+    // Try common name fields
+    const nameField = obj.name || obj.title || obj.label || obj.id;
+    if (nameField && (typeof nameField === 'string' || typeof nameField === 'number')) {
+      return String(nameField);
+    }
+    
+    // Fallback to index
+    return `Item ${index + 1}`;
+  }
+
+  return `Item ${index + 1}`;
+}
+
 export function ArrayListEditor({
   name: _name,
   path,
@@ -596,8 +671,17 @@ export function ArrayListEditor({
   const handleNavigateToItem = (index: number) => {
     const basePath = path && path !== 'root' ? path : '';
     const itemPath = basePath ? `${basePath}[${index}]` : `[${index}]`;
+    
+    // Expand parent paths
+    if (!expandedPaths.has(basePath)) {
+      toggleExpanded(basePath);
+    }
+    
     setSelectedPath(itemPath);
   };
+
+  // Check if items are objects (should be shown as cards)
+  const itemsAreObjects = itemSchema?.type === 'object';
 
   return (
     <div className="space-y-4">
@@ -617,7 +701,55 @@ export function ArrayListEditor({
         <div className="text-center py-8 text-sm text-muted-foreground border border-dashed rounded-md">
           No items yet. Click "Add Item" to get started.
         </div>
+      ) : itemsAreObjects ? (
+        // Render object items as cards (like NestedFieldCard)
+        <div className="grid gap-3">
+          {items.map((item, index) => (
+            <div key={index} className="flex gap-2">
+              <Card
+                className={cn(
+                  'flex-1 cursor-pointer transition-all',
+                  'hover:border-primary hover:shadow-md',
+                  'group'
+                )}
+                onClick={() => handleNavigateToItem(index)}
+              >
+                <CardContent className="flex items-center gap-3 p-4">
+                  <div className="flex-shrink-0">
+                    <Folder className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate text-sm">
+                      {getArrayItemTitle(item, index, itemSchema)}
+                    </h3>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {getItemRepr(item)}
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="shrink-0">
+                    Item {index + 1}
+                  </Badge>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                </CardContent>
+              </Card>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-auto px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  handleRemoveItem(index);
+                }}
+                disabled={disabled || !canRemove}
+                title="Delete item"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
       ) : (
+        // Render primitive items as a simple list
         <div className="space-y-2">
           {items.map((item, index) => (
             <div

@@ -280,3 +280,4 @@ export function DetailPanel({ className }: DetailPanelProps) {
 }
 
 export { ObjectEditor, ArrayEditor, ArrayListEditor };
+export { NestedFieldCard } from './NestedFieldCard';

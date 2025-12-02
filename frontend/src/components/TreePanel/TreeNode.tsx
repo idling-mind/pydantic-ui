@@ -19,8 +19,6 @@ interface TreeNodeProps {
   // Pass these through for children
   selectedPath: string | null;
   expandedPaths: Set<string>;
-  // Optional: for array items
-  arrayData?: unknown[];
 }
 
 interface ConnectedTreeNodeProps {
@@ -33,6 +31,42 @@ interface ConnectedTreeNodeProps {
   expandedPaths: Set<string>;
   onSelect: (path: string) => void;
   onToggle: (path: string) => void;
+}
+
+// Helper to get value at a path that may include array indices
+// e.g., "users[0].address" or "items[1][2].name"
+function getValueAtPath(data: unknown, path: string): unknown {
+  if (!path || !data) return data;
+  
+  // Parse the path, handling both dot notation and array index notation
+  const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+  const parts: { key: string; isIndex: boolean }[] = [];
+  let match;
+  while ((match = pathRegex.exec(path)) !== null) {
+    if (match[1] !== undefined) {
+      parts.push({ key: match[1], isIndex: false });
+    } else if (match[2] !== undefined) {
+      parts.push({ key: match[2], isIndex: true });
+    }
+  }
+
+  let current: unknown = data;
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined;
+    
+    if (part.isIndex) {
+      const index = parseInt(part.key, 10);
+      if (Array.isArray(current)) {
+        current = current[index];
+      } else {
+        return undefined;
+      }
+    } else {
+      current = (current as Record<string, unknown>)[part.key];
+    }
+  }
+  
+  return current;
 }
 
 // Get the label for an array item based on its value
@@ -109,10 +143,16 @@ export function TreeNode({
   onToggle,
   selectedPath,
   expandedPaths,
-  arrayData,
 }: TreeNodeProps) {
+  const { data } = useData();
   const isExpandable = schema.type === 'object' || schema.type === 'array';
   const isArray = schema.type === 'array';
+
+  // Get array data for this path if it's an array
+  const arrayData = React.useMemo(() => {
+    if (!isArray) return undefined;
+    return getValueAtPath(data, path);
+  }, [isArray, data, path]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -138,7 +178,7 @@ export function TreeNode({
   };
 
   const children = getChildren();
-  const hasChildren = children.length > 0 || (isArray && arrayData && arrayData.length > 0);
+  const hasChildren = children.length > 0 || (isArray && Array.isArray(arrayData) && arrayData.length > 0);
 
   const nodeContent = (
     <div
@@ -212,7 +252,7 @@ export function TreeNode({
             );
           })}
           {/* Render array items as sub-nodes */}
-          {isArray && arrayData && arrayData.map((item, index) => {
+          {isArray && Array.isArray(arrayData) && arrayData.map((item, index) => {
             const itemPath = `${path}[${index}]`;
             const itemLabel = getArrayItemLabel(item, index);
             const itemSchema = schema.items || { type: 'object' };
@@ -320,26 +360,6 @@ export function ConnectedTreeNode({
   onSelect,
   onToggle,
 }: ConnectedTreeNodeProps) {
-  // Get array data from context if this is an array node
-  const { data } = useData();
-  
-  // Get the array data for this path if it's an array
-  const getArrayData = (): unknown[] | undefined => {
-    if (schema.type !== 'array') return undefined;
-    
-    const parts = path.split('.');
-    let current: unknown = data;
-    
-    for (const part of parts) {
-      if (current === null || current === undefined) return undefined;
-      current = (current as Record<string, unknown>)[part];
-    }
-    
-    return Array.isArray(current) ? current : undefined;
-  };
-
-  const arrayData = getArrayData();
-
   return (
     <TreeNode
       name={name}
@@ -353,7 +373,6 @@ export function ConnectedTreeNode({
       onToggle={onToggle}
       selectedPath={selectedPath}
       expandedPaths={expandedPaths}
-      arrayData={arrayData}
     />
   );
 }
