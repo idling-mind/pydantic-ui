@@ -3,6 +3,7 @@ import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, List, Hash, To
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
+import { useData } from '@/context/DataContext';
 import type { SchemaField } from '@/types';
 
 interface TreeNodeProps {
@@ -18,6 +19,8 @@ interface TreeNodeProps {
   // Pass these through for children
   selectedPath: string | null;
   expandedPaths: Set<string>;
+  // Optional: for array items
+  arrayData?: unknown[];
 }
 
 interface ConnectedTreeNodeProps {
@@ -30,6 +33,36 @@ interface ConnectedTreeNodeProps {
   expandedPaths: Set<string>;
   onSelect: (path: string) => void;
   onToggle: (path: string) => void;
+}
+
+// Get the label for an array item based on its value
+function getArrayItemLabel(item: unknown, index: number): string {
+  if (item === null || item === undefined) {
+    return `Item ${index + 1}`;
+  }
+  
+  if (typeof item === 'object' && !Array.isArray(item)) {
+    // For objects, try to find a name/title/label field
+    const obj = item as Record<string, unknown>;
+    const nameField = obj.name || obj.title || obj.label || obj.id;
+    if (nameField && typeof nameField === 'string') {
+      return nameField;
+    }
+    // Use first string field value
+    for (const value of Object.values(obj)) {
+      if (typeof value === 'string' && value.length > 0 && value.length < 50) {
+        return value;
+      }
+    }
+    return `Item ${index + 1}`;
+  }
+  
+  // For primitives, show the value
+  const str = String(item);
+  if (str.length > 30) {
+    return str.substring(0, 27) + '...';
+  }
+  return str;
 }
 
 function getTypeIcon(type: string, isExpanded: boolean) {
@@ -76,8 +109,10 @@ export function TreeNode({
   onToggle,
   selectedPath,
   expandedPaths,
+  arrayData,
 }: TreeNodeProps) {
   const isExpandable = schema.type === 'object' || schema.type === 'array';
+  const isArray = schema.type === 'array';
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -97,19 +132,13 @@ export function TreeNode({
         ([, field]) => !field.ui_config?.hidden
       );
     }
-    if (schema.type === 'array' && schema.items) {
-      // For arrays, we show the item type structure
-      if (schema.items.type === 'object' && schema.items.fields) {
-        return Object.entries(schema.items.fields).filter(
-          ([, field]) => !field.ui_config?.hidden
-        );
-      }
-    }
+    // For arrays, we don't return schema children here anymore
+    // Array items will be rendered separately
     return [];
   };
 
   const children = getChildren();
-  const hasChildren = children.length > 0;
+  const hasChildren = children.length > 0 || (isArray && arrayData && arrayData.length > 0);
 
   const nodeContent = (
     <div
@@ -162,6 +191,7 @@ export function TreeNode({
             className="absolute top-0 bottom-0 w-px bg-border"
             style={{ left: `${depth * 16 + 18}px` }}
           />
+          {/* Render object children */}
           {children.map(([childName, childSchema]) => {
             const childPath = `${path}.${childName}`;
             return (
@@ -181,9 +211,100 @@ export function TreeNode({
               />
             );
           })}
+          {/* Render array items as sub-nodes */}
+          {isArray && arrayData && arrayData.map((item, index) => {
+            const itemPath = `${path}[${index}]`;
+            const itemLabel = getArrayItemLabel(item, index);
+            const itemSchema = schema.items || { type: 'object' };
+            
+            // Check if this array item has nested content (object or array)
+            const itemIsExpandable = itemSchema.type === 'object' || itemSchema.type === 'array';
+            
+            if (itemIsExpandable && itemSchema.type === 'object' && itemSchema.fields) {
+              // Render as expandable node for objects
+              return (
+                <TreeNode
+                  key={itemPath}
+                  name={itemLabel}
+                  path={itemPath}
+                  schema={itemSchema}
+                  depth={depth + 1}
+                  isSelected={selectedPath === itemPath}
+                  isExpanded={expandedPaths.has(itemPath)}
+                  showTypes={showTypes}
+                  onSelect={onSelect}
+                  onToggle={onToggle}
+                  selectedPath={selectedPath}
+                  expandedPaths={expandedPaths}
+                />
+              );
+            }
+            
+            // Render as leaf node for primitives
+            return (
+              <ArrayItemNode
+                key={itemPath}
+                label={itemLabel}
+                path={itemPath}
+                depth={depth + 1}
+                isSelected={selectedPath === itemPath}
+                showTypes={showTypes}
+                itemType={itemSchema.type}
+                onSelect={onSelect}
+              />
+            );
+          })}
         </div>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+// Simple leaf node for array items (primitives)
+interface ArrayItemNodeProps {
+  label: string;
+  path: string;
+  depth: number;
+  isSelected: boolean;
+  showTypes: boolean;
+  itemType: string;
+  onSelect: (path: string) => void;
+}
+
+function ArrayItemNode({
+  label,
+  path,
+  depth,
+  isSelected,
+  showTypes,
+  itemType,
+  onSelect,
+}: ArrayItemNodeProps) {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelect(path);
+  };
+
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-1.5 px-2 py-1.5 cursor-pointer rounded-md text-sm',
+        'hover:bg-accent hover:text-accent-foreground',
+        'transition-colors duration-150',
+        isSelected && 'bg-accent text-accent-foreground font-medium'
+      )}
+      style={{ paddingLeft: `${depth * 16 + 8}px` }}
+      onClick={handleClick}
+    >
+      <span className="w-5 shrink-0" />
+      <span className="shrink-0">{getTypeIcon(itemType, false)}</span>
+      <span className="truncate flex-1">{label}</span>
+      {showTypes && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 shrink-0">
+          {itemType}
+        </Badge>
+      )}
+    </div>
   );
 }
 
@@ -199,6 +320,26 @@ export function ConnectedTreeNode({
   onSelect,
   onToggle,
 }: ConnectedTreeNodeProps) {
+  // Get array data from context if this is an array node
+  const { data } = useData();
+  
+  // Get the array data for this path if it's an array
+  const getArrayData = (): unknown[] | undefined => {
+    if (schema.type !== 'array') return undefined;
+    
+    const parts = path.split('.');
+    let current: unknown = data;
+    
+    for (const part of parts) {
+      if (current === null || current === undefined) return undefined;
+      current = (current as Record<string, unknown>)[part];
+    }
+    
+    return Array.isArray(current) ? current : undefined;
+  };
+
+  const arrayData = getArrayData();
+
   return (
     <TreeNode
       name={name}
@@ -212,6 +353,7 @@ export function ConnectedTreeNode({
       onToggle={onToggle}
       selectedPath={selectedPath}
       expandedPaths={expandedPaths}
+      arrayData={arrayData}
     />
   );
 }

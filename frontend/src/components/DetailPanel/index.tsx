@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useData } from '@/context/DataContext';
-import { ObjectEditor, ArrayEditor } from './ObjectEditor';
+import { ObjectEditor, ArrayEditor, ArrayListEditor } from './ObjectEditor';
 import { FieldRenderer } from '@/components/Renderers';
 
 interface DetailPanelProps {
@@ -50,33 +50,58 @@ export function DetailPanel({ className }: DetailPanelProps) {
   // Get the schema and value for the selected path
   const getSelectedSchema = () => {
     if (!schema || !selectedPath) {
-      return { selectedSchema: schema, selectedValue: data, basePath: '' };
+      return { selectedSchema: schema, selectedValue: data, basePath: '', isArrayItem: false, arrayPath: '', arrayIndex: -1 };
     }
 
-    const parts = selectedPath.split('.');
+    // Parse the path, handling both dot notation and array index notation
+    // e.g., "users[0].name" or "settings.items[2]"
+    const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+    const parts: { key: string; isIndex: boolean }[] = [];
+    let match;
+    while ((match = pathRegex.exec(selectedPath)) !== null) {
+      if (match[1] !== undefined) {
+        parts.push({ key: match[1], isIndex: false });
+      } else if (match[2] !== undefined) {
+        parts.push({ key: match[2], isIndex: true });
+      }
+    }
+
     let currentSchema = schema;
     let currentValue: unknown = data;
     let basePath = '';
+    let isArrayItem = false;
+    let arrayPath = '';
+    let arrayIndex = -1;
 
-    for (const part of parts) {
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
       if (!currentSchema) break;
 
-      if (currentSchema.type === 'object' && currentSchema.fields) {
-        const fieldSchema = currentSchema.fields[part];
-        if (fieldSchema) {
-          currentSchema = fieldSchema;
-          currentValue = (currentValue as Record<string, unknown>)?.[part];
-          basePath = basePath ? `${basePath}.${part}` : part;
-        } else {
-          break;
-        }
-      } else if (currentSchema.type === 'array' && currentSchema.items) {
-        // Handle array index access
-        const index = parseInt(part, 10);
-        if (!isNaN(index)) {
+      if (part.isIndex) {
+        // Array index access
+        const index = parseInt(part.key, 10);
+        if (currentSchema.type === 'array' && currentSchema.items) {
+          arrayPath = basePath;
+          arrayIndex = index;
+          isArrayItem = true;
           currentSchema = currentSchema.items;
           currentValue = (currentValue as unknown[])?.[index];
           basePath = basePath ? `${basePath}[${index}]` : `[${index}]`;
+        } else {
+          break;
+        }
+      } else if (currentSchema.type === 'object' && currentSchema.fields) {
+        const fieldSchema = currentSchema.fields[part.key];
+        if (fieldSchema) {
+          currentSchema = fieldSchema;
+          currentValue = (currentValue as Record<string, unknown>)?.[part.key];
+          basePath = basePath ? `${basePath}.${part.key}` : part.key;
+          // Reset array item tracking when we enter a new object
+          if (!parts[i + 1]?.isIndex) {
+            isArrayItem = false;
+            arrayPath = '';
+            arrayIndex = -1;
+          }
         } else {
           break;
         }
@@ -85,7 +110,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
       }
     }
 
-    return { selectedSchema: currentSchema, selectedValue: currentValue, basePath };
+    return { selectedSchema: currentSchema, selectedValue: currentValue, basePath, isArrayItem, arrayPath, arrayIndex };
   };
 
   const { selectedSchema, selectedValue, basePath } = getSelectedSchema();
@@ -149,8 +174,9 @@ export function DetailPanel({ className }: DetailPanelProps) {
     }
 
     if (selectedSchema.type === 'array') {
+      // Show the array list view (summary with delete buttons)
       return (
-        <ArrayEditor
+        <ArrayListEditor
           name={basePath || 'root'}
           path={basePath || 'root'}
           schema={selectedSchema}
@@ -162,7 +188,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
       );
     }
 
-    // Primitive type
+    // Primitive type (could be an array item or a regular field)
     return (
       <FieldRenderer
         name={basePath || 'value'}
@@ -253,4 +279,4 @@ export function DetailPanel({ className }: DetailPanelProps) {
   );
 }
 
-export { ObjectEditor, ArrayEditor };
+export { ObjectEditor, ArrayEditor, ArrayListEditor };

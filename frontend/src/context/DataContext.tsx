@@ -95,19 +95,57 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
     // Update locally only - no API call until Save
     setData((prevData) => {
       const newData = JSON.parse(JSON.stringify(prevData)); // Deep clone
-      const parts = path.split('.');
-      let current: Record<string, unknown> = newData;
+      
+      // Parse path with array index support: e.g., "users[0].name" or "items[2]"
+      const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+      const parts: { key: string; isIndex: boolean }[] = [];
+      let match;
+      while ((match = pathRegex.exec(path)) !== null) {
+        if (match[1] !== undefined) {
+          parts.push({ key: match[1], isIndex: false });
+        } else if (match[2] !== undefined) {
+          parts.push({ key: match[2], isIndex: true });
+        }
+      }
+      
+      let current: Record<string, unknown> | unknown[] = newData;
       
       for (let i = 0; i < parts.length - 1; i++) {
         const part = parts[i];
-        if (current[part] === undefined || current[part] === null) {
-          current[part] = {};
+        const nextPart = parts[i + 1];
+        
+        if (part.isIndex) {
+          const index = parseInt(part.key, 10);
+          if (!Array.isArray(current)) break;
+          if (current[index] === undefined || current[index] === null) {
+            // Create the next structure based on what comes next
+            current[index] = nextPart?.isIndex ? [] : {};
+          }
+          current = current[index] as Record<string, unknown> | unknown[];
+        } else {
+          if (Array.isArray(current)) break;
+          if (current[part.key] === undefined || current[part.key] === null) {
+            // Create the next structure based on what comes next
+            current[part.key] = nextPart?.isIndex ? [] : {};
+          }
+          current = current[part.key] as Record<string, unknown> | unknown[];
         }
-        current = current[part] as Record<string, unknown>;
       }
       
+      // Set the final value
       const lastPart = parts[parts.length - 1];
-      current[lastPart] = value;
+      if (lastPart) {
+        if (lastPart.isIndex) {
+          const index = parseInt(lastPart.key, 10);
+          if (Array.isArray(current)) {
+            current[index] = value;
+          }
+        } else {
+          if (!Array.isArray(current)) {
+            current[lastPart.key] = value;
+          }
+        }
+      }
       
       return newData;
     });
