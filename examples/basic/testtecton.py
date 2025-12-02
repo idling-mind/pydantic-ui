@@ -24,8 +24,8 @@ app = FastAPI(title="Pydantic UI Example")
 
 # Configure UI
 ui_config = UIConfig(
-    title="My Model Editor",
-    description="Edit the fields of MyModel below.",
+    title="Tecton user input configuration",
+    description="Edit the configuration for your Tecton weld analysis below.",
     collapsible_tree=True,
     show_validation=True,
 )

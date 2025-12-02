@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, ChevronRight, Eye, EyeOff, Filter, FilterX } from 'lucide-react';
+import { Search, Eye, EyeOff, Filter, FilterX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -111,10 +111,6 @@ export function TreePanel({ className }: TreePanelProps) {
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header */}
       <div className="p-3 border-b">
-        <div className="flex items-center gap-2 text-sm font-medium mb-2">
-          <ChevronRight className="h-4 w-4" />
-          <span>{schema.title || 'Schema'}</span>
-        </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -150,18 +146,19 @@ export function TreePanel({ className }: TreePanelProps) {
             )}
           </Button>
           <Button
-            variant="ghost"
+            variant={showTypes ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setShowTypes(!showTypes)}
             className="h-7 px-2 text-xs"
+            title={showTypes ? 'Hide type badges' : 'Show type badges'}
           >
             {showTypes ? (
               <>
-                <EyeOff className="h-3 w-3 mr-1" /> Types
+                <Eye className="h-3 w-3 mr-1" /> Types
               </>
             ) : (
               <>
-                <Eye className="h-3 w-3 mr-1" /> Types
+                <EyeOff className="h-3 w-3 mr-1" /> Types
               </>
             )}
           </Button>
