@@ -13,6 +13,8 @@ import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+from pydantic_ui.config import ActionButton
+from pydantic_ui.controller import PydanticUIController
 from user_input import UserInput
 
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
@@ -28,6 +30,15 @@ ui_config = UIConfig(
     description="Edit the configuration for your Tecton weld analysis below.",
     collapsible_tree=True,
     show_validation=True,
+    actions=[
+        ActionButton(
+            id="validate",
+            label="Validate",
+            variant="secondary",
+            icon="check-circle",
+            tooltip="Run custom validation"
+        ),
+    ]
 )
 
 # Field-specific configurations (alternative to annotations)
@@ -52,6 +63,27 @@ pydantic_ui_router = create_pydantic_ui(
 )
 
 app.include_router(pydantic_ui_router)
+
+# Custom action handlers using the decorator
+@pydantic_ui_router.action("validate")
+async def handle_validate(data: dict, controller: PydanticUIController):
+    """Custom validation that checks business rules."""
+    errors = []
+    
+    try:
+        obj = UserInput(**data)
+    except Exception as e:
+        errors.append({
+            "path": "UserInput",
+            "message": f"Error: {str(e)}"
+        })
+    
+    if errors:
+        await controller.show_validation_errors(errors)
+        await controller.show_toast("Validation failed!", variant="error")
+    else:
+        await controller.show_toast("Validation successful!", variant="success")
+
 
 
 # Custom endpoint to demonstrate data handling

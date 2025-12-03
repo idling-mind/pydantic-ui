@@ -6,7 +6,7 @@ from typing import Any, TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from pydantic_ui.events import EventQueue
+from pydantic_ui.sessions import SessionManager, Session
 
 if TYPE_CHECKING:
     from pydantic_ui.handlers import DataHandler
@@ -20,6 +20,9 @@ class PydanticUIController:
     - Pushing data updates to the UI
     - Showing toast notifications
     - Requesting user confirmation
+    
+    When used with session support, the controller operates on a specific session.
+    Events are only sent to that session, not to all connected browsers.
     
     Example:
         router = create_pydantic_ui(MyModel, ui_config=ui_config)
@@ -35,17 +38,26 @@ class PydanticUIController:
                 await controller.show_toast("All good!", "success")
     """
     
-    def __init__(self, event_queue: EventQueue, model: type[BaseModel]):
+    def __init__(self, session_manager: SessionManager, model: type[BaseModel]):
         """Initialize the controller.
         
         Args:
-            event_queue: The event queue for pushing events
+            session_manager: The session manager for routing events
             model: The Pydantic model class
         """
-        self._event_queue = event_queue
+        self._session_manager = session_manager
         self._model = model
-        self._pending_confirmations: dict[str, asyncio.Future[bool]] = {}
         self._data_handler: "DataHandler | None" = None
+        self._current_session: Session | None = None
+    
+    async def _get_session(self) -> Session:
+        """Get the current session, raising an error if none is set."""
+        if self._current_session is None:
+            raise RuntimeError(
+                "No session is set. This controller must be used within a request context "
+                "or have a session explicitly set via _current_session."
+            )
+        return self._current_session
     
     async def show_validation_errors(self, errors: list[dict[str, str]]) -> None:
         """Display validation errors in the UI.
@@ -60,11 +72,13 @@ class PydanticUIController:
                 {"path": "name", "message": "Name is required"}
             ])
         """
-        await self._event_queue.push("validation_errors", {"errors": errors})
+        session = await self._get_session()
+        await session.push_event("validation_errors", {"errors": errors})
     
     async def clear_validation_errors(self) -> None:
         """Clear all validation errors from the UI."""
-        await self._event_queue.push("clear_validation_errors", {})
+        session = await self._get_session()
+        await session.push_event("clear_validation_errors", {})
     
     async def push_data(self, data: BaseModel | dict[str, Any]) -> None:
         """Push new data to the UI, replacing current values.
@@ -81,11 +95,11 @@ class PydanticUIController:
         else:
             data_dict = data
         
-        # Also update the handler's internal data
-        if self._data_handler:
-            self._data_handler._data = data_dict
+        session = await self._get_session()
+        # Also update the session's data
+        session.data = data_dict
         
-        await self._event_queue.push("push_data", {"data": data_dict})
+        await session.push_event("push_data", {"data": data_dict})
     
     async def show_toast(
         self, 
@@ -104,7 +118,8 @@ class PydanticUIController:
             await controller.show_toast("Data saved!", "success")
             await controller.show_toast("Connection lost", "error", duration=0)
         """
-        await self._event_queue.push("toast", {
+        session = await self._get_session()
+        await session.push_event("toast", {
             "message": message,
             "type": type,
             "duration": duration
@@ -141,12 +156,14 @@ class PydanticUIController:
                 # User confirmed
                 delete_all_users()
         """
+        session = await self._get_session()
+        
         confirmation_id = str(uuid.uuid4())
         loop = asyncio.get_running_loop()
         future: asyncio.Future[bool] = loop.create_future()
-        self._pending_confirmations[confirmation_id] = future
+        session.pending_confirmations[confirmation_id] = future
         
-        await self._event_queue.push("confirmation_request", {
+        await session.push_event("confirmation_request", {
             "id": confirmation_id,
             "title": title,
             "message": message,
@@ -162,31 +179,36 @@ class PydanticUIController:
         except asyncio.TimeoutError:
             return False
         finally:
-            self._pending_confirmations.pop(confirmation_id, None)
+            session.pending_confirmations.pop(confirmation_id, None)
     
     def resolve_confirmation(self, confirmation_id: str, confirmed: bool) -> None:
         """Resolve a pending confirmation (called by API endpoint).
+        
+        Note: This method is deprecated when using sessions.
+        Use the session's pending_confirmations directly instead.
         
         Args:
             confirmation_id: The ID of the confirmation request
             confirmed: Whether the user confirmed or cancelled
         """
-        future = self._pending_confirmations.get(confirmation_id)
-        if future and not future.done():
-            future.set_result(confirmed)
+        if self._current_session:
+            future = self._current_session.pending_confirmations.get(confirmation_id)
+            if future and not future.done():
+                future.set_result(confirmed)
     
     async def refresh(self) -> None:
         """Tell the UI to refresh data from the server."""
-        await self._event_queue.push("refresh", {})
+        session = await self._get_session()
+        await session.push_event("refresh", {})
     
     def get_current_data(self) -> dict[str, Any]:
-        """Get the current data from the handler.
+        """Get the current data from the session.
         
         Returns:
             The current data dictionary
         """
-        if self._data_handler:
-            return self._data_handler._data
+        if self._current_session:
+            return self._current_session.data
         return {}
     
     def get_model_instance(self) -> BaseModel | None:
@@ -195,9 +217,35 @@ class PydanticUIController:
         Returns:
             A validated model instance, or None if validation fails
         """
-        if self._data_handler:
+        data = self.get_current_data()
+        if data:
             try:
-                return self._model.model_validate(self._data_handler._data)
+                return self._model.model_validate(data)
             except Exception:
                 return None
         return None
+    
+    async def broadcast_toast(
+        self,
+        message: str,
+        type: str = "info",
+        duration: int = 5000
+    ) -> None:
+        """Broadcast a toast notification to all sessions.
+        
+        Unlike show_toast, this sends to ALL connected browsers.
+        
+        Args:
+            message: The message to display
+            type: One of "success", "error", "warning", "info"
+            duration: How long to show (ms). 0 for persistent.
+        """
+        await self._session_manager.broadcast_event("toast", {
+            "message": message,
+            "type": type,
+            "duration": duration
+        })
+    
+    async def broadcast_refresh(self) -> None:
+        """Tell all connected UIs to refresh data from the server."""
+        await self._session_manager.broadcast_event("refresh", {})

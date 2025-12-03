@@ -23,6 +23,7 @@ function createFetchJson(apiBase: string) {
     
     const response = await fetch(fullUrl, {
       ...options,
+      credentials: 'same-origin',  // Include cookies for session management
       headers: {
         'Content-Type': 'application/json',
         ...options?.headers,

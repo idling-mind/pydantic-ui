@@ -113,7 +113,9 @@ export function EventProvider({
     
     const poll = async () => {
       try {
-        const response = await fetch(`${fullBase}/api/events/poll?since=${lastTimestamp}`);
+        const response = await fetch(`${fullBase}/api/events/poll?since=${lastTimestamp}`, {
+          credentials: 'same-origin',  // Include cookies for session management
+        });
         if (response.ok) {
           const data = await response.json();
           for (const event of data.events || []) {
@@ -179,6 +181,7 @@ export function EventProvider({
     try {
       await fetch(`${fullBase}/api/confirmation/${confirmationRequest.id}`, {
         method: 'POST',
+        credentials: 'same-origin',  // Include cookies for session management
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirmed }),
       });

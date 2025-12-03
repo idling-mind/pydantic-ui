@@ -5,14 +5,15 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from pydantic_ui.config import FieldConfig, UIConfig
 from pydantic_ui.controller import PydanticUIController
-from pydantic_ui.events import EventQueue
 from pydantic_ui.handlers import DataHandler
+from pydantic_ui.sessions import SessionManager, Session
+from pydantic_ui.schema import model_to_data
 
 
 def create_pydantic_ui(
@@ -75,7 +76,7 @@ def create_pydantic_ui(
 
     router = APIRouter(prefix=prefix, tags=["pydantic-ui"])
 
-    # Create data handler
+    # Create data handler (for schema and config)
     handler = DataHandler(
         model=model,
         ui_config=ui_config,
@@ -85,14 +86,43 @@ def create_pydantic_ui(
         data_saver=data_saver,
     )
 
-    # Create event queue and controller
-    event_queue = EventQueue()
-    controller = PydanticUIController(event_queue, model)
+    # Create session manager for per-session state
+    session_manager = SessionManager()
+    
+    # Get initial data for new sessions
+    def get_initial_session_data() -> dict[str, Any]:
+        if initial_data is not None:
+            return initial_data.model_dump(mode="json", warnings=False)
+        return model_to_data(model)
+    
+    # Helper to get or create session from request
+    async def get_session_from_request(request: Request) -> Session:
+        session_id = request.cookies.get("pydantic_ui_session")
+        session, _ = await session_manager.get_or_create_session(
+            session_id, 
+            get_initial_session_data()
+        )
+        return session
+    
+    # Helper to set session cookie on response
+    def set_session_cookie(response: Response, session: Session) -> None:
+        response.set_cookie(
+            "pydantic_ui_session",
+            session.id,
+            httponly=True,
+            samesite="lax",
+            max_age=3600 * 24 * 7,  # 1 week
+        )
+    
+    # Create a default controller (for backwards compatibility and action handlers)
+    # The controller's session will be set per-request
+    controller = PydanticUIController(session_manager, model)
     controller._data_handler = handler
 
     # Store handler and controller for decorator access
     router._pydantic_ui_handler = handler  # type: ignore
     router.controller = controller  # type: ignore
+    router._session_manager = session_manager  # type: ignore
 
     # Action handler registry
     action_handlers: dict[str, Callable[..., Any]] = {}
@@ -108,27 +138,108 @@ def create_pydantic_ui(
         return JSONResponse(content=schema)
 
     @router.get("/api/data")
-    async def get_data() -> JSONResponse:
-        """Get the current data."""
-        data = await handler.get_data()
-        return JSONResponse(content=data)
+    async def get_data(request: Request, response: Response) -> JSONResponse:
+        """Get the current data for this session."""
+        session = await get_session_from_request(request)
+        
+        # If data loader is defined, use it to get fresh data
+        if data_loader is not None:
+            try:
+                loaded = data_loader()
+                if hasattr(loaded, "__await__"):
+                    loaded = await loaded
+                if isinstance(loaded, BaseModel):
+                    session.data = loaded.model_dump(mode="json", warnings=False)
+                elif isinstance(loaded, dict):
+                    session.data = loaded
+            except Exception:
+                pass
+        
+        resp = JSONResponse(content={"data": session.data})
+        set_session_cookie(resp, session)
+        return resp
 
     @router.post("/api/data")
-    async def update_data(request: Request) -> JSONResponse:
-        """Update the data."""
+    async def update_data(request: Request, response: Response) -> JSONResponse:
+        """Update the data for this session."""
+        session = await get_session_from_request(request)
         body = await request.json()
         data = body.get("data", body)
-        result = await handler.update_data(data)
-        return JSONResponse(content=result)
+        
+        # Validate with the model
+        try:
+            from pydantic import ValidationError
+            instance = model.model_validate(data)
+            session.data = instance.model_dump(mode="json", warnings=False)
+
+            # Call saver if provided
+            if data_saver is not None:
+                result = data_saver(instance)
+                if hasattr(result, "__await__"):
+                    await result
+
+            resp = JSONResponse(content={"data": session.data, "valid": True})
+            set_session_cookie(resp, session)
+            return resp
+        except ValidationError as e:
+            resp = JSONResponse(content={
+                "data": data,
+                "valid": False,
+                "errors": [
+                    {
+                        "path": ".".join(str(loc) for loc in err["loc"]),
+                        "message": err["msg"],
+                        "type": err["type"],
+                    }
+                    for err in e.errors()
+                ],
+            })
+            set_session_cookie(resp, session)
+            return resp
 
     @router.patch("/api/data")
-    async def partial_update(request: Request) -> JSONResponse:
-        """Partially update the data."""
+    async def partial_update(request: Request, response: Response) -> JSONResponse:
+        """Partially update the data for this session."""
+        from pydantic import ValidationError
+        from pydantic_ui.utils import set_value_at_path
+        
+        session = await get_session_from_request(request)
         body = await request.json()
         path = body.get("path", "")
         value = body.get("value")
-        result = await handler.partial_update(path, value)
-        return JSONResponse(content=result)
+        
+        new_data = set_value_at_path(dict(session.data), path, value)
+
+        # Validate the entire model
+        try:
+            instance = model.model_validate(new_data)
+            session.data = instance.model_dump(mode="json", warnings=False)
+
+            if data_saver is not None:
+                result = data_saver(instance)
+                if hasattr(result, "__await__"):
+                    await result
+
+            resp = JSONResponse(content={"data": session.data, "valid": True})
+            set_session_cookie(resp, session)
+            return resp
+        except ValidationError as e:
+            # Still update the data but return errors
+            session.data = new_data
+            resp = JSONResponse(content={
+                "data": session.data,
+                "valid": False,
+                "errors": [
+                    {
+                        "path": ".".join(str(loc) for loc in err["loc"]),
+                        "message": err["msg"],
+                        "type": err["type"],
+                    }
+                    for err in e.errors()
+                ],
+            })
+            set_session_cookie(resp, session)
+            return resp
 
     @router.post("/api/validate")
     async def validate_data(request: Request) -> JSONResponse:
@@ -143,16 +254,26 @@ def create_pydantic_ui(
         """Get the UI configuration."""
         config = handler.get_config()
         return JSONResponse(content=config.model_dump())
+    
+    @router.get("/api/session")
+    async def get_session_info(request: Request, response: Response) -> JSONResponse:
+        """Get or create a session and return its ID."""
+        session = await get_session_from_request(request)
+        resp = JSONResponse(content={"session_id": session.id})
+        set_session_cookie(resp, session)
+        return resp
 
     # SSE endpoint for real-time events
     @router.get("/api/events")
-    async def sse_events() -> StreamingResponse:
+    async def sse_events(request: Request) -> StreamingResponse:
         """Server-Sent Events endpoint for real-time UI updates."""
+        session = await get_session_from_request(request)
+        
         async def event_generator():
-            async for event in event_queue.subscribe():
+            async for event in session.subscribe():
                 yield f"data: {json.dumps(event)}\n\n"
         
-        return StreamingResponse(
+        resp = StreamingResponse(
             event_generator(),
             media_type="text/event-stream",
             headers={
@@ -161,25 +282,34 @@ def create_pydantic_ui(
                 "X-Accel-Buffering": "no",  # Disable nginx buffering
             }
         )
+        set_session_cookie(resp, session)
+        return resp
 
     # Polling fallback for environments that don't support SSE
     @router.get("/api/events/poll")
-    async def poll_events(since: float = 0) -> JSONResponse:
+    async def poll_events(request: Request, since: float = 0) -> JSONResponse:
         """Polling fallback for real-time events."""
-        events = await event_queue.get_pending(since)
+        session = await get_session_from_request(request)
+        events = await session.get_pending_events(since)
         return JSONResponse(content={"events": events})
 
     # Action handler endpoint
     @router.post("/api/actions/{action_id}")
     async def handle_action(action_id: str, request: Request) -> JSONResponse:
         """Handle custom action button clicks."""
+        session = await get_session_from_request(request)
         body = await request.json()
         current_data = body.get("data", {})
+        
+        # Create a session-specific controller for this action
+        session_controller = PydanticUIController(session_manager, model)
+        session_controller._data_handler = handler
+        session_controller._current_session = session
         
         handler_func = action_handlers.get(action_id)
         if handler_func:
             try:
-                result = handler_func(current_data, controller)
+                result = handler_func(current_data, session_controller)
                 if asyncio.iscoroutine(result):
                     result = await result
                 return JSONResponse(content={"success": True, "result": result})
@@ -197,9 +327,15 @@ def create_pydantic_ui(
     @router.post("/api/confirmation/{confirmation_id}")
     async def handle_confirmation(confirmation_id: str, request: Request) -> JSONResponse:
         """Handle confirmation dialog responses."""
+        session = await get_session_from_request(request)
         body = await request.json()
         confirmed = body.get("confirmed", False)
-        controller.resolve_confirmation(confirmation_id, confirmed)
+        
+        # Resolve the confirmation in the session
+        future = session.pending_confirmations.get(confirmation_id)
+        if future and not future.done():
+            future.set_result(confirmed)
+        
         return JSONResponse(content={"ok": True})
 
     # Static file serving
