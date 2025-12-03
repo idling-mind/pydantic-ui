@@ -37,7 +37,7 @@ export function NestedFieldCard({
       return {
         icon: <Folder className={cn('h-5 w-5', isEnabled ? 'text-blue-500' : 'text-muted-foreground')} />,
         description: `Object with ${fieldCount} field${fieldCount !== 1 ? 's' : ''}`,
-        badge: 'object',
+        badge: schema.python_type || 'object',
         badgeVariant: 'secondary' as const,
         subtitle: isEnabled && filledCount > 0 ? `${filledCount} populated` : undefined,
       };
@@ -45,11 +45,11 @@ export function NestedFieldCard({
     if (schema.type === 'array') {
       const items = Array.isArray(value) ? value : [];
       const itemCount = items.length;
-      const itemType = schema.items?.type || 'item';
+      const itemType = schema.items?.python_type || schema.items?.type || 'item';
       return {
         icon: <List className={cn('h-5 w-5', isEnabled ? 'text-green-500' : 'text-muted-foreground')} />,
         description: isEnabled ? `${itemCount} ${itemType}${itemCount !== 1 ? 's' : ''}` : 'Not set',
-        badge: 'array',
+        badge: schema.python_type || 'array',
         badgeVariant: 'secondary' as const,
         subtitle: schema.min_items !== undefined || schema.max_items !== undefined
           ? `(${schema.min_items ?? 0}-${schema.max_items ?? '∞'})`

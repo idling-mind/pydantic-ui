@@ -132,6 +132,29 @@ export function DetailPanel({ className }: DetailPanelProps) {
 
   const { selectedSchema, selectedValue, basePath } = getSelectedSchema();
 
+  // Check if current path is an array item
+  const isArrayItemPath = (path: string): boolean => /\[\d+\]$/.test(path);
+  
+  // Get the display label for the header - same logic as TreeNode
+  const getDisplayLabel = (): string => {
+    if (!selectedSchema) return config?.title || 'Data Editor';
+    if (!basePath) return selectedSchema.ui_config?.label || selectedSchema.title || config?.title || 'Data Editor';
+    
+    // For array items, try to get label from data (name/label/title fields)
+    if (isArrayItemPath(basePath) && selectedValue && typeof selectedValue === 'object' && !Array.isArray(selectedValue)) {
+      const obj = selectedValue as Record<string, unknown>;
+      const nameField = obj.name || obj.label || obj.title;
+      if (nameField && typeof nameField === 'string') {
+        return nameField;
+      }
+      // Fall back to schema label or python type
+      if (selectedSchema.ui_config?.label) return selectedSchema.ui_config.label;
+      if (selectedSchema.python_type) return selectedSchema.python_type;
+    }
+    
+    return selectedSchema.ui_config?.label || selectedSchema.title || basePath;
+  };
+
   // Get errors for the current selection
   const getRelevantErrors = () => {
     if (!errors || !basePath) return errors;
@@ -225,7 +248,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">
-            {selectedSchema?.ui_config?.label || selectedSchema?.title || basePath || config?.title || 'Data Editor'}
+            {getDisplayLabel()}
           </h2>
           <div className="flex items-center gap-2">
             {errors && errors.length > 0 && (
