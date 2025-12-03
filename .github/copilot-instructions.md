@@ -8,8 +8,16 @@ This document provides specific instructions for AI coding agents working on the
 
 **pydantic-ui** is a Python package that provides a dynamic React-based UI for editing deeply nested Pydantic models. It consists of:
 
-1. **Python Backend**: FastAPI router with schema parsing and data handling
-2. **React Frontend**: Tree navigation + detail panel UI using **shadcn/ui** components (bundled with Python package)
+1. **Python Backend** (`pydantic_ui/`): FastAPI router with schema parsing and data handling
+2. **React Frontend** (`frontend/`): Tree navigation + detail panel UI using **shadcn/ui** components (bundled with Python package)
+
+### Public API
+
+The package exports the following from `pydantic_ui/__init__.py`:
+- `create_pydantic_ui` - Factory function to create a FastAPI router for a Pydantic model
+- `UIConfig` - Global UI configuration class
+- `FieldConfig` - Per-field UI configuration class  
+- `Renderer` - Enum of available field renderers
 
 ### UI Framework Stack
 - **shadcn/ui**: Primary component library (built on Radix UI primitives)
@@ -170,14 +178,29 @@ import { cn } from '@/lib/utils';
 
 ```
 pydantic_ui/
-├── __init__.py          # Public exports only
-├── app.py               # Router factory - keep thin
-├── schema.py            # Schema parsing logic
-├── config.py            # Configuration classes
+├── __init__.py          # Public exports: create_pydantic_ui, UIConfig, FieldConfig, Renderer
+├── app.py               # Router factory (create_pydantic_ui) - serves API endpoints and static files
+├── schema.py            # Schema parsing: parse_model, parse_field, model_to_data
+├── config.py            # Configuration classes: UIConfig, FieldConfig, Renderer enum
 ├── models.py            # Internal Pydantic models
-├── handlers.py          # Route handlers
-└── utils.py             # Helper functions
+├── handlers.py          # DataHandler class for data operations
+├── utils.py             # Helper functions
+└── static/              # Built frontend assets (auto-generated)
+    ├── index.html
+    └── assets/
+        ├── index-*.js
+        └── index-*.css
 ```
+
+**Key API Endpoints** (created by `create_pydantic_ui`):
+- `GET /api/schema` - Get the model schema for UI rendering
+- `GET /api/data` - Get current data
+- `POST /api/data` - Update entire data
+- `PATCH /api/data` - Partial update (path + value)
+- `POST /api/validate` - Validate data without saving
+- `GET /api/config` - Get UI configuration
+- `GET /` - Serve the React UI
+- `GET /assets/*` - Serve static assets
 
 **Key Principles:**
 - Keep `__init__.py` clean - only export public API
@@ -188,35 +211,65 @@ pydantic_ui/
 ### Frontend Structure
 
 ```
-src/
-├── components/          # React components
-│   ├── ui/             # shadcn/ui components (DO NOT MODIFY)
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   ├── input.tsx
-│   │   ├── label.tsx
-│   │   ├── select.tsx
-│   │   ├── slider.tsx
-│   │   ├── switch.tsx
-│   │   └── ...
-│   ├── Layout.tsx       # Main layout
-│   ├── TreePanel/       # Tree navigation
-│   │   ├── index.tsx
-│   │   └── TreeNode.tsx
-│   ├── DetailPanel/     # Detail editing panel
-│   │   ├── index.tsx
-│   │   ├── FieldEditor.tsx
-│   │   └── NestedCard.tsx
-│   └── Header/
-│       ├── index.tsx
-│       └── ThemeToggle.tsx
-├── renderers/           # Field renderers (use shadcn/ui internally)
-├── hooks/               # Custom hooks
-├── context/             # React contexts
-├── lib/
-│   └── utils.ts        # cn() helper and utilities
-├── types.ts             # Shared TypeScript types
-└── api.ts               # API client
+frontend/
+├── index.html
+├── package.json
+├── vite.config.ts
+├── tailwind.config.js
+├── tsconfig.json
+└── src/
+    ├── main.tsx             # Entry point
+    ├── App.tsx              # Root component with providers
+    ├── api.ts               # API client (createApiClient)
+    ├── types.ts             # Shared TypeScript types
+    ├── index.css            # Tailwind CSS entry
+    ├── components/
+    │   ├── ui/              # shadcn/ui components (DO NOT MODIFY)
+    │   │   ├── button.tsx
+    │   │   ├── card.tsx
+    │   │   ├── input.tsx
+    │   │   ├── label.tsx
+    │   │   ├── select.tsx
+    │   │   ├── slider.tsx
+    │   │   ├── switch.tsx
+    │   │   ├── scroll-area.tsx
+    │   │   ├── collapsible.tsx
+    │   │   ├── context-menu.tsx
+    │   │   ├── dialog.tsx
+    │   │   ├── alert-dialog.tsx
+    │   │   └── ...
+    │   ├── Layout/
+    │   │   └── index.tsx    # Main layout with tree + detail panels
+    │   ├── Header/
+    │   │   └── index.tsx    # App header with save/reset buttons
+    │   ├── TreePanel/
+    │   │   ├── index.tsx        # Tree navigation panel
+    │   │   ├── TreeNode.tsx     # Individual tree node component
+    │   │   ├── TreeNodeContextMenu.tsx  # Right-click context menu
+    │   │   └── PasteSelectedDialog.tsx  # Multi-paste dialog
+    │   ├── DetailPanel/
+    │   │   ├── index.tsx        # Detail editing panel
+    │   │   ├── ObjectEditor.tsx # Editor for objects and arrays
+    │   │   └── NestedFieldCard.tsx  # Card for nested object/array navigation
+    │   └── Renderers/
+    │       ├── index.tsx        # Renderer registry and FieldRenderer component
+    │       ├── types.ts         # RendererProps interface
+    │       ├── TextInput.tsx
+    │       ├── TextareaInput.tsx
+    │       ├── NumberInput.tsx
+    │       ├── SliderInput.tsx
+    │       ├── CheckboxInput.tsx
+    │       ├── ToggleInput.tsx
+    │       ├── SelectInput.tsx
+    │       ├── DateInput.tsx
+    │       ├── ColorInput.tsx
+    │       └── JsonInput.tsx
+    ├── context/
+    │   ├── DataContext.tsx      # Main data state management
+    │   ├── ThemeContext.tsx     # Theme (light/dark/system)
+    │   └── ClipboardContext.tsx # Copy/paste functionality
+    └── lib/
+        └── utils.ts             # cn() helper and utilities
 ```
 
 **Key Principles:**
@@ -231,7 +284,33 @@ src/
 
 ## 🔧 Implementation Patterns
 
+### Available Renderers
+
+The `Renderer` enum in `pydantic_ui/config.py` provides these renderer options:
+
+```python
+class Renderer(str, Enum):
+    AUTO = "auto"              # Auto-detect based on type
+    TEXT_INPUT = "text_input"  # Single-line text
+    TEXT_AREA = "text_area"    # Multi-line text
+    NUMBER_INPUT = "number_input"  # Number input
+    SLIDER = "slider"          # Range slider (requires min/max)
+    CHECKBOX = "checkbox"      # Checkbox
+    TOGGLE = "toggle"          # Toggle switch
+    SELECT = "select"          # Dropdown select
+    MULTI_SELECT = "multi_select"  # Multi-select
+    DATE_PICKER = "date_picker"    # Date picker
+    DATETIME_PICKER = "datetime_picker"  # DateTime picker
+    COLOR_PICKER = "color_picker"  # Color picker
+    FILE_UPLOAD = "file_upload"    # File upload
+    PASSWORD = "password"      # Password input
+    EMAIL = "email"            # Email input
+    URL = "url"                # URL input
+```
+
 ### Schema Parsing
+
+The schema parsing in `pydantic_ui/schema.py` handles:
 
 ```python
 # pydantic_ui/schema.py
@@ -294,6 +373,16 @@ def parse_field(
         "default": field_info.default if field_info.default is not PydanticUndefined else None,
     }
 ```
+
+**Supported Types:**
+- Primitives: `str`, `int`, `float`, `bool`
+- DateTime: `datetime`, `date`, `time`
+- Collections: `list`, `set`, `tuple`, `dict`
+- Enums: `Enum`, `StrEnum`
+- Literals: `Literal["a", "b", "c"]`
+- Optional: `Optional[T]` or `T | None`
+- Nested models: `BaseModel` subclasses
+- Annotated types with `FieldConfig`
 
 ### Tree Component Pattern (with shadcn/ui)
 
@@ -393,193 +482,124 @@ export function TreeNode({
 
 ### Field Renderer Pattern (with shadcn/ui)
 
+The renderer system in `frontend/src/components/Renderers/` auto-selects renderers based on schema type:
+
 ```tsx
-// renderers/index.tsx
-import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+// components/Renderers/index.tsx
 
-export interface RendererProps {
-  value: unknown;
-  onChange: (value: unknown) => void;
-  schema: FieldSchema;
-  config?: FieldConfig;
-  error?: string;
-  disabled?: boolean;
-}
-
-// Example: Text Input Renderer
-export function TextInputRenderer({
-  value,
-  onChange,
-  schema,
-  config,
-  error,
-  disabled,
-}: RendererProps) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={schema.name}>
-        {config?.label || schema.title}
-        {schema.required && <span className="text-destructive ml-1">*</span>}
-      </Label>
-      <Input
-        id={schema.name}
-        type="text"
-        value={(value as string) || ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={config?.placeholder}
-        disabled={disabled}
-        className={cn(error && 'border-destructive')}
-      />
-      {config?.help_text && (
-        <p className="text-sm text-muted-foreground">{config.help_text}</p>
-      )}
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
-    </div>
-  );
-}
-
-// Example: Slider Renderer
-export function SliderRenderer({
-  value,
-  onChange,
-  schema,
-  config,
-  error,
-  disabled,
-}: RendererProps) {
-  const min = config?.props?.min ?? schema.constraints?.min ?? 0;
-  const max = config?.props?.max ?? schema.constraints?.max ?? 100;
-  const step = config?.props?.step ?? 1;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label>{config?.label || schema.title}</Label>
-        <span className="text-sm text-muted-foreground">{value as number}</span>
-      </div>
-      <Slider
-        value={[value as number]}
-        onValueChange={([v]) => onChange(v)}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-      />
-    </div>
-  );
-}
-
-// Example: Switch/Toggle Renderer
-export function ToggleRenderer({
-  value,
-  onChange,
-  schema,
-  config,
-  disabled,
-}: RendererProps) {
-  return (
-    <div className="flex items-center justify-between">
-      <Label htmlFor={schema.name}>{config?.label || schema.title}</Label>
-      <Switch
-        id={schema.name}
-        checked={value as boolean}
-        onCheckedChange={onChange}
-        disabled={disabled}
-      />
-    </div>
-  );
-}
-
-// Renderer registry
-const renderers: Record<string, React.ComponentType<RendererProps>> = {
-  text_input: TextInputRenderer,
-  slider: SliderRenderer,
-  toggle: ToggleRenderer,
-  // ... more renderers
+// Registry of renderers
+const rendererMap: Record<string, React.ComponentType<RendererProps>> = {
+  text: TextInput,
+  text_input: TextInput,
+  textarea: TextareaInput,
+  text_area: TextareaInput,
+  number: NumberInput,
+  number_input: NumberInput,
+  slider: SliderInput,
+  checkbox: CheckboxInput,
+  toggle: ToggleInput,
+  select: SelectInput,
+  date: DateInput,
+  date_picker: DateInput,
+  datetime: DateInput,
+  datetime_picker: DateInput,
+  color: ColorInput,
+  color_picker: ColorInput,
+  json: JsonInput,
 };
 
-export function getRenderer(type: string): React.ComponentType<RendererProps> {
-  return renderers[type] || TextInputRenderer;
+// Determine the best renderer based on schema
+function getDefaultRenderer(schema: SchemaField): string {
+  // Check for explicit renderer in ui_config
+  if (schema.ui_config?.renderer) {
+    return schema.ui_config.renderer;
+  }
+
+  // Check for enum/literal - use select
+  if (schema.enum || schema.literal_values) {
+    return 'select';
+  }
+
+  // Type-based defaults
+  switch (schema.type) {
+    case 'string':
+      if (schema.format === 'date') return 'date';
+      if (schema.format === 'date-time') return 'datetime';
+      if (schema.format === 'color') return 'color';
+      if (schema.max_length && schema.max_length > 200) return 'textarea';
+      return 'text';
+
+    case 'integer':
+    case 'number':
+      // Use slider if min/max are defined
+      if (schema.minimum !== undefined && schema.maximum !== undefined) {
+        return 'slider';
+      }
+      return 'number';
+
+    case 'boolean':
+      return 'toggle';
+
+    case 'object':
+    case 'array':
+      if (!schema.fields && !schema.items) return 'json';
+      return schema.type;
+
+    default:
+      return 'json';
+  }
 }
 ```
 
-### Theme Context Pattern
+### RendererProps Interface
 
 ```tsx
-// context/ThemeContext.tsx
-
-type Theme = 'light' | 'dark' | 'system';
-
-interface ThemeContextValue {
-  theme: Theme;
-  resolvedTheme: 'light' | 'dark';
-  setTheme: (theme: Theme) => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
-
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem('theme');
-    return (stored as Theme) || 'system';
-  });
-  
-  const resolvedTheme = useMemo(() => {
-    if (theme === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches 
-        ? 'dark' 
-        : 'light';
-    }
-    return theme;
-  }, [theme]);
-  
-  useEffect(() => {
-    localStorage.setItem('theme', theme);
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(resolvedTheme);
-  }, [theme, resolvedTheme]);
-  
-  // Listen for system theme changes
-  useEffect(() => {
-    if (theme !== 'system') return;
-    
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => setTheme('system'); // Trigger re-render
-    
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, [theme]);
-  
-  return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
-  }
-  return context;
+// components/Renderers/types.ts
+export interface RendererProps {
+  name: string;
+  path: string;
+  schema: SchemaField;
+  value: unknown;
+  onChange: (value: unknown) => void;
+  errors?: FieldError[];
+  disabled?: boolean;
 }
 ```
+
+### DataContext Pattern
+
+The main state management is in `frontend/src/context/DataContext.tsx`:
+
+```tsx
+// context/DataContext.tsx
+
+interface DataContextValue {
+  schema: Schema | null;
+  config: UIConfig | null;
+  data: Record<string, unknown>;
+  errors: FieldError[];
+  loading: boolean;
+  dirty: boolean;
+  selectedPath: string | null;
+  expandedPaths: Set<string>;
+  setSelectedPath: (path: string | null) => void;
+  toggleExpanded: (path: string) => void;
+  expandPath: (path: string) => void;
+  updateValue: (path: string, value: unknown) => void;
+  saveData: () => Promise<boolean>;
+  resetData: () => void;
+  refresh: () => Promise<void>;
+  getErrorCountForPath: (path: string) => number;
+  errorCountByPath: Map<string, number>;
+}
+```
+
+**Key Features:**
+- Path-based navigation with `selectedPath` and `expandedPaths`
+- Array index support in paths: `users[0].name`
+- Local state updates until explicit `saveData()` call
+- Error normalization from backend format to frontend format
+- Error counting per path (including parent path aggregation)
 
 ---
 
@@ -956,6 +976,50 @@ describe('TreeNode', () => {
 
 ## 📦 Build & Deploy
 
+### Development Testing with test-app.ps1
+
+The primary script for building and testing the full application is `./scripts/test-app.ps1`. This script builds the React frontend, copies it to the static folder, and starts a dev server.
+
+**Usage:**
+
+```powershell
+# Full build and run with defaults (main.py example on port 8000)
+./scripts/test-app.ps1
+
+# Skip frontend build (use existing build)
+./scripts/test-app.ps1 -SkipBuild
+
+# Skip npm install (faster if node_modules exists)
+./scripts/test-app.ps1 -SkipNpmInstall
+
+# Run the simple.py example instead of main.py
+./scripts/test-app.ps1 -Example simple
+
+# Run on a different port
+./scripts/test-app.ps1 -Port 3000
+
+# Automatically open browser after server starts
+./scripts/test-app.ps1 -OpenBrowser
+
+# Combine options for fast iteration
+./scripts/test-app.ps1 -SkipBuild -SkipNpmInstall -Example simple -Port 3000 -OpenBrowser
+```
+
+**Parameters:**
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `-SkipBuild` | Skip the frontend build step (use existing build) | `$false` |
+| `-SkipNpmInstall` | Skip npm install step | `$false` |
+| `-Port` | Port to run the dev server on | `8000` |
+| `-Example` | Which example to run: 'main' or 'simple' | `'main'` |
+| `-OpenBrowser` | Automatically open the browser after starting | `$false` |
+
+**What the script does:**
+1. Builds the React frontend (unless `-SkipBuild`)
+2. Copies built files to `pydantic_ui/static/`
+3. Runs the selected example from `examples/basic/`
+4. Opens browser to `http://localhost:<port>/config`
+
 ### Building Frontend for Python Package
 
 ```bash
@@ -964,6 +1028,13 @@ npm run build
 
 # Copy to Python package
 cp -r dist/* ../pydantic_ui/static/
+```
+
+Or use the copy script directly:
+
+```bash
+# From project root
+node scripts/copy-to-package.js
 ```
 
 ### Build Script (package.json)
