@@ -10,7 +10,7 @@ This example demonstrates how to use:
 """
 
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 import uvicorn
 from fastapi import FastAPI
 
@@ -140,33 +140,56 @@ app.include_router(router)
 # Custom action handlers using the decorator
 @router.action("validate")
 async def handle_validate(data: dict, controller: PydanticUIController):
-    """Custom validation that checks business rules."""
+    """
+    Full Pydantic validation + custom business rules.
+    
+    This demonstrates how to:
+    1. Run Pydantic's built-in validation (type checks, constraints like ge/le, etc.)
+    2. Add custom business rule validation on top
+    3. Convert all errors to the UI format
+    """
     errors = []
     
-    # Check if production environment has debug enabled
-    if data.get("environment") == "production" and data.get("server", {}).get("debug"):
-        errors.append({
-            "path": "server.debug",
-            "message": "Debug mode should not be enabled in production"
-        })
+    # Step 1: Run Pydantic's built-in validation
+    try:
+        # This validates all field types, constraints (ge, le, min_length, etc.)
+        validated = AppSettings.model_validate(data)
+    except ValidationError as e:
+        # Convert Pydantic validation errors to UI format
+        for error in e.errors():
+            # error['loc'] is a tuple like ('server', 'port') - join with dots
+            path = ".".join(str(loc) for loc in error['loc'])
+            errors.append({
+                "path": path,
+                "message": error['msg']
+            })
     
-    # Check if workers are appropriate for environment
-    env = data.get("environment")
-    workers = data.get("server", {}).get("workers", 1)
-    if env == "production" and workers < 4:
-        errors.append({
-            "path": "server.workers",
-            "message": "Production environment should have at least 4 workers"
-        })
+    # Step 2: Add custom business rule validation (only if Pydantic validation passed)
+    if not errors:
+        # Check if production environment has debug enabled
+        if data.get("environment") == "production" and data.get("server", {}).get("debug"):
+            errors.append({
+                "path": "server.debug",
+                "message": "Debug mode should not be enabled in production"
+            })
+        
+        # Check if workers are appropriate for environment
+        env = data.get("environment")
+        workers = data.get("server", {}).get("workers", 1)
+        if env == "production" and workers < 4:
+            errors.append({
+                "path": "server.workers",
+                "message": "Production environment should have at least 4 workers"
+            })
+        
+        # Check database password for production
+        if env == "production" and not data.get("database", {}).get("password"):
+            errors.append({
+                "path": "database.password",
+                "message": "Database password is required for production"
+            })
     
-    # Check database password
-    if env == "production" and not data.get("database", {}).get("password"):
-        errors.append({
-            "path": "database.password",
-            "message": "Database password is required for production"
-        })
-    
-    # Show results
+    # Step 3: Show results in the UI
     if errors:
         await controller.show_validation_errors(errors)
         await controller.show_toast(
