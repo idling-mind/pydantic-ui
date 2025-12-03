@@ -124,6 +124,13 @@ ui_config = UIConfig(
             tooltip="Reset all settings",
             confirm="Are you sure you want to reset all settings to defaults?"
         ),
+        ActionButton(
+            id="save",
+            label="Save",
+            variant="default",
+            icon="save",
+            tooltip="Save all settings",
+        ),
     ],
 )
 
@@ -246,6 +253,20 @@ async def reset_all_settings(data: dict, controller: PydanticUIController):
     await controller.clear_validation_errors()
     await controller.show_toast("Settings reset to defaults", "info")
     return {"reset": True}
+
+@router.action("save")
+async def save_all_settings(data: dict, controller: PydanticUIController):
+    """Save all settings."""
+    # Implement saving logic here
+    try:
+        validated_data = AppSettings(**data)
+    except Exception as e:
+        await controller.show_toast(f"Error saving settings: {e}", "error")
+        return {"saved": False, "error": str(e)}
+    
+    await controller.push_data(validated_data)
+    await controller.show_toast("Settings saved successfully", "success")
+    return {"saved": True}
 
 
 # You can also use the controller directly for other operations
