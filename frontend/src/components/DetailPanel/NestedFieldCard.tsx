@@ -63,9 +63,16 @@ export function NestedFieldCard({
   if (!info) return null;
 
   const handleClick = () => {
-    if (isEnabled) {
-      onNavigate(path);
+    // For required fields that are null/undefined, auto-initialize before navigating
+    if (!isEnabled && !isOptional && onChange && !disabled) {
+      if (schema.type === 'object') {
+        onChange({});
+      } else if (schema.type === 'array') {
+        onChange([]);
+      }
     }
+    // Navigate regardless of enabled state (except for optional disabled fields which show a different UI)
+    onNavigate(path);
   };
 
   const handleEnable = (e: React.MouseEvent) => {
