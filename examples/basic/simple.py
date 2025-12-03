@@ -34,6 +34,7 @@ class Person(BaseModel):
     age: int
     birthday: date
     compensation: Compensation
+    fields: dict[str, str] | None = None
 
 class MyModel(BaseModel):
     """My model configuration"""

@@ -278,7 +278,7 @@ export function TreeNode({
       )}
       {showTypes && (
         <Badge variant={getTypeBadgeVariant(schema.type)} className="text-[10px] px-1.5 py-0 h-5 shrink-0">
-          {schema.type}
+          {schema.python_type || schema.type}
         </Badge>
       )}
       {schema.required === false && (
@@ -341,7 +341,7 @@ export function TreeNode({
         )}
         {showTypes && (
           <Badge variant={getTypeBadgeVariant(schema.type)} className="text-[10px] px-1.5 py-0 h-5 shrink-0">
-            {schema.type}
+            {schema.python_type || schema.type}
           </Badge>
         )}
       </div>
@@ -539,7 +539,7 @@ function ArrayItemNode({
       )}
       {showTypes && (
         <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 shrink-0">
-          {itemType}
+          {schema.python_type || itemType}
         </Badge>
       )}
     </div>

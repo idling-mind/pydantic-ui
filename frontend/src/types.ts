@@ -1,6 +1,7 @@
 // Schema types
 export interface SchemaField {
   type: string;
+  python_type?: string;
   title?: string;
   description?: string;
   required?: boolean;

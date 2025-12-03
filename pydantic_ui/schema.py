@@ -49,6 +49,29 @@ def get_json_type(python_type: type) -> str:
     return "string"
 
 
+def get_python_type_name(python_type: type) -> str:
+    """Get a human-readable Python type name."""
+    # Handle None type
+    if python_type is type(None):
+        return "None"
+
+    # Handle generic types (List, Dict, etc.)
+    origin = get_origin(python_type)
+    if origin is not None:
+        args = get_args(python_type)
+        origin_name = getattr(origin, "__name__", str(origin))
+        if args:
+            args_str = ", ".join(get_python_type_name(arg) for arg in args)
+            return f"{origin_name}[{args_str}]"
+        return origin_name
+
+    # Handle regular types
+    if hasattr(python_type, "__name__"):
+        return python_type.__name__
+
+    return str(python_type)
+
+
 def get_format_for_type(python_type: type) -> str | None:
     """Get JSON schema format for special types."""
     if python_type is datetime.datetime:
@@ -166,8 +189,13 @@ def parse_field(
         elif isinstance(first_value, float):
             json_type = "number"
 
+        # Build python_type string for Literal
+        literal_repr = ", ".join(repr(v) for v in literal_values)
+        python_type_str = f"Literal[{literal_repr}]"
+
         return {
             "type": json_type,
+            "python_type": python_type_str,
             "title": field_info.title or name.replace("_", " ").title(),
             "description": field_info.description,
             "required": field_info.is_required(),
@@ -189,6 +217,7 @@ def parse_field(
 
         return {
             "type": get_json_type(field_type),
+            "python_type": field_type.__name__,
             "title": field_info.title or name.replace("_", " ").title(),
             "description": field_info.description,
             "required": field_info.is_required(),
@@ -202,6 +231,7 @@ def parse_field(
         item_type = args[0] if args else str
         return {
             "type": "array",
+            "python_type": get_python_type_name(field_type),
             "title": field_info.title or name.replace("_", " ").title(),
             "description": field_info.description,
             "required": True,
@@ -213,6 +243,7 @@ def parse_field(
         value_type = args[1] if len(args) > 1 else Any
         return {
             "type": "object",
+            "python_type": get_python_type_name(field_type),
             "title": field_info.title or name.replace("_", " ").title(),
             "description": field_info.description,
             "required": True,
@@ -228,6 +259,7 @@ def parse_field(
         result["title"] = field_info.title or result.get("name", name).replace("_", " ").title()
         # Nested models are required by default unless wrapped in Optional
         result["required"] = field_info.is_required()
+        result["python_type"] = field_type.__name__
         return result
 
     # Handle datetime types
@@ -269,6 +301,7 @@ def parse_field(
 
     result = {
         "type": get_json_type(field_type),
+        "python_type": get_python_type_name(field_type),
         "title": field_info.title or name.replace("_", " ").title(),
         "description": field_info.description,
         "required": field_info.is_required(),
