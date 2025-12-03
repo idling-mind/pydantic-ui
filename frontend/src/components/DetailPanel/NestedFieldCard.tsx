@@ -1,9 +1,9 @@
-import { ChevronRight, Folder, List, Plus, X } from 'lucide-react';
+import { ChevronRight, Folder, List, Plus, X, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { SchemaField } from '@/types';
+import type { SchemaField, FieldError } from '@/types';
 
 interface NestedFieldCardProps {
   name: string;
@@ -13,6 +13,7 @@ interface NestedFieldCardProps {
   onNavigate: (path: string) => void;
   onChange?: (value: unknown) => void;
   disabled?: boolean;
+  errors?: FieldError[];
 }
 
 export function NestedFieldCard({
@@ -23,10 +24,12 @@ export function NestedFieldCard({
   onNavigate,
   onChange,
   disabled = false,
+  errors,
 }: NestedFieldCardProps) {
   const label = schema.ui_config?.label || schema.title || name;
   const isOptional = schema.required === false;
   const isEnabled = value !== null && value !== undefined;
+  const hasError = errors && errors.length > 0;
   
   const getCardInfo = () => {
     if (schema.type === 'object') {
@@ -136,47 +139,56 @@ export function NestedFieldCard({
   }
 
   return (
-    <Card
-      className={cn(
-        'cursor-pointer transition-all',
-        'hover:border-primary hover:shadow-md',
-        'group'
-      )}
-      onClick={handleClick}
-    >
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex-shrink-0">{info.icon}</div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium truncate text-sm">{label}</h3>
-          <p className="text-xs text-muted-foreground">
-            {info.description}
-            {info.subtitle && (
-              <span className="ml-1 text-muted-foreground/70">{info.subtitle}</span>
-            )}
-          </p>
-          {schema.description && (
-            <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
-              {schema.description}
-            </p>
-          )}
-        </div>
-        <Badge variant={info.badgeVariant} className="shrink-0">
-          {info.badge}
-        </Badge>
-        {isOptional && onChange && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleDisable}
-            disabled={disabled}
-            className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
-            title="Disable this optional field"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+    <div className="space-y-1">
+      <Card
+        className={cn(
+          'cursor-pointer transition-all',
+          'hover:border-primary hover:shadow-md',
+          'group',
+          hasError && 'border-destructive'
         )}
-        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-      </CardContent>
-    </Card>
+        onClick={handleClick}
+      >
+        <CardContent className="flex items-center gap-3 p-4">
+          <div className="flex-shrink-0">{info.icon}</div>
+          <div className="flex-1 min-w-0">
+            <h3 className={cn('font-medium truncate text-sm', hasError && 'text-destructive')}>{label}</h3>
+            <p className="text-xs text-muted-foreground">
+              {info.description}
+              {info.subtitle && (
+                <span className="ml-1 text-muted-foreground/70">{info.subtitle}</span>
+              )}
+            </p>
+            {schema.description && (
+              <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
+                {schema.description}
+              </p>
+            )}
+          </div>
+          {hasError && (
+            <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+          )}
+          <Badge variant={info.badgeVariant} className="shrink-0">
+            {info.badge}
+          </Badge>
+          {isOptional && onChange && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDisable}
+              disabled={disabled}
+              className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+              title="Disable this optional field"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+        </CardContent>
+      </Card>
+      {hasError && (
+        <p className="text-xs text-destructive px-1">{errors[0].message}</p>
+      )}
+    </div>
   );
 }

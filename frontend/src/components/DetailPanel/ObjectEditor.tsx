@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, Folder, Copy } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, Folder, Copy, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -139,6 +139,7 @@ export function ObjectEditor({
   const renderNestedFieldCard = ([fieldName, fieldSchema]: [string, SchemaField]) => {
     const fieldPath = path && path !== 'root' ? `${path}.${fieldName}` : fieldName;
     const fieldValue = currentValue[fieldName];
+    const fieldErrors = getFieldErrors(fieldPath);
 
     return (
       <NestedFieldCard
@@ -150,6 +151,7 @@ export function ObjectEditor({
         onNavigate={handleNavigateToNested}
         onChange={(v) => handleFieldChange(fieldName, v)}
         disabled={disabled}
+        errors={fieldErrors}
       />
     );
   };
@@ -792,28 +794,37 @@ export function ArrayListEditor({
       ) : itemsAreObjects ? (
         // Render object items as cards (like NestedFieldCard)
         <div className="grid gap-3">
-          {items.map((item, index) => (
-            <div key={index} className="flex gap-2">
+          {items.map((item, index) => {
+            const itemErrors = getItemErrors(index);
+            const hasError = itemErrors.length > 0;
+            
+            return (
+            <div key={index} className="space-y-1">
+              <div className="flex gap-2">
               <Card
                 className={cn(
                   'flex-1 cursor-pointer transition-all',
                   'hover:border-primary hover:shadow-md',
-                  'group'
+                  'group',
+                  hasError && 'border-destructive'
                 )}
                 onClick={() => handleNavigateToItem(index)}
               >
                 <CardContent className="flex items-center gap-3 p-4">
                   <div className="flex-shrink-0">
-                    <Folder className="h-5 w-5 text-blue-500" />
+                    <Folder className={cn('h-5 w-5', hasError ? 'text-destructive' : 'text-blue-500')} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium truncate text-sm">
+                    <h3 className={cn('font-medium truncate text-sm', hasError && 'text-destructive')}>
                       {getArrayItemTitle(item, index, itemSchema)}
                     </h3>
                     <p className="text-xs text-muted-foreground truncate">
                       {getItemRepr(item)}
                     </p>
                   </div>
+                  {hasError && (
+                    <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                  )}
                   <Badge variant="secondary" className="shrink-0">
                     Item {index + 1}
                   </Badge>
@@ -877,8 +888,13 @@ export function ArrayListEditor({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
+              {hasError && (
+                <p className="text-xs text-destructive px-1">{itemErrors[0].message}</p>
+              )}
             </div>
-          ))}
+          );
+          })}
         </div>
       ) : itemsArePrimitive && itemSchema ? (
         // Render primitive items with inline editing
