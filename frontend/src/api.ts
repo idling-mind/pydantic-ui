@@ -37,6 +37,12 @@ function createFetchJson(apiBase: string) {
   };
 }
 
+export interface ActionResponse {
+  success: boolean;
+  result?: unknown;
+  error?: string;
+}
+
 export function createApiClient(apiBase: string = '/api') {
   const fetchJson = createFetchJson(apiBase);
   
@@ -63,6 +69,20 @@ export function createApiClient(apiBase: string = '/api') {
       fetchJson<ValidationResponse>('/api/validate', {
         method: 'POST',
         body: JSON.stringify({ data }),
+      }),
+
+    // Trigger a custom action
+    triggerAction: (actionId: string, data: Record<string, unknown>): Promise<ActionResponse> =>
+      fetchJson<ActionResponse>(`/api/actions/${actionId}`, {
+        method: 'POST',
+        body: JSON.stringify({ data }),
+      }),
+
+    // Respond to a confirmation dialog
+    respondToConfirmation: (confirmationId: string, confirmed: boolean): Promise<{ ok: boolean }> =>
+      fetchJson<{ ok: boolean }>(`/api/confirmation/${confirmationId}`, {
+        method: 'POST',
+        body: JSON.stringify({ confirmed }),
       }),
   };
 }

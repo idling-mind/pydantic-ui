@@ -47,6 +47,17 @@ export interface FieldError {
   type?: string;
 }
 
+// Action button types
+export interface ActionButton {
+  id: string;
+  label: string;
+  variant?: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+  icon?: string;
+  disabled?: boolean;
+  tooltip?: string;
+  confirm?: string;
+}
+
 // UI Config types
 export interface UIConfig {
   title: string;
@@ -60,6 +71,37 @@ export interface UIConfig {
   auto_save_delay: number;
   collapsible_tree: boolean;
   show_types: boolean;
+  actions: ActionButton[];
+  show_save_reset: boolean;
+}
+
+// SSE Event types
+export interface UIEvent {
+  type: 
+    | 'validation_errors'
+    | 'clear_validation_errors'
+    | 'push_data'
+    | 'toast'
+    | 'confirmation_request'
+    | 'refresh';
+  payload: Record<string, unknown>;
+  timestamp: number;
+}
+
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+  duration: number;
+}
+
+export interface ConfirmationRequest {
+  id: string;
+  title: string;
+  message: string;
+  confirmText: string;
+  cancelText: string;
+  variant: 'default' | 'destructive';
 }
 
 // Data types

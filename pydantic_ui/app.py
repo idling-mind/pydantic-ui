@@ -1,13 +1,17 @@
 """FastAPI router factory for Pydantic UI."""
 
+import asyncio
+import json
 from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from pydantic_ui.config import FieldConfig, UIConfig
+from pydantic_ui.controller import PydanticUIController
+from pydantic_ui.events import EventQueue
 from pydantic_ui.handlers import DataHandler
 
 
@@ -33,19 +37,38 @@ def create_pydantic_ui(
         prefix: URL prefix for the router
 
     Returns:
-        FastAPI APIRouter with all necessary endpoints
+        FastAPI APIRouter with all necessary endpoints and a controller attribute.
+        
+    The returned router has additional attributes:
+        - controller: PydanticUIController for interacting with the UI
+        - action: Decorator for registering action handlers
+        - data_loader: Decorator for setting a custom data loader
+        - data_saver: Decorator for setting a custom data saver
 
     Example:
         from fastapi import FastAPI
         from pydantic import BaseModel
-        from pydantic_ui import create_pydantic_ui
+        from pydantic_ui import create_pydantic_ui, UIConfig, ActionButton
 
         class Person(BaseModel):
             name: str
             age: int
 
+        ui_config = UIConfig(
+            title="Person Editor",
+            actions=[
+                ActionButton(id="validate", label="Validate", variant="secondary"),
+            ]
+        )
+
         app = FastAPI()
-        app.include_router(create_pydantic_ui(Person, prefix="/editor"))
+        router = create_pydantic_ui(Person, ui_config=ui_config, prefix="/editor")
+        app.include_router(router)
+        
+        @router.action("validate")
+        async def validate_action(data: dict, controller):
+            # Custom validation logic
+            await controller.show_toast("Validated!", "success")
     """
     if ui_config is None:
         ui_config = UIConfig()
@@ -62,8 +85,17 @@ def create_pydantic_ui(
         data_saver=data_saver,
     )
 
-    # Store handler for decorator access
+    # Create event queue and controller
+    event_queue = EventQueue()
+    controller = PydanticUIController(event_queue, model)
+    controller._data_handler = handler
+
+    # Store handler and controller for decorator access
     router._pydantic_ui_handler = handler  # type: ignore
+    router.controller = controller  # type: ignore
+
+    # Action handler registry
+    action_handlers: dict[str, Callable[..., Any]] = {}
 
     # Get the static files directory
     static_dir = Path(__file__).parent / "static"
@@ -111,6 +143,64 @@ def create_pydantic_ui(
         """Get the UI configuration."""
         config = handler.get_config()
         return JSONResponse(content=config.model_dump())
+
+    # SSE endpoint for real-time events
+    @router.get("/api/events")
+    async def sse_events() -> StreamingResponse:
+        """Server-Sent Events endpoint for real-time UI updates."""
+        async def event_generator():
+            async for event in event_queue.subscribe():
+                yield f"data: {json.dumps(event)}\n\n"
+        
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",  # Disable nginx buffering
+            }
+        )
+
+    # Polling fallback for environments that don't support SSE
+    @router.get("/api/events/poll")
+    async def poll_events(since: float = 0) -> JSONResponse:
+        """Polling fallback for real-time events."""
+        events = await event_queue.get_pending(since)
+        return JSONResponse(content={"events": events})
+
+    # Action handler endpoint
+    @router.post("/api/actions/{action_id}")
+    async def handle_action(action_id: str, request: Request) -> JSONResponse:
+        """Handle custom action button clicks."""
+        body = await request.json()
+        current_data = body.get("data", {})
+        
+        handler_func = action_handlers.get(action_id)
+        if handler_func:
+            try:
+                result = handler_func(current_data, controller)
+                if asyncio.iscoroutine(result):
+                    result = await result
+                return JSONResponse(content={"success": True, "result": result})
+            except Exception as e:
+                return JSONResponse(
+                    content={"success": False, "error": str(e)},
+                    status_code=400
+                )
+        return JSONResponse(
+            content={"success": False, "error": f"Unknown action: {action_id}"},
+            status_code=404
+        )
+
+    # Confirmation response endpoint
+    @router.post("/api/confirmation/{confirmation_id}")
+    async def handle_confirmation(confirmation_id: str, request: Request) -> JSONResponse:
+        """Handle confirmation dialog responses."""
+        body = await request.json()
+        confirmed = body.get("confirmed", False)
+        controller.resolve_confirmation(confirmation_id, confirmed)
+        return JSONResponse(content={"ok": True})
 
     # Static file serving
     index_file = static_dir / "index.html"
@@ -203,7 +293,29 @@ def create_pydantic_ui(
         handler.data_saver = func
         return func
 
+    def action_decorator(action_id: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        """Decorator to register an action handler.
+        
+        The handler function receives (data: dict, controller: PydanticUIController)
+        and can be sync or async.
+        
+        Example:
+            @router.action("validate")
+            async def validate_action(data: dict, controller):
+                errors = my_validation(data)
+                if errors:
+                    await controller.show_validation_errors(errors)
+                    await controller.show_toast("Validation failed", "error")
+                else:
+                    await controller.show_toast("All good!", "success")
+        """
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+            action_handlers[action_id] = func
+            return func
+        return decorator
+
     router.data_loader = data_loader_decorator  # type: ignore
     router.data_saver = data_saver_decorator  # type: ignore
+    router.action = action_decorator  # type: ignore
 
     return router

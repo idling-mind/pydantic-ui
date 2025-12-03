@@ -20,6 +20,11 @@ interface DataContextValue {
   refresh: () => Promise<void>;
   getErrorCountForPath: (path: string) => number;
   errorCountByPath: Map<string, number>;
+  // New methods for external updates (from SSE events)
+  setExternalErrors: (errors: FieldError[]) => void;
+  clearErrors: () => void;
+  setExternalData: (data: Record<string, unknown>) => void;
+  apiBase: string;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -196,6 +201,22 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
     setDirty(false);
   }, [originalData]);
 
+  // New methods for external updates (from SSE events)
+  const setExternalErrors = useCallback((newErrors: FieldError[]) => {
+    setErrors(normalizeErrors(newErrors));
+  }, [normalizeErrors]);
+
+  const clearErrors = useCallback(() => {
+    setErrors([]);
+  }, []);
+
+  const setExternalData = useCallback((newData: Record<string, unknown>) => {
+    setData(newData);
+    setOriginalData(newData);
+    setErrors([]);
+    setDirty(false);
+  }, []);
+
   // Compute error counts per path (including parent paths)
   // Note: errors are already normalized to frontend format (users[0].name)
   const errorCountByPath = useMemo(() => {
@@ -263,6 +284,10 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
         refresh,
         getErrorCountForPath,
         errorCountByPath,
+        setExternalErrors,
+        clearErrors,
+        setExternalData,
+        apiBase,
       }}
     >
       {children}

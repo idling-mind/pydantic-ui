@@ -1,9 +1,53 @@
 """Configuration classes for Pydantic UI."""
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+
+class ActionButton(BaseModel):
+    """Configuration for a custom action button.
+    
+    Action buttons appear in the header and trigger Python callbacks
+    when clicked.
+    
+    Example:
+        ActionButton(
+            id="validate",
+            label="Validate All",
+            variant="secondary",
+            icon="check-circle",
+            tooltip="Run custom validation"
+        )
+    """
+    
+    id: str = Field(
+        description="Unique identifier for the action"
+    )
+    label: str = Field(
+        description="Button label text"
+    )
+    variant: Literal["default", "secondary", "outline", "ghost", "destructive"] = Field(
+        default="default",
+        description="Button style variant"
+    )
+    icon: str | None = Field(
+        default=None,
+        description="Lucide icon name (e.g., 'check', 'trash', 'play')"
+    )
+    disabled: bool = Field(
+        default=False,
+        description="Whether the button is disabled"
+    )
+    tooltip: str | None = Field(
+        default=None,
+        description="Tooltip text on hover"
+    )
+    confirm: str | None = Field(
+        default=None,
+        description="If set, show confirmation dialog with this message before triggering"
+    )
 
 
 class Renderer(str, Enum):
@@ -121,4 +165,12 @@ class UIConfig(BaseModel):
     show_types: bool = Field(
         default=True,
         description="Show type badges in the tree",
+    )
+    actions: list[ActionButton] = Field(
+        default_factory=list,
+        description="Custom action buttons shown in the header",
+    )
+    show_save_reset: bool = Field(
+        default=False,
+        description="Show Save and Reset buttons in the footer",
     )

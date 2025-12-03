@@ -7,6 +7,7 @@ from pydantic import BaseModel, ValidationError
 
 from pydantic_ui.config import FieldConfig, UIConfig
 from pydantic_ui.models import (
+    ActionButtonResponse,
     ConfigResponse,
     ValidationError as ValidationErrorModel,
     ValidationResponse,
@@ -215,6 +216,20 @@ class DataHandler:
 
     def get_config(self) -> ConfigResponse:
         """Get the UI configuration."""
+        # Convert actions to response format
+        actions = [
+            ActionButtonResponse(
+                id=action.id,
+                label=action.label,
+                variant=action.variant,
+                icon=action.icon,
+                disabled=action.disabled,
+                tooltip=action.tooltip,
+                confirm=action.confirm,
+            )
+            for action in self.ui_config.actions
+        ]
+        
         return ConfigResponse(
             title=self.ui_config.title,
             description=self.ui_config.description,
@@ -225,4 +240,6 @@ class DataHandler:
             auto_save_delay=self.ui_config.auto_save_delay,
             collapsible_tree=self.ui_config.collapsible_tree,
             show_types=self.ui_config.show_types,
+            actions=actions,
+            show_save_reset=self.ui_config.show_save_reset,
         )

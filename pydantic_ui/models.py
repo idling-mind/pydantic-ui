@@ -1,8 +1,20 @@
 """Internal Pydantic models for API requests/responses."""
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+
+class ActionButtonResponse(BaseModel):
+    """Action button configuration for API response."""
+    
+    id: str
+    label: str
+    variant: Literal["default", "secondary", "outline", "ghost", "destructive"] = "default"
+    icon: str | None = None
+    disabled: bool = False
+    tooltip: str | None = None
+    confirm: str | None = None
 
 
 class SchemaField(BaseModel):
@@ -80,6 +92,8 @@ class ConfigResponse(BaseModel):
     auto_save_delay: int
     collapsible_tree: bool
     show_types: bool
+    actions: list[ActionButtonResponse] = Field(default_factory=list)
+    show_save_reset: bool = False
 
 
 # Update forward references

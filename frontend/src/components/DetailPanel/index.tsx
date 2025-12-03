@@ -4,21 +4,11 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useData } from '@/context/DataContext';
 import { ObjectEditor, ArrayEditor, ArrayListEditor } from './ObjectEditor';
 import { FieldRenderer } from '@/components/Renderers';
+import { ActionButtons } from '@/components/ActionButtons';
 
 interface DetailPanelProps {
   className?: string;
@@ -287,49 +277,41 @@ export function DetailPanel({ className }: DetailPanelProps) {
       {/* Footer Actions */}
       <div className="p-4 flex items-center justify-between bg-muted/30">
         <div className="flex items-center gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={loading || saving || !dirty}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reset All
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Reset all changes?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will discard all unsaved changes and restore the data to its last saved state.
-                  This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleReset}>Reset</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {/* Custom Action Buttons */}
+          {config?.actions && config.actions.length > 0 && (
+            <ActionButtons actions={config.actions} />
+          )}
           {dirty && (
             <span className="text-xs text-amber-600 dark:text-amber-400">
               Unsaved changes
             </span>
           )}
         </div>
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={loading || saving || !dirty}
-        >
-          {saving ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
-          )}
-          {saving ? 'Saving...' : 'Save'}
-        </Button>
+        {config?.show_save_reset && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReset}
+              disabled={loading || saving || !dirty}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reset
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={loading || saving || !dirty}
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
