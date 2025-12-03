@@ -212,8 +212,8 @@ export function TreeNode({
           if (hideSimpleFields && field.type !== 'object' && field.type !== 'array') {
             return false;
           }
-          // For optional nested objects/arrays, only show if they have a value (not null/undefined)
-          if (field.required === false && (field.type === 'object' || field.type === 'array')) {
+          // For optional fields, only show if they have a value (not null/undefined)
+          if (field.required === false) {
             const fieldValue = currentValue && typeof currentValue === 'object' 
               ? (currentValue as Record<string, unknown>)[fieldName]
               : undefined;

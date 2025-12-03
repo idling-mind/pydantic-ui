@@ -16,6 +16,7 @@ interface TreePanelProps {
 export function TreePanel({ className }: TreePanelProps) {
   const {
     schema,
+    data,
     selectedPath,
     expandedPaths,
     setSelectedPath,
@@ -108,6 +109,14 @@ export function TreePanel({ className }: TreePanelProps) {
         return false;
       }
 
+      // Filter out optional fields that are not initialized (null/undefined)
+      if (field.required === false) {
+        const fieldValue = data?.[name];
+        if (fieldValue === null || fieldValue === undefined) {
+          return false;
+        }
+      }
+
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
       
@@ -131,7 +140,7 @@ export function TreePanel({ className }: TreePanelProps) {
       
       return false;
     },
-    [searchQuery, hideSimpleFields, isSimpleField]
+    [searchQuery, hideSimpleFields, isSimpleField, data]
   );
 
   if (!schema) {
