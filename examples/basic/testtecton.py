@@ -32,15 +32,14 @@ ui_config = UIConfig(
 
 # Field-specific configurations (alternative to annotations)
 field_configs = {
-    "created": FieldConfig(
-        label="Created Date",
-        placeholder="Select a date",
-        renderer=Renderer.DATE_PICKER,
+    "analysis": FieldConfig(
+        label="Analysis Inputs",
+        description="Specify the analysis type and parameters here.",
     ),
-    "users.[].age": FieldConfig(
-        label="User Age",
+    "advanced_settings.cores": FieldConfig(
+        label="Number of CPU Cores",
         renderer=Renderer.SLIDER,
-        props={"min": 0, "max": 120, "step": 1},
+        props={"min": 0, "max": 30, "step": 1},
     ),
 }
 

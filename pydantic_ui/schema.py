@@ -255,8 +255,8 @@ def parse_field(
     # Handle nested Pydantic models
     if isinstance(field_type, type) and issubclass(field_type, BaseModel):
         result = parse_model(field_type, max_depth, current_depth + 1)
-        # Add title from field_info if available, otherwise use model name
-        result["title"] = field_info.title or result.get("name", name).replace("_", " ").title()
+        # Add title from field_info if available, otherwise use field name (not model name)
+        result["title"] = field_info.title or name.replace("_", " ").title()
         # Nested models are required by default unless wrapped in Optional
         result["required"] = field_info.is_required()
         result["python_type"] = field_type.__name__

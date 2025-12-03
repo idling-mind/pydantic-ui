@@ -89,25 +89,42 @@ function getValueAtPath(data: unknown, path: string): unknown {
   return current;
 }
 
-// Get the label for an array item based on its value
-function getArrayItemLabel(item: unknown, index: number): string {
+// Get the label for an array item based on its value and schema
+// Priority for list items:
+// 1. object.name/object.label/object.title (from data)
+// 2. schema.ui_config?.label (FieldConfig.label from items schema)
+// 3. schema.python_type or class name
+// 4. Fallback to `Item {index + 1}`
+function getArrayItemLabel(item: unknown, index: number, itemSchema?: SchemaField): string {
   if (item === null || item === undefined) {
+    // Try schema-based fallbacks for null/undefined items
+    if (itemSchema?.ui_config?.label) {
+      return `${itemSchema.ui_config.label} ${index + 1}`;
+    }
+    if (itemSchema?.python_type) {
+      return `${itemSchema.python_type} ${index + 1}`;
+    }
     return `Item ${index + 1}`;
   }
   
   if (typeof item === 'object' && !Array.isArray(item)) {
-    // For objects, try to find a name/title/label field
+    // For objects, try to find a name/label/title field from the data
     const obj = item as Record<string, unknown>;
-    const nameField = obj.name || obj.title || obj.label || obj.id;
+    const nameField = obj.name || obj.label || obj.title;
     if (nameField && typeof nameField === 'string') {
       return nameField;
     }
-    // Use first string field value
-    for (const value of Object.values(obj)) {
-      if (typeof value === 'string' && value.length > 0 && value.length < 50) {
-        return value;
-      }
+    
+    // Fall back to schema-based label
+    if (itemSchema?.ui_config?.label) {
+      return `${itemSchema.ui_config.label} ${index + 1}`;
     }
+    
+    // Fall back to python type / class name
+    if (itemSchema?.python_type) {
+      return `${itemSchema.python_type} ${index + 1}`;
+    }
+    
     return `Item ${index + 1}`;
   }
   
@@ -149,6 +166,24 @@ function getTypeBadgeVariant(type: string): 'default' | 'secondary' | 'outline' 
     default:
       return 'outline';
   }
+}
+
+// Check if a path represents an array item (ends with [N] pattern)
+function isArrayItemPath(path: string): boolean {
+  return /\[\d+\]$/.test(path);
+}
+
+// Get the display label for a node
+// For array items, prefer the computed name from data (e.g., "Weld A")
+// For regular fields, use the schema-based fallback chain
+function getNodeLabel(name: string, schema: SchemaField, path: string): string {
+  // For array items, the 'name' prop already contains the computed label from getArrayItemLabel
+  // which prioritizes data values (obj.name/label/title) over schema
+  if (isArrayItemPath(path)) {
+    return schema.ui_config?.label || name;
+  }
+  // For regular fields, use the standard fallback chain
+  return schema.ui_config?.label || schema.title || name;
 }
 
 export function TreeNode({
@@ -269,7 +304,7 @@ export function TreeNode({
         <span className="w-5 shrink-0" />
       )}
       <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
-      <span className="truncate flex-1">{schema.ui_config?.label || schema.title || name}</span>
+      <span className="truncate flex-1">{getNodeLabel(name, schema, path)}</span>
       {errorCount > 0 && (
         <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 shrink-0 flex items-center gap-0.5">
           <AlertCircle className="h-3 w-3" />
@@ -332,7 +367,7 @@ export function TreeNode({
           )}
         </button>
         <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
-        <span className="truncate flex-1">{schema.ui_config?.label || schema.title || name}</span>
+        <span className="truncate flex-1">{getNodeLabel(name, schema, path)}</span>
         {errorCount > 0 && (
           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 shrink-0 flex items-center gap-0.5">
             <AlertCircle className="h-3 w-3" />
@@ -401,8 +436,8 @@ export function TreeNode({
           {/* Render array items as sub-nodes */}
           {isArray && Array.isArray(arrayData) && arrayData.map((item, index) => {
             const itemPath = `${path}[${index}]`;
-            const itemLabel = getArrayItemLabel(item, index);
             const itemSchema = schema.items || { type: 'object' };
+            const itemLabel = getArrayItemLabel(item, index, itemSchema);
             const itemErrorCount = getErrorCountForPath(itemPath);
             
             // Check if this array item has nested content (object or array)
