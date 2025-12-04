@@ -11,7 +11,7 @@ from typing import Annotated, Literal, Optional
 
 import uvicorn
 from fastapi import FastAPI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from pydantic_ui.config import ActionButton
 from pydantic_ui.controller import PydanticUIController
@@ -67,23 +67,47 @@ app.include_router(pydantic_ui_router)
 # Custom action handlers using the decorator
 @pydantic_ui_router.action("validate")
 async def handle_validate(data: dict, controller: PydanticUIController):
-    """Custom validation that checks business rules."""
+    """
+    Full Pydantic validation + custom business rules.
+    
+    This demonstrates how to:
+    1. Run Pydantic's built-in validation (type checks, constraints like ge/le, etc.)
+    2. Add custom business rule validation on top
+    3. Convert all errors to the UI format
+    """
     errors = []
+    print("here")
     
+    # Step 1: Run Pydantic's built-in validation
     try:
-        obj = UserInput(**data)
+        # This validates all field types, constraints (ge, le, min_length, etc.)
+        validated = UserInput.model_validate(data)
+    except ValidationError as e:
+        # Convert Pydantic validation errors to UI format
+        for error in e.errors():
+            # error['loc'] is a tuple like ('server', 'port') - join with dots
+            path = ".".join(str(loc) for loc in error['loc'])
+            errors.append({
+                "path": path,
+                "message": error['msg']
+            })
     except Exception as e:
-        errors.append({
-            "path": "UserInput",
-            "message": f"Error: {str(e)}"
-        })
-    
+        await controller.show_toast(f"Unexpected error: {e}", "error")
+        return {"valid": False, "error_count": 1}
+    # Step 3: Show results in the UI
     if errors:
+        print(errors)
         await controller.show_validation_errors(errors)
-        await controller.show_toast("Validation failed!", variant="error")
+        await controller.show_toast(
+            f"Validation failed with {len(errors)} error(s)",
+            "error"
+        )
+        return {"valid": False, "error_count": len(errors)}
     else:
-        await controller.show_toast("Validation successful!", variant="success")
-
+        await controller.clear_validation_errors()
+        await controller.push_data(validated)
+        await controller.show_toast("All validations passed!", "success")
+        return {"valid": True}
 
 
 # Custom endpoint to demonstrate data handling

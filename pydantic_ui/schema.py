@@ -372,7 +372,39 @@ def model_to_data(model: type[BaseModel], instance: BaseModel | None = None) -> 
                 try:
                     data[field_name] = field_info.default_factory()
                 except Exception:
-                    data[field_name] = None
+                    data[field_name] = _get_type_default(field_info.annotation)
             else:
-                data[field_name] = None
+                data[field_name] = _get_type_default(field_info.annotation)
         return data
+
+
+def _get_type_default(field_type: type | None) -> Any:
+    """Get a reasonable default value for a given type."""
+    if field_type is None:
+        return None
+    
+    origin = get_origin(field_type)
+    
+    # Handle Optional types
+    if origin is Union or origin is types.UnionType:
+        args = get_args(field_type)
+        non_none = [a for a in args if a is not type(None)]
+        if non_none:
+            return _get_type_default(non_none[0])
+        return None
+    
+    # Handle basic types
+    if field_type is str:
+        return ""
+    if field_type is int:
+        return 0
+    if field_type is float:
+        return 0.0
+    if field_type is bool:
+        return False
+    if origin in (list, set, tuple):
+        return []
+    if origin is dict or field_type is dict:
+        return {}
+    
+    return None

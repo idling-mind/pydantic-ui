@@ -159,6 +159,16 @@ def delete_at_path(data: dict[str, Any], path: str) -> dict[str, Any]:
             if part not in current:
                 return data
             current = current[part]
+        elif isinstance(current, list):
+            # Handle numeric index without brackets
+            try:
+                index = int(part)
+                if 0 <= index < len(current):
+                    current = current[index]
+                else:
+                    return data
+            except ValueError:
+                return data
         else:
             return data
 
