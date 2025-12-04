@@ -34,6 +34,44 @@ interface DataProviderProps {
   apiBase?: string;
 }
 
+// LocalStorage helpers for data persistence
+const STORAGE_KEY_PREFIX = 'pydantic-ui-data-';
+
+function getStorageKey(schemaName: string | undefined): string {
+  return `${STORAGE_KEY_PREFIX}${schemaName || 'default'}`;
+}
+
+function loadFromLocalStorage(schemaName: string | undefined): Record<string, unknown> | null {
+  try {
+    const key = getStorageKey(schemaName);
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.warn('Failed to load data from localStorage:', error);
+  }
+  return null;
+}
+
+function saveToLocalStorage(schemaName: string | undefined, data: Record<string, unknown>): void {
+  try {
+    const key = getStorageKey(schemaName);
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.warn('Failed to save data to localStorage:', error);
+  }
+}
+
+function clearLocalStorage(schemaName: string | undefined): void {
+  try {
+    const key = getStorageKey(schemaName);
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.warn('Failed to clear localStorage:', error);
+  }
+}
+
 export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) {
   const api = useMemo(() => createApiClient(apiBase), [apiBase]);
   
@@ -72,10 +110,21 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
       ]);
       setSchema(schemaRes);
       setConfig(configRes);
-      setData(dataRes.data);
+      
+      // Check localStorage for saved data
+      const savedData = loadFromLocalStorage(schemaRes.name);
+      if (savedData && Object.keys(savedData).length > 0) {
+        // Use saved data from localStorage (user's unsaved changes)
+        setData(savedData);
+        setDirty(true); // Mark as dirty since it differs from server
+      } else {
+        // Use server data
+        setData(dataRes.data);
+        setDirty(false);
+      }
+      
       setOriginalData(dataRes.data);
       setErrors([]);
-      setDirty(false);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -86,6 +135,13 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Auto-save to localStorage when data changes
+  useEffect(() => {
+    if (schema && dirty) {
+      saveToLocalStorage(schema.name, data);
+    }
+  }, [data, dirty, schema]);
 
   const toggleExpanded = useCallback((path: string) => {
     setExpandedPaths((prev) => {
@@ -183,6 +239,8 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
         setOriginalData(result.data);
         setErrors([]);
         setDirty(false);
+        // Clear localStorage on successful save (data is now synced with server)
+        clearLocalStorage(schema?.name);
         return true;
       } else {
         // Normalize error paths to frontend format
@@ -193,13 +251,15 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
       console.error('Failed to save data:', error);
       return false;
     }
-  }, [api, data, normalizeErrors]);
+  }, [api, data, normalizeErrors, schema?.name]);
 
   const resetData = useCallback(() => {
     setData(originalData);
     setErrors([]);
     setDirty(false);
-  }, [originalData]);
+    // Clear localStorage on reset (reverting to server data)
+    clearLocalStorage(schema?.name);
+  }, [originalData, schema?.name]);
 
   // New methods for external updates (from SSE events)
   const setExternalErrors = useCallback((newErrors: FieldError[]) => {
