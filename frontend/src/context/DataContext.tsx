@@ -275,7 +275,9 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
     setOriginalData(newData);
     setErrors([]);
     setDirty(false);
-  }, []);
+    // Clear localStorage when new data is pushed from server (this is now the source of truth)
+    clearLocalStorage(schema?.name);
+  }, [schema?.name]);
 
   // Compute error counts per path (including parent paths)
   // Note: errors are already normalized to frontend format (users[0].name)

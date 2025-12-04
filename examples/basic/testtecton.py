@@ -38,6 +38,14 @@ ui_config = UIConfig(
             icon="check-circle",
             tooltip="Run custom validation"
         ),
+        ActionButton(
+            id="clear",
+            label="Clear",
+            variant="destructive",
+            icon="refresh",
+            tooltip="Clear all data",
+            confirm="Are you sure you want to clear all data? This action cannot be undone."
+        ),
     ]
 )
 
@@ -76,7 +84,6 @@ async def handle_validate(data: dict, controller: PydanticUIController):
     3. Convert all errors to the UI format
     """
     errors = []
-    print("here")
     
     # Step 1: Run Pydantic's built-in validation
     try:
@@ -108,6 +115,15 @@ async def handle_validate(data: dict, controller: PydanticUIController):
         await controller.push_data(validated)
         await controller.show_toast("All validations passed!", "success")
         return {"valid": True}
+
+@pydantic_ui_router.action("clear")
+async def handle_clear(data: dict, controller: PydanticUIController):
+    """
+    Clear all data and reset to original configuration.
+    """
+    await controller.push_data({})
+    await controller.show_toast("Cleared all data", "success")
+    return {"cleared": True}
 
 
 # Custom endpoint to demonstrate data handling
