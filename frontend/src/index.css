@@ -2,6 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
+/* AG Grid theme integration with shadcn/ui */
+.ag-theme-quartz,
+.ag-theme-quartz-dark {
+  --ag-font-family: inherit;
+  --ag-font-size: 13px;
+  --ag-grid-size: 6px;
+  --ag-row-height: 36px;
+  --ag-header-height: 40px;
+}
+
+/* Light theme customizations */
+.ag-theme-quartz {
+  --ag-background-color: hsl(var(--background));
+  --ag-foreground-color: hsl(var(--foreground));
+  --ag-border-color: hsl(var(--border));
+  --ag-secondary-border-color: hsl(var(--border));
+  --ag-header-background-color: hsl(var(--muted));
+  --ag-header-foreground-color: hsl(var(--foreground));
+  --ag-odd-row-background-color: hsl(var(--muted) / 0.3);
+  --ag-row-hover-color: hsl(var(--accent));
+  --ag-selected-row-background-color: hsl(var(--accent));
+  --ag-range-selection-background-color: hsl(var(--primary) / 0.2);
+  --ag-input-focus-border-color: hsl(var(--ring));
+  --ag-checkbox-checked-color: hsl(var(--primary));
+  --ag-modal-overlay-background-color: hsl(var(--background) / 0.8);
+}
+
+/* Dark theme customizations */
+.ag-theme-quartz-dark {
+  --ag-background-color: hsl(var(--background));
+  --ag-foreground-color: hsl(var(--foreground));
+  --ag-border-color: hsl(var(--border));
+  --ag-secondary-border-color: hsl(var(--border));
+  --ag-header-background-color: hsl(var(--muted));
+  --ag-header-foreground-color: hsl(var(--foreground));
+  --ag-odd-row-background-color: hsl(var(--muted) / 0.3);
+  --ag-row-hover-color: hsl(var(--accent));
+  --ag-selected-row-background-color: hsl(var(--accent));
+  --ag-range-selection-background-color: hsl(var(--primary) / 0.2);
+  --ag-input-focus-border-color: hsl(var(--ring));
+  --ag-checkbox-checked-color: hsl(var(--primary));
+  --ag-modal-overlay-background-color: hsl(var(--background) / 0.8);
+}
+
+/* Cell styling */
+.ag-theme-quartz .ag-cell,
+.ag-theme-quartz-dark .ag-cell {
+  display: flex;
+  align-items: center;
+}
+
+/* Header styling */
+.ag-theme-quartz .ag-header-cell-label,
+.ag-theme-quartz-dark .ag-header-cell-label {
+  font-weight: 500;
+}
+
+/* Row drag icon */
+.ag-theme-quartz .ag-row-drag,
+.ag-theme-quartz-dark .ag-row-drag {
+  cursor: grab;
+  opacity: 0.5;
+}
+
+.ag-theme-quartz .ag-row-drag:hover,
+.ag-theme-quartz-dark .ag-row-drag:hover {
+  opacity: 1;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

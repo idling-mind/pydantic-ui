@@ -24,6 +24,7 @@ The package exports the following from `pydantic_ui/__init__.py`:
 - **Tailwind CSS**: Utility-first styling
 - **Lucide React**: Icon library
 - **class-variance-authority (CVA)**: Component variants
+- **AG Grid**: Data table component for array/list editing with sorting, filtering, and inline editing
 
 ---
 
@@ -251,6 +252,8 @@ frontend/
     │   │   ├── index.tsx        # Detail editing panel
     │   │   ├── ObjectEditor.tsx # Editor for objects and arrays
     │   │   └── NestedFieldCard.tsx  # Card for nested object/array navigation
+    │   ├── TableView/
+    │   │   └── index.tsx        # AG Grid table view for arrays (inline editing, sorting, color-coded numerics)
     │   └── Renderers/
     │       ├── index.tsx        # Renderer registry and FieldRenderer component
     │       ├── types.ts         # RendererProps interface
@@ -269,7 +272,8 @@ frontend/
     │   ├── ThemeContext.tsx     # Theme (light/dark/system)
     │   └── ClipboardContext.tsx # Copy/paste functionality
     └── lib/
-        └── utils.ts             # cn() helper and utilities
+        ├── utils.ts             # cn() helper and utilities
+        └── tableUtils.ts        # Schema flattening, path utilities for AG Grid TableView
 ```
 
 **Key Principles:**
@@ -600,6 +604,74 @@ interface DataContextValue {
 - Local state updates until explicit `saveData()` call
 - Error normalization from backend format to frontend format
 - Error counting per path (including parent path aggregation)
+
+### TableView Component (AG Grid)
+
+The TableView component in `frontend/src/components/TableView/` displays array data in a tabular format with AG Grid:
+
+```tsx
+// components/TableView/index.tsx
+import { AgGridReact } from 'ag-grid-react';
+import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community';
+import { flattenSchema, arrayToFlatRows, generateColumnDefs } from '@/lib/tableUtils';
+
+interface TableViewProps {
+  name: string;
+  path: string;
+  schema: SchemaField;          // Array schema with items
+  value: unknown[] | null;      // Array data
+  errors?: FieldError[];
+  disabled?: boolean;
+  onChange: (value: unknown) => void;
+}
+```
+
+**Key Features:**
+- **Flattened columns**: Nested object fields become columns like `user.name`, `address.city`
+- **Inline editing**: Click cells to edit values directly
+- **Sorting & filtering**: Built-in AG Grid functionality
+- **Color-coded numerics**: Numeric columns show value-based background colors (blue-white-red gradient)
+- **Row operations**: Add, delete, duplicate, and drag-to-reorder rows
+- **Theme integration**: Uses shadcn/ui CSS variables for consistent styling
+
+**Table Utilities** (`lib/tableUtils.ts`):
+```tsx
+// Flatten nested schema to column definitions
+flattenSchema(schema: SchemaField, prefix: string, maxDepth: number): FlattenedField[]
+
+// Convert nested objects to flat row format
+arrayToFlatRows(data: unknown[], fields: FlattenedField[]): FlatRow[]
+
+// Generate AG Grid column definitions with type-specific editors
+generateColumnDefs(fields: FlattenedField[], rowData: FlatRow[]): ColDef[]
+
+// Get/set values by dot-notation path
+getValueByPath(obj: unknown, path: string): unknown
+setValueByPath(obj: unknown, path: string, value: unknown): unknown
+
+// Color calculations for numeric columns
+getColorForValue(value: number, min: number, max: number, scale: string): string
+```
+
+**Usage in ArrayListEditor**:
+The ArrayListEditor component (in `ObjectEditor.tsx`) provides a toggle between list view and table view for arrays containing objects:
+
+```tsx
+// Toggle between list and table views
+const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
+
+{viewMode === 'table' ? (
+  <TableView
+    name={path}
+    path={path}
+    schema={schema}
+    value={items}
+    onChange={onChange}
+  />
+) : (
+  // List view with cards
+)}
+```
 
 ---
 

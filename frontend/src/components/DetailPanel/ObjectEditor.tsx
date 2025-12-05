@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, Folder, Copy, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, Folder, Copy, AlertCircle, List, Table } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { FieldRenderer } from '@/components/Renderers';
 import { NestedFieldCard } from './NestedFieldCard';
+import { TableView } from '@/components/TableView';
 import { useData } from '@/context/DataContext';
 import type { SchemaField, FieldError } from '@/types';
 
@@ -664,6 +665,7 @@ export function ArrayListEditor({
   onChange,
 }: ArrayListEditorProps) {
   const { setSelectedPath, toggleExpanded, expandedPaths } = useData();
+  const [viewMode, setViewMode] = React.useState<'list' | 'table'>('list');
   
   const items = value || [];
   const itemSchema = schema.items;
@@ -677,8 +679,13 @@ export function ArrayListEditor({
   const itemsArePrimitive = itemSchema && 
     ['string', 'integer', 'number', 'boolean'].includes(itemSchema.type);
   
-  // Check if items are objects (should be shown as cards)
+  // Check if items are objects (should be shown as cards or table)
   const itemsAreObjects = itemSchema?.type === 'object';
+  
+  // Check if table view is available (items have nested structure)
+  const canShowTableView = itemSchema && 
+    (itemSchema.type === 'object' || 
+     (itemSchema.type !== 'array' && !itemsArePrimitive));
 
   const handleRemoveItem = (index: number) => {
     if (!canRemove) return;
@@ -785,13 +792,51 @@ export function ArrayListEditor({
           {minItems !== undefined && ` (min: ${minItems})`}
           {maxItems !== undefined && ` (max: ${maxItems})`}
         </span>
+        
+        {/* View mode toggle */}
+        {canShowTableView && items.length > 0 && (
+          <div className="flex items-center gap-1 border rounded-md p-0.5">
+            <Button
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setViewMode('list')}
+              title="List view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setViewMode('table')}
+              title="Table view"
+            >
+              <Table className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
-      {items.length === 0 ? (
-        <div className="text-center py-8 text-sm text-muted-foreground border border-dashed rounded-md">
-          No items yet. Click "Add Item" to get started.
-        </div>
-      ) : itemsAreObjects ? (
+      {/* Table View */}
+      {viewMode === 'table' && canShowTableView && items.length > 0 ? (
+        <TableView
+          name={path || 'root'}
+          path={path || 'root'}
+          schema={schema}
+          value={items}
+          errors={errors}
+          disabled={disabled}
+          onChange={onChange}
+        />
+      ) : (
+        /* List View */
+        <>
+          {items.length === 0 ? (
+            <div className="text-center py-8 text-sm text-muted-foreground border border-dashed rounded-md">
+              No items yet. Click "Add Item" to get started.
+            </div>
+          ) : itemsAreObjects ? (
         // Render object items as cards (like NestedFieldCard)
         <div className="grid gap-3">
           {items.map((item, index) => {
@@ -1053,20 +1098,22 @@ export function ArrayListEditor({
         </div>
       )}
 
-      <Button
-        variant="outline"
-        onClick={handleAddItem}
-        disabled={disabled || !canAdd}
-        className="w-full"
-      >
-        <Plus className="h-4 w-4 mr-2" />
-        Add Item
-        {maxItems !== undefined && (
-          <span className="text-xs text-muted-foreground ml-2">
-            ({items.length}/{maxItems})
-          </span>
-        )}
-      </Button>
+          <Button
+            variant="outline"
+            onClick={handleAddItem}
+            disabled={disabled || !canAdd}
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Item
+            {maxItems !== undefined && (
+              <span className="text-xs text-muted-foreground ml-2">
+                ({items.length}/{maxItems})
+              </span>
+            )}
+          </Button>
+        </>
+      )}
 
       {errors && errors.length > 0 && errors[0].path === path && (
         <p className="text-sm text-destructive">{errors[0].message}</p>
