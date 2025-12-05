@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Copy, ClipboardPaste, ClipboardList } from 'lucide-react';
+import { Copy, ClipboardPaste, ClipboardList, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -7,6 +7,16 @@ import {
   ContextMenuSeparator,
   ContextMenuShortcut,
 } from '@/components/ui/context-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useClipboard } from '@/context/ClipboardContext';
 import { useData } from '@/context/DataContext';
 import { PasteSelectedDialog } from './PasteSelectedDialog';
@@ -101,6 +111,7 @@ export function TreeNodeContextMenu({
   const { clipboard, copy, canPaste } = useClipboard();
   const { data, updateValue } = useData();
   const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
 
   // Get the current value at this path
   const currentValue = React.useMemo(() => {
@@ -179,9 +190,54 @@ export function TreeNodeContextMenu({
     }
   }, [clipboard, path, data, updateValue, selectedPaths]);
 
+  // Helper to create a cleared value based on schema type
+  const createClearedValue = useCallback((fieldSchema: SchemaField): unknown => {
+    switch (fieldSchema.type) {
+      case 'object':
+        // For objects, recursively clear all sub-fields
+        if (fieldSchema.fields) {
+          const cleared: Record<string, unknown> = {};
+          for (const [key, subSchema] of Object.entries(fieldSchema.fields)) {
+            cleared[key] = createClearedValue(subSchema);
+          }
+          return cleared;
+        }
+        return {};
+      case 'array':
+        return [];
+      case 'string':
+        return '';
+      case 'integer':
+      case 'number':
+        return null;
+      case 'boolean':
+        return false;
+      default:
+        return null;
+    }
+  }, []);
+
+  const handleClear = useCallback(() => {
+    const clearedValue = createClearedValue(schema);
+    
+    if (path === '') {
+      // Clearing root - update all top-level fields
+      const clearedData = clearedValue as Record<string, unknown>;
+      for (const key of Object.keys(clearedData)) {
+        updateValue(key, clearedData[key]);
+      }
+    } else {
+      updateValue(path, clearedValue);
+    }
+    
+    setClearDialogOpen(false);
+  }, [path, schema, updateValue, createClearedValue]);
+
   const isCompatibleForPaste = canPaste(schema);
   const hasClipboard = !!clipboard;
   const isObjectType = schema.type === 'object';
+  const isArrayType = schema.type === 'array';
+  const isClearable = isObjectType || isArrayType;
   const targetCount = selectedPaths.length > 1 ? selectedPaths.length : 1;
 
   return (
@@ -214,6 +270,17 @@ export function TreeNodeContextMenu({
             Paste Selected...
           </ContextMenuItem>
           
+          <ContextMenuSeparator />
+          
+          <ContextMenuItem
+            onClick={() => setClearDialogOpen(true)}
+            disabled={!isClearable}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Clear
+          </ContextMenuItem>
+          
           {clipboard && (
             <>
               <ContextMenuSeparator />
@@ -240,6 +307,28 @@ export function TreeNodeContextMenu({
           onPaste={handlePasteSelected}
         />
       )}
+
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear "{nodeName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear all values within "{nodeName}" and reset them to their default empty state.
+              {isArrayType ? ' All items in the array will be removed.' : ' All sub-fields will be cleared.'}
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClear}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Clear
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
