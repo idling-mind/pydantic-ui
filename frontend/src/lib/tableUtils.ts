@@ -1,5 +1,5 @@
 import type { SchemaField } from '@/types';
-import type { ColDef, ValueGetterParams, ValueSetterParams } from 'ag-grid-community';
+import type { ColDef, ColGroupDef, ValueGetterParams, ValueSetterParams } from 'ag-grid-community';
 
 /**
  * Represents a flattened field with its full path and schema
@@ -337,12 +337,206 @@ export function getCellEditorForType(schema: SchemaField): {
 
 /**
  * Generate AG Grid column definitions from flattened schema fields.
+ * Creates hierarchical column groups for nested objects.
+ * 
+ * @param flattenedFields - Array of flattened fields
+ * @param rowData - The row data (for calculating numeric ranges)
+ * @returns Array of AG Grid column definitions with column groups
+ */
+export function generateColumnDefs(
+  flattenedFields: FlattenedField[],
+  rowData: FlatRow[]
+): (ColDef | ColGroupDef)[] {
+  // Build a tree structure from the flattened fields
+  interface ColumnNode {
+    name: string;
+    path: string;
+    field?: FlattenedField;
+    children: Map<string, ColumnNode>;
+  }
+
+  const root: ColumnNode = {
+    name: '',
+    path: '',
+    children: new Map(),
+  };
+
+  // Build the tree from flattened fields
+  for (const field of flattenedFields) {
+    const parts = field.path.split('.');
+    let current = root;
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const isLast = i === parts.length - 1;
+      const currentPath = parts.slice(0, i + 1).join('.');
+
+      if (!current.children.has(part)) {
+        current.children.set(part, {
+          name: part,
+          path: currentPath,
+          children: new Map(),
+        });
+      }
+
+      const node = current.children.get(part)!;
+      
+      if (isLast) {
+        node.field = field;
+      }
+      
+      current = node;
+    }
+  }
+
+  // Helper to create a leaf column definition
+  const createLeafColDef = (field: FlattenedField, headerName: string): ColDef => {
+    const isNumeric = field.schema.type === 'integer' || field.schema.type === 'number';
+    const isBoolean = field.schema.type === 'boolean';
+    const isArray = field.schema.type === 'array';
+    const hasEnum = !!(field.schema.enum || field.schema.literal_values);
+
+    // Calculate min/max for numeric columns
+    let minMax: { min: number; max: number } | undefined;
+    if (isNumeric && rowData.length > 0) {
+      minMax = calculateColumnMinMax(rowData, field.path);
+    }
+
+    // Get cell editor configuration
+    const editorConfig = getCellEditorForType(field.schema);
+
+    // Determine the appropriate filter type (Community edition only)
+    let filterType: string | boolean = true;
+    if (isNumeric) {
+      filterType = 'agNumberColumnFilter';
+    } else if (isBoolean || hasEnum) {
+      // Use text filter for booleans/enums since SetFilter requires Enterprise
+      filterType = 'agTextColumnFilter';
+    } else if (field.schema.type === 'string') {
+      filterType = 'agTextColumnFilter';
+    }
+
+    const colDef: ColDef = {
+      field: field.path,
+      headerName: headerName,
+      headerTooltip: field.schema.description || field.path,
+      editable: !field.schema.ui_config?.read_only && !isArray,
+      sortable: true,
+      filter: filterType,
+      resizable: true,
+      minWidth: 80,
+      flex: 1,
+      ...editorConfig,
+      // Value getter to handle nested paths
+      valueGetter: (params: ValueGetterParams) => {
+        return params.data?.[field.path];
+      },
+      // Value setter to update the row data
+      valueSetter: (params: ValueSetterParams) => {
+        if (params.data) {
+          params.data[field.path] = params.newValue;
+          return true;
+        }
+        return false;
+      },
+    };
+
+    // Add cell style for numeric columns (color by value)
+    if (isNumeric && minMax) {
+      const { min, max } = minMax;
+      colDef.cellStyle = (params) => {
+        const value = params.value;
+        if (typeof value !== 'number' || isNaN(value)) {
+          return undefined;
+        }
+        const bgColor = getColorForValue(value, min, max);
+        return { backgroundColor: bgColor };
+      };
+    }
+
+    // Add cell renderer for boolean columns
+    if (isBoolean) {
+      colDef.cellRenderer = (params: { value: unknown }) => {
+        return params.value ? '✓' : '✗';
+      };
+    }
+
+    // For arrays, show as non-editable summary
+    if (isArray) {
+      colDef.cellRenderer = (params: { value: unknown }) => {
+        if (Array.isArray(params.value)) {
+          return `[${params.value.length} items]`;
+        }
+        return '-';
+      };
+    }
+
+    // For enum/literal values, ensure proper display
+    if (hasEnum) {
+      colDef.cellRenderer = (params: { value: unknown }) => {
+        return params.value !== undefined && params.value !== null 
+          ? String(params.value) 
+          : '';
+      };
+    }
+
+    return colDef;
+  };
+
+  // Recursively convert tree to column definitions
+  const convertToColDefs = (node: ColumnNode): (ColDef | ColGroupDef)[] => {
+    const results: (ColDef | ColGroupDef)[] = [];
+
+    for (const [name, child] of node.children) {
+      if (child.field && child.children.size === 0) {
+        // Leaf node - create a column
+        results.push(createLeafColDef(child.field, name));
+      } else if (child.children.size > 0) {
+        // Group node - create a column group
+        const children = convertToColDefs(child);
+        
+        // If this node also has a field (edge case), add it as a column
+        if (child.field) {
+          children.unshift(createLeafColDef(child.field, name));
+        }
+        
+        if (children.length === 1 && !('children' in children[0])) {
+          // Single child that's not a group - don't wrap in unnecessary group
+          // But preserve the grouping for clarity
+          const colGroup: ColGroupDef = {
+            headerName: name,
+            headerClass: 'ag-header-group-cell-label',
+            children: children,
+            marryChildren: true,
+          };
+          results.push(colGroup);
+        } else {
+          const colGroup: ColGroupDef = {
+            headerName: name,
+            headerClass: 'ag-header-group-cell-label',
+            children: children,
+            marryChildren: true,
+          };
+          results.push(colGroup);
+        }
+      }
+    }
+
+    return results;
+  };
+
+  return convertToColDefs(root);
+}
+
+/**
+ * Generate flat AG Grid column definitions (without grouping).
+ * Use this when you want simple dot-notation headers.
  * 
  * @param flattenedFields - Array of flattened fields
  * @param rowData - The row data (for calculating numeric ranges)
  * @returns Array of AG Grid column definitions
  */
-export function generateColumnDefs(
+export function generateFlatColumnDefs(
   flattenedFields: FlattenedField[],
   rowData: FlatRow[]
 ): ColDef[] {

@@ -627,7 +627,7 @@ interface TableViewProps {
 ```
 
 **Key Features:**
-- **Flattened columns**: Nested object fields become columns like `user.name`, `address.city`
+- **Multi-level column headers**: Nested object fields are organized into hierarchical column groups (e.g., `user` → `name`, `address` → `city`, `street`)
 - **Inline editing**: Click cells to edit values directly
 - **Sorting & filtering**: Built-in AG Grid functionality
 - **Color-coded numerics**: Numeric columns show value-based background colors (blue-white-red gradient)

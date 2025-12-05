@@ -1,11 +1,13 @@
 import { useMemo, useCallback, useRef, useState } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import type { 
-  ColDef, 
+  ColDef,
+  ColGroupDef,
   CellValueChangedEvent,
   GridReadyEvent,
   GridApi,
   RowDragEndEvent,
+  ProcessDataFromClipboardParams,
 } from 'ag-grid-community';
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community';
 import { Plus, Trash2, Copy, GripVertical } from 'lucide-react';
@@ -69,21 +71,22 @@ export function TableView({
   }, [items, flattenedFields]);
 
   // Generate column definitions
-  const columnDefs: ColDef[] = useMemo(() => {
+  const columnDefs: (ColDef | ColGroupDef)[] = useMemo(() => {
     if (flattenedFields.length === 0) return [];
 
-    // Add row index column
+    // Add row index column with drag handle
     const indexCol: ColDef = {
       headerName: '#',
       field: '__rowIndex',
-      width: 60,
-      minWidth: 60,
+      width: 70,
+      minWidth: 70,
       maxWidth: 80,
       editable: false,
       sortable: false,
       filter: false,
       pinned: 'left',
       lockPosition: 'left',
+      suppressHeaderMenuButton: true,
       cellStyle: { 
         fontWeight: 'bold',
         color: 'var(--ag-secondary-foreground-color)',
@@ -134,17 +137,31 @@ export function TableView({
   const onRowDragEnd = useCallback((event: RowDragEndEvent) => {
     const movingNode = event.node;
     const overNode = event.overNode;
+    const overIndex = event.overIndex;
     
-    if (!movingNode || !overNode) return;
+    if (!movingNode) return;
     
     const fromIndex = movingNode.data.__rowIndex;
-    const toIndex = overNode.data.__rowIndex;
+    
+    // Determine target index - use overIndex if available, otherwise use overNode
+    let toIndex: number;
+    if (overIndex !== undefined && overIndex >= 0) {
+      toIndex = overIndex;
+    } else if (overNode) {
+      toIndex = overNode.data.__rowIndex;
+    } else {
+      return;
+    }
     
     if (fromIndex === toIndex) return;
     
+    // Create new array with reordered items
     const newItems = [...items];
     const [removed] = newItems.splice(fromIndex, 1);
-    newItems.splice(toIndex, 0, removed);
+    
+    // Adjust target index if we removed from before it
+    const adjustedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+    newItems.splice(adjustedToIndex, 0, removed);
     
     onChange(newItems);
   }, [items, onChange]);
@@ -155,6 +172,38 @@ export function TableView({
     const selected = gridApi.getSelectedRows() as FlatRow[];
     setSelectedRows(selected.map(row => row.__rowIndex));
   }, [gridApi]);
+
+  // Process clipboard data for paste operations
+  const processDataFromClipboard = useCallback((params: ProcessDataFromClipboardParams): string[][] | null => {
+    // Return the data as-is, AG Grid will handle the paste
+    return params.data;
+  }, []);
+
+  // Handle paste end to update our data model
+  const onPasteEnd = useCallback(() => {
+    if (!gridApi) return;
+    
+    // Get all row data after paste
+    const newItems: unknown[] = [];
+    gridApi.forEachNode((node) => {
+      if (node.data) {
+        // Reconstruct the nested object from flat data
+        const flatData = node.data as FlatRow;
+        let reconstructed: unknown = {};
+        
+        for (const field of flattenedFields) {
+          const value = flatData[field.path];
+          if (value !== undefined) {
+            reconstructed = setValueByPath(reconstructed, field.path, value);
+          }
+        }
+        
+        newItems.push(reconstructed);
+      }
+    });
+    
+    onChange(newItems);
+  }, [gridApi, flattenedFields, onChange]);
 
   // Add new row
   const handleAddRow = useCallback(() => {
@@ -224,13 +273,18 @@ export function TableView({
   const isDark = theme === 'dark' || 
     (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
+  // Compute muted border color based on theme
+  const mutedBorderColor = isDark 
+    ? 'hsl(217.2 32.6% 25%)' // Slightly lighter than dark border for visibility
+    : 'hsl(214.3 31.8% 85%)'; // Slightly darker than light border
+
   // Apply custom theme based on shadcn/ui variables
   const gridTheme = useMemo(() => {
     return themeQuartz.withParams({
       accentColor: 'hsl(var(--primary))',
       backgroundColor: 'hsl(var(--background))',
       foregroundColor: 'hsl(var(--foreground))',
-      borderColor: 'hsl(var(--border))',
+      borderColor: mutedBorderColor,
       headerBackgroundColor: 'hsl(var(--muted))',
       headerTextColor: 'hsl(var(--foreground))',
       oddRowBackgroundColor: 'hsl(var(--muted) / 0.3)',
@@ -241,8 +295,14 @@ export function TableView({
       headerFontSize: 12,
       fontSize: 13,
       borderRadius: 6,
+      // Row and column borders (cell borders)
+      rowBorder: { style: 'solid', width: 1, color: mutedBorderColor },
+      columnBorder: { style: 'solid', width: 1, color: mutedBorderColor },
+      // Header borders
+      headerRowBorder: { style: 'solid', width: 1, color: mutedBorderColor },
+      headerColumnBorder: { style: 'solid', width: 1, color: mutedBorderColor },
     });
-  }, [isDark]);
+  }, [isDark, mutedBorderColor]);
 
   // Error display
   const arrayErrors = errors?.filter(e => e.path === path) || [];
@@ -264,7 +324,7 @@ export function TableView({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -317,7 +377,6 @@ export function TableView({
           'rounded-md border overflow-hidden',
           isDark ? 'ag-theme-quartz-dark' : 'ag-theme-quartz'
         )}
-        style={{ height: Math.min(400, Math.max(200, items.length * 42 + 56)) }}
       >
         <AgGridReact
           ref={gridRef}
@@ -329,16 +388,30 @@ export function TableView({
           onCellValueChanged={onCellValueChanged}
           onRowDragEnd={onRowDragEnd}
           onSelectionChanged={onSelectionChanged}
-          rowSelection="multiple"
+          rowSelection={{
+            mode: 'multiRow',
+            checkboxes: true,
+            headerCheckbox: true,
+            enableClickSelection: false,
+            selectAll: 'filtered',
+          }}
           rowDragManaged={true}
+          rowDragEntireRow={false}
+          rowDragMultiRow={true}
           animateRows={true}
-          suppressRowClickSelection={true}
           getRowId={(params) => String(params.data.__rowIndex)}
           rowHeight={36}
           headerHeight={40}
-          domLayout="normal"
+          groupHeaderHeight={36}
+          domLayout="autoHeight"
           stopEditingWhenCellsLoseFocus={true}
           singleClickEdit={true}
+          /* Clipboard support */
+          enableCellTextSelection={true}
+          ensureDomOrder={true}
+          copyHeadersToClipboard={false}
+          processDataFromClipboard={processDataFromClipboard}
+          onPasteEnd={onPasteEnd}
         />
       </div>
 

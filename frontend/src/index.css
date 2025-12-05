@@ -44,6 +44,8 @@
   --ag-input-focus-border-color: hsl(var(--ring));
   --ag-checkbox-checked-color: hsl(var(--primary));
   --ag-modal-overlay-background-color: hsl(var(--background) / 0.8);
+  /* Dark theme scrollbar colors */
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--muted) / 0.5);
 }
 
 /* Cell styling */
@@ -69,6 +71,52 @@
 .ag-theme-quartz .ag-row-drag:hover,
 .ag-theme-quartz-dark .ag-row-drag:hover {
   opacity: 1;
+}
+
+/* Column group headers */
+.ag-theme-quartz .ag-header-group-cell,
+.ag-theme-quartz-dark .ag-header-group-cell {
+  font-weight: 600;
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+.ag-theme-quartz .ag-header-group-cell-label,
+.ag-theme-quartz-dark .ag-header-group-cell-label {
+  justify-content: center;
+}
+
+/* Multi-level header styling */
+.ag-theme-quartz .ag-header-row:not(:first-child) .ag-header-cell,
+.ag-theme-quartz-dark .ag-header-row:not(:first-child) .ag-header-cell {
+  border-top: 1px solid hsl(var(--border));
+}
+
+
+
+
+
+/* Dark theme scrollbar webkit styles */
+.ag-theme-quartz-dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.ag-theme-quartz-dark ::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.3);
+  border-radius: 5px;
+}
+
+.ag-theme-quartz-dark ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+  border-radius: 5px;
+}
+
+.ag-theme-quartz-dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.6);
+}
+
+.ag-theme-quartz-dark ::-webkit-scrollbar-corner {
+  background: hsl(var(--muted) / 0.3);
 }
 
 @layer base {
