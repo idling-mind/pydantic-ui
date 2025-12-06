@@ -30,7 +30,7 @@ $ErrorActionPreference = "Stop"
 # Store root directory
 $RootDir = $PSScriptRoot | Split-Path -Parent
 $FrontendDir = Join-Path $RootDir "frontend"
-$ExamplesDir = Join-Path $RootDir "examples" "basic"
+$ExamplesDir = Join-Path (Join-Path $RootDir "examples") "basic"
 
 Write-Host ""
 Write-Host "=============================================" -ForegroundColor Cyan
