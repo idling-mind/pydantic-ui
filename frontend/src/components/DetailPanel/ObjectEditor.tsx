@@ -18,7 +18,54 @@ import { FieldRenderer } from '@/components/Renderers';
 import { NestedFieldCard } from './NestedFieldCard';
 import { TableView } from '@/components/TableView';
 import { useData } from '@/context/DataContext';
-import type { SchemaField, FieldError } from '@/types';
+import type { SchemaField, FieldError, UIConfig } from '@/types';
+
+/**
+ * Hook to generate responsive grid columns based on config breakpoints.
+ * Returns a CSS style object with grid-template-columns using CSS clamp/container queries.
+ */
+function useResponsiveColumns(config: UIConfig | null): { style: React.CSSProperties; className: string } {
+  const [columns, setColumns] = React.useState(1);
+  
+  // Default breakpoints if not provided
+  const defaultBreakpoints: Record<number, number> = { 640: 1, 1000: 2, 1600: 3 };
+  const breakpoints = config?.responsive_columns || defaultBreakpoints;
+  
+  React.useEffect(() => {
+    const updateColumns = () => {
+      const width = window.innerWidth;
+      
+      // Sort breakpoints by key (width) in ascending order
+      const sortedBreakpoints = Object.entries(breakpoints)
+        .map(([k, v]) => [parseInt(k), v] as [number, number])
+        .sort((a, b) => a[0] - b[0]);
+      
+      // Find the appropriate column count based on current width
+      let cols = sortedBreakpoints[sortedBreakpoints.length - 1]?.[1] || 1;
+      for (const [maxWidth, colCount] of sortedBreakpoints) {
+        if (width <= maxWidth) {
+          cols = colCount;
+          break;
+        }
+      }
+      
+      setColumns(cols);
+    };
+    
+    updateColumns();
+    window.addEventListener('resize', updateColumns);
+    return () => window.removeEventListener('resize', updateColumns);
+  }, [breakpoints]);
+  
+  return {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+      gap: '1rem',
+    },
+    className: 'responsive-grid',
+  };
+}
 
 interface ObjectEditorProps {
   name: string;
@@ -41,8 +88,9 @@ export function ObjectEditor({
   onChange,
   depth = 0,
 }: ObjectEditorProps) {
-  const { setSelectedPath, toggleExpanded, expandedPaths } = useData();
+  const { setSelectedPath, toggleExpanded, expandedPaths, config } = useData();
   const [isExpanded, setIsExpanded] = React.useState(depth < 2);
+  const { style: gridStyle } = useResponsiveColumns(config);
   
   const fields = schema.fields || {};
   const label = schema.ui_config?.label || schema.title || name;
@@ -158,12 +206,12 @@ export function ObjectEditor({
   };
 
   if (depth === 0) {
-    // Root level - render primitive fields directly and nested fields as cards
+    // Root level - render primitive fields in responsive grid and nested fields as cards
     return (
       <div className="space-y-6">
-        {/* Primitive fields */}
+        {/* Primitive fields in responsive grid */}
         {groupedPrimitiveFields.ungrouped.length > 0 && (
-          <div className="space-y-1">
+          <div style={gridStyle}>
             {groupedPrimitiveFields.ungrouped.map(renderPrimitiveField)}
           </div>
         )}
@@ -174,8 +222,10 @@ export function ObjectEditor({
             <CardHeader className="py-3">
               <CardTitle className="text-sm font-medium">{groupName}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1">
-              {fields.map(renderPrimitiveField)}
+            <CardContent>
+              <div style={gridStyle}>
+                {fields.map(renderPrimitiveField)}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -189,7 +239,7 @@ export function ObjectEditor({
                 <h3 className="text-sm font-medium text-muted-foreground mb-3">Nested Objects & Arrays</h3>
               </>
             )}
-            <div className="grid gap-3">
+            <div style={gridStyle}>
               {nestedFields.map(renderNestedFieldCard)}
             </div>
           </div>
@@ -222,8 +272,12 @@ export function ObjectEditor({
             {schema.description && (
               <p className="text-xs text-muted-foreground pb-2">{schema.description}</p>
             )}
-            {/* Primitive fields */}
-            {groupedPrimitiveFields.ungrouped.map(renderPrimitiveField)}
+            {/* Primitive fields in responsive grid */}
+            {groupedPrimitiveFields.ungrouped.length > 0 && (
+              <div style={gridStyle}>
+                {groupedPrimitiveFields.ungrouped.map(renderPrimitiveField)}
+              </div>
+            )}
             
             {/* Grouped primitive fields */}
             {Object.entries(groupedPrimitiveFields.groups).map(([groupName, fields]) => (
@@ -231,13 +285,15 @@ export function ObjectEditor({
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {groupName}
                 </h4>
-                {fields.map(renderPrimitiveField)}
+                <div style={gridStyle}>
+                  {fields.map(renderPrimitiveField)}
+                </div>
               </div>
             ))}
             
             {/* Nested fields as cards */}
             {nestedFields.length > 0 && (
-              <div className="grid gap-3 pt-2">
+              <div style={gridStyle} className="pt-2">
                 {nestedFields.map(renderNestedFieldCard)}
               </div>
             )}

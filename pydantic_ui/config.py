@@ -174,3 +174,7 @@ class UIConfig(BaseModel):
         default=False,
         description="Show Save and Reset buttons in the footer",
     )
+    responsive_columns: dict[int, int] = Field(
+        default_factory=lambda: {640: 1, 1000: 2, 1600: 3},
+        description="Responsive column breakpoints. Keys are max-width in pixels, values are number of columns. E.g., {640: 1, 1000: 2, 1600: 3} means 1 column up to 640px, 2 columns from 640-1000px, 3 columns above 1000px.",
+    )
