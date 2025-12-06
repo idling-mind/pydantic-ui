@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Copy, ClipboardPaste, ClipboardList, Trash2 } from 'lucide-react';
+import { Copy, ClipboardPaste, ClipboardList, Trash2, Plus } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -30,6 +30,10 @@ interface TreeNodeContextMenuProps {
   // Multi-select support
   selectedPaths?: string[];
   onMultiPaste?: (paths: string[], data: unknown) => void;
+  // Parent array path for array items (for delete functionality)
+  parentArrayPath?: string;
+  // Index in parent array (for delete functionality)
+  arrayIndex?: number;
 }
 
 // Helper to get value at a path
@@ -107,11 +111,15 @@ export function TreeNodeContextMenu({
   nodeName,
   selectedPaths = [],
   onMultiPaste,
+  parentArrayPath,
+  arrayIndex,
 }: TreeNodeContextMenuProps) {
-  const { clipboard, copy, canPaste } = useClipboard();
+  const { clipboard, copy, canPaste, canPasteToArray } = useClipboard();
   const { data, updateValue } = useData();
   const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [pasteOverwriteDialogOpen, setPasteOverwriteDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Get the current value at this path
   const currentValue = React.useMemo(() => {
@@ -126,7 +134,8 @@ export function TreeNodeContextMenu({
     copy(path, currentValue, schema, schemaName);
   }, [copy, path, currentValue, schema, nodeName]);
 
-  const handlePaste = useCallback(() => {
+  // Execute the paste operation
+  const executePaste = useCallback(() => {
     if (!clipboard) return;
 
     const valueToPaste = clipboard.data;
@@ -147,6 +156,41 @@ export function TreeNodeContextMenu({
       }
     }
   }, [clipboard, path, data, updateValue, selectedPaths, onMultiPaste]);
+
+  const handlePaste = useCallback(() => {
+    if (!clipboard) return;
+    
+    // Show confirmation dialog when overwriting existing data
+    setPasteOverwriteDialogOpen(true);
+  }, [clipboard]);
+
+  const handleConfirmPaste = useCallback(() => {
+    executePaste();
+    setPasteOverwriteDialogOpen(false);
+  }, [executePaste]);
+
+  // Handle pasting an object as a new item in an array
+  const handlePasteAsNewItem = useCallback(() => {
+    if (!clipboard) return;
+
+    const valueToPaste = clipboard.data;
+    const currentArray = Array.isArray(currentValue) ? [...currentValue] : [];
+    currentArray.push(JSON.parse(JSON.stringify(valueToPaste)));
+    updateValue(path, currentArray);
+  }, [clipboard, currentValue, path, updateValue]);
+
+  // Handle deleting an item from its parent array
+  const handleDelete = useCallback(() => {
+    if (parentArrayPath === undefined || arrayIndex === undefined) return;
+    
+    const parentArray = getValueAtPath(data, parentArrayPath);
+    if (!Array.isArray(parentArray)) return;
+    
+    const newArray = [...parentArray];
+    newArray.splice(arrayIndex, 1);
+    updateValue(parentArrayPath, newArray);
+    setDeleteDialogOpen(false);
+  }, [parentArrayPath, arrayIndex, data, updateValue]);
 
   const handlePasteSelected = useCallback((selectedFieldPaths: string[]) => {
     if (!clipboard) return;
@@ -234,11 +278,14 @@ export function TreeNodeContextMenu({
   }, [path, schema, updateValue, createClearedValue]);
 
   const isCompatibleForPaste = canPaste(schema);
+  const isCompatibleForPasteToArray = canPasteToArray(schema);
   const hasClipboard = !!clipboard;
   const isObjectType = schema.type === 'object';
   const isArrayType = schema.type === 'array';
   const isClearable = isObjectType || isArrayType;
   const targetCount = selectedPaths.length > 1 ? selectedPaths.length : 1;
+  // Can delete if this is an array item (has parent array path and index)
+  const canDelete = parentArrayPath !== undefined && arrayIndex !== undefined;
 
   return (
     <>
@@ -269,6 +316,15 @@ export function TreeNodeContextMenu({
             <ClipboardList className="mr-2 h-4 w-4" />
             Paste Selected...
           </ContextMenuItem>
+
+          {/* Paste as new array item */}
+          <ContextMenuItem
+            onClick={handlePasteAsNewItem}
+            disabled={!hasClipboard || !isCompatibleForPasteToArray}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Paste as New Item
+          </ContextMenuItem>
           
           <ContextMenuSeparator />
           
@@ -278,15 +334,26 @@ export function TreeNodeContextMenu({
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Clear
+            Clear Values
           </ContextMenuItem>
+
+          {/* Delete array item */}
+          {canDelete && (
+            <ContextMenuItem
+              onClick={() => setDeleteDialogOpen(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Item
+            </ContextMenuItem>
+          )}
           
           {clipboard && (
             <>
               <ContextMenuSeparator />
               <div className="px-2 py-1.5 text-xs text-muted-foreground">
                 Clipboard: {clipboard.schemaName}
-                {!isCompatibleForPaste && (
+                {!isCompatibleForPaste && !isCompatibleForPasteToArray && (
                   <span className="block text-destructive">
                     (incompatible type)
                   </span>
@@ -324,7 +391,49 @@ export function TreeNodeContextMenu({
               onClick={handleClear}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Clear
+              Clear Values
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Paste overwrite confirmation dialog */}
+      <AlertDialog open={pasteOverwriteDialogOpen} onOpenChange={setPasteOverwriteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Paste to "{nodeName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will overwrite the current values in "{nodeName}" with the data from the clipboard
+              {clipboard ? ` (${clipboard.schemaName})` : ''}.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmPaste}>
+              Paste
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete array item confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{nodeName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove "{nodeName}" from the list.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

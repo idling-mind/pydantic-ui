@@ -20,6 +20,8 @@ interface ClipboardContextValue {
   copy: (path: string, data: unknown, schema: SchemaField, schemaName: string) => void;
   clear: () => void;
   canPaste: (targetSchema: SchemaField) => boolean;
+  /** Check if clipboard content can be pasted as a new item in an array */
+  canPasteToArray: (targetSchema: SchemaField) => boolean;
 }
 
 const ClipboardContext = createContext<ClipboardContextValue | null>(null);
@@ -83,8 +85,18 @@ export function ClipboardProvider({ children }: ClipboardProviderProps) {
     return schemasAreCompatible(clipboard.schema, targetSchema);
   }, [clipboard]);
 
+  /** Check if clipboard content can be pasted as a new item in an array */
+  const canPasteToArray = useCallback((targetSchema: SchemaField): boolean => {
+    if (!clipboard) return false;
+    // Target must be an array
+    if (targetSchema.type !== 'array') return false;
+    // Clipboard content must be compatible with the array's item schema
+    if (!targetSchema.items) return false;
+    return schemasAreCompatible(clipboard.schema, targetSchema.items);
+  }, [clipboard]);
+
   return (
-    <ClipboardContext.Provider value={{ clipboard, copy, clear, canPaste }}>
+    <ClipboardContext.Provider value={{ clipboard, copy, clear, canPaste, canPasteToArray }}>
       {children}
     </ClipboardContext.Provider>
   );

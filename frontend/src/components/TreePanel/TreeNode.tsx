@@ -31,6 +31,9 @@ interface TreeNodeProps {
   multiSelectedPaths?: Set<string>;
   onMultiSelect?: (path: string, additive: boolean) => void;
   onMultiPaste?: (paths: string[], data: unknown) => void;
+  // For array items - parent array path and index for delete functionality
+  parentArrayPath?: string;
+  arrayIndex?: number;
 }
 
 interface ConnectedTreeNodeProps {
@@ -205,6 +208,8 @@ export function TreeNode({
   multiSelectedPaths = new Set(),
   onMultiSelect,
   onMultiPaste,
+  parentArrayPath,
+  arrayIndex,
 }: TreeNodeProps) {
   const { data } = useData();
   const isExpandable = schema.type === 'object' || schema.type === 'array';
@@ -329,6 +334,8 @@ export function TreeNode({
       nodeName={name}
       selectedPaths={selectedPathsForMenu}
       onMultiPaste={onMultiPaste}
+      parentArrayPath={parentArrayPath}
+      arrayIndex={arrayIndex}
     >
       <ContextMenuTrigger asChild>
         {nodeContentInner}
@@ -389,6 +396,8 @@ export function TreeNode({
         nodeName={name}
         selectedPaths={selectedPathsForMenu}
         onMultiPaste={onMultiPaste}
+        parentArrayPath={parentArrayPath}
+        arrayIndex={arrayIndex}
       >
         <ContextMenuTrigger asChild>
           {rootNodeContent}
@@ -465,6 +474,8 @@ export function TreeNode({
                   multiSelectedPaths={multiSelectedPaths}
                   onMultiSelect={onMultiSelect}
                   onMultiPaste={onMultiPaste}
+                  parentArrayPath={path}
+                  arrayIndex={index}
                 />
               );
             }
@@ -491,6 +502,8 @@ export function TreeNode({
                 errorCount={itemErrorCount}
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiPaste={onMultiPaste}
+                parentArrayPath={path}
+                arrayIndex={index}
               />
             );
           })}
@@ -515,6 +528,9 @@ interface ArrayItemNodeProps {
   errorCount?: number;
   multiSelectedPaths?: Set<string>;
   onMultiPaste?: (paths: string[], data: unknown) => void;
+  // For delete functionality
+  parentArrayPath?: string;
+  arrayIndex?: number;
 }
 
 function ArrayItemNode({
@@ -531,6 +547,8 @@ function ArrayItemNode({
   errorCount = 0,
   multiSelectedPaths = new Set(),
   onMultiPaste,
+  parentArrayPath,
+  arrayIndex,
 }: ArrayItemNodeProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -587,6 +605,8 @@ function ArrayItemNode({
       nodeName={label}
       selectedPaths={selectedPathsForMenu}
       onMultiPaste={onMultiPaste}
+      parentArrayPath={parentArrayPath}
+      arrayIndex={arrayIndex}
     >
       <ContextMenuTrigger asChild>
         {nodeContent}
