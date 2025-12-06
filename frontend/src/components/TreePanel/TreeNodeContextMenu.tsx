@@ -19,7 +19,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useClipboard } from '@/context/ClipboardContext';
 import { useData } from '@/context/DataContext';
-import { PasteSelectedDialog } from './PasteSelectedDialog';
+import { PasteSelectedDialog, type PasteFieldSelection } from './PasteSelectedDialog';
+import { PasteArrayDialog, type PasteArrayMode } from './PasteArrayDialog';
 import type { SchemaField } from '@/types';
 
 interface TreeNodeContextMenuProps {
@@ -117,6 +118,7 @@ export function TreeNodeContextMenu({
   const { clipboard, copy, canPaste, canPasteToArray } = useClipboard();
   const { data, updateValue } = useData();
   const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
+  const [pasteArrayDialogOpen, setPasteArrayDialogOpen] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [pasteOverwriteDialogOpen, setPasteOverwriteDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -192,7 +194,7 @@ export function TreeNodeContextMenu({
     setDeleteDialogOpen(false);
   }, [parentArrayPath, arrayIndex, data, updateValue]);
 
-  const handlePasteSelected = useCallback((selectedFieldPaths: string[]) => {
+  const handlePasteSelected = useCallback((selections: PasteFieldSelection[]) => {
     if (!clipboard) return;
 
     const sourceData = clipboard.data;
@@ -201,9 +203,33 @@ export function TreeNodeContextMenu({
     const pastePartialData = (targetPath: string) => {
       let targetValue = targetPath === '' ? { ...data } : JSON.parse(JSON.stringify(getValueAtPath(data, targetPath) || {}));
       
-      for (const fieldPath of selectedFieldPaths) {
+      for (const selection of selections) {
+        const fieldPath = selection.path;
         const fieldValue = getNestedValue(sourceData, fieldPath);
-        targetValue = setNestedValue(targetValue, fieldPath, fieldValue);
+        
+        // Handle array fields with modes
+        if (selection.arrayMode && Array.isArray(fieldValue)) {
+          const existingArray = getNestedValue(targetValue, fieldPath);
+          const targetArray = Array.isArray(existingArray) ? existingArray : [];
+          const sourceArray = JSON.parse(JSON.stringify(fieldValue));
+          
+          let newArray: unknown[];
+          switch (selection.arrayMode) {
+            case 'append':
+              newArray = [...targetArray, ...sourceArray];
+              break;
+            case 'prepend':
+              newArray = [...sourceArray, ...targetArray];
+              break;
+            case 'overwrite':
+            default:
+              newArray = sourceArray;
+              break;
+          }
+          targetValue = setNestedValue(targetValue, fieldPath, newArray);
+        } else {
+          targetValue = setNestedValue(targetValue, fieldPath, fieldValue);
+        }
       }
       
       return targetValue;
@@ -233,6 +259,32 @@ export function TreeNodeContextMenu({
       }
     }
   }, [clipboard, path, data, updateValue, selectedPaths]);
+
+  // Handle pasting array with mode (append, prepend, overwrite)
+  const handlePasteArray = useCallback((mode: PasteArrayMode) => {
+    if (!clipboard) return;
+
+    const sourceArray = Array.isArray(clipboard.data) ? clipboard.data : [];
+    const targetArray = Array.isArray(currentValue) ? currentValue : [];
+    
+    let newArray: unknown[];
+    
+    switch (mode) {
+      case 'append':
+        newArray = [...targetArray, ...JSON.parse(JSON.stringify(sourceArray))];
+        break;
+      case 'prepend':
+        newArray = [...JSON.parse(JSON.stringify(sourceArray)), ...targetArray];
+        break;
+      case 'overwrite':
+        newArray = JSON.parse(JSON.stringify(sourceArray));
+        break;
+      default:
+        newArray = [...targetArray];
+    }
+    
+    updateValue(path, newArray);
+  }, [clipboard, currentValue, path, updateValue]);
 
   // Helper to create a cleared value based on schema type
   const createClearedValue = useCallback((fieldSchema: SchemaField): unknown => {
@@ -310,8 +362,14 @@ export function TreeNodeContextMenu({
           </ContextMenuItem>
           
           <ContextMenuItem
-            onClick={() => setPasteDialogOpen(true)}
-            disabled={!hasClipboard || !isCompatibleForPaste || !isObjectType}
+            onClick={() => {
+              if (isArrayType && isCompatibleForPaste) {
+                setPasteArrayDialogOpen(true);
+              } else {
+                setPasteDialogOpen(true);
+              }
+            }}
+            disabled={!hasClipboard || !isCompatibleForPaste || (!isObjectType && !isArrayType)}
           >
             <ClipboardList className="mr-2 h-4 w-4" />
             Paste Selected...
@@ -438,6 +496,18 @@ export function TreeNodeContextMenu({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Paste array dialog with append/prepend/overwrite options */}
+      {clipboard && (
+        <PasteArrayDialog
+          open={pasteArrayDialogOpen}
+          onOpenChange={setPasteArrayDialogOpen}
+          sourceItemCount={Array.isArray(clipboard.data) ? clipboard.data.length : 0}
+          targetItemCount={Array.isArray(currentValue) ? currentValue.length : 0}
+          targetName={nodeName}
+          onPaste={handlePasteArray}
+        />
+      )}
     </>
   );
 }

@@ -10,8 +10,17 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { SchemaField } from '@/types';
+
+export type ArrayPasteMode = 'append' | 'prepend' | 'overwrite';
 
 interface FieldTreeNode {
   path: string;
@@ -19,6 +28,13 @@ interface FieldTreeNode {
   type: string;
   children: FieldTreeNode[];
   isLeaf: boolean;
+  isArray: boolean;
+  arrayLength?: number;
+}
+
+export interface PasteFieldSelection {
+  path: string;
+  arrayMode?: ArrayPasteMode;
 }
 
 interface PasteSelectedDialogProps {
@@ -27,7 +43,7 @@ interface PasteSelectedDialogProps {
   sourceData: unknown;
   sourceSchema: SchemaField;
   targetPaths: string[];
-  onPaste: (selectedPaths: string[]) => void;
+  onPaste: (selections: PasteFieldSelection[]) => void;
 }
 
 // Build a tree structure from the schema for field selection
@@ -45,8 +61,18 @@ function buildFieldTree(
       const fieldPath = basePath ? `${basePath}.${fieldName}` : fieldName;
       const fieldData = data && typeof data === 'object' ? (data as Record<string, unknown>)[fieldName] : undefined;
 
-      // Skip arrays - we don't allow selecting individual array items for paste selected
+      // Arrays are treated as leaf nodes - the entire array can be selected but not individual items
       if (fieldSchema.type === 'array') {
+        const arrayLength = Array.isArray(fieldData) ? fieldData.length : 0;
+        children.push({
+          path: fieldPath,
+          name: fieldName,
+          type: 'array',
+          children: [],
+          isLeaf: true,
+          isArray: true,
+          arrayLength,
+        });
         continue;
       }
 
@@ -60,6 +86,7 @@ function buildFieldTree(
     type: schema.type,
     children,
     isLeaf: children.length === 0 || schema.type !== 'object',
+    isArray: false,
   };
 }
 
@@ -69,6 +96,18 @@ function getAllLeafPaths(node: FieldTreeNode): string[] {
     return [node.path];
   }
   return node.children.flatMap(getAllLeafPaths);
+}
+
+// Get all array paths from a tree node
+function getAllArrayPaths(node: FieldTreeNode): string[] {
+  const paths: string[] = [];
+  if (node.isArray && node.path) {
+    paths.push(node.path);
+  }
+  for (const child of node.children) {
+    paths.push(...getAllArrayPaths(child));
+  }
+  return paths;
 }
 
 // Get all descendant paths (both leaf and intermediate)
@@ -87,8 +126,10 @@ interface FieldTreeItemProps {
   node: FieldTreeNode;
   selectedPaths: Set<string>;
   expandedPaths: Set<string>;
+  arrayModes: Map<string, ArrayPasteMode>;
   onToggleSelect: (path: string, node: FieldTreeNode) => void;
   onToggleExpand: (path: string) => void;
+  onArrayModeChange: (path: string, mode: ArrayPasteMode) => void;
   depth: number;
 }
 
@@ -96,8 +137,10 @@ function FieldTreeItem({
   node,
   selectedPaths,
   expandedPaths,
+  arrayModes,
   onToggleSelect,
   onToggleExpand,
+  onArrayModeChange,
   depth,
 }: FieldTreeItemProps) {
   const isExpanded = expandedPaths.has(node.path);
@@ -120,11 +163,13 @@ function FieldTreeItem({
     return <Square className="h-4 w-4 text-muted-foreground" />;
   };
 
+  const currentArrayMode = arrayModes.get(node.path) || 'overwrite';
+
   return (
     <div>
       <div
         className={cn(
-          'flex items-center gap-1.5 px-2 py-1 rounded-md text-sm cursor-pointer',
+          'flex items-center gap-1.5 px-2 py-1 rounded-md text-sm',
           'hover:bg-accent hover:text-accent-foreground',
           'transition-colors duration-150'
         )}
@@ -137,7 +182,7 @@ function FieldTreeItem({
               e.stopPropagation();
               onToggleExpand(node.path);
             }}
-            className="p-0.5 hover:bg-muted rounded shrink-0"
+            className="p-0.5 hover:bg-muted rounded shrink-0 cursor-pointer"
           >
             {isExpanded ? (
               <ChevronDown className="h-4 w-4" />
@@ -155,21 +200,42 @@ function FieldTreeItem({
             e.stopPropagation();
             onToggleSelect(node.path, node);
           }}
-          className="p-0.5 hover:bg-muted rounded shrink-0"
+          className="p-0.5 hover:bg-muted rounded shrink-0 cursor-pointer"
         >
           {getCheckboxIcon()}
         </button>
 
-        {/* Name and type */}
+        {/* Name */}
         <span
-          className="truncate flex-1"
+          className="truncate flex-1 cursor-pointer"
           onClick={() => onToggleSelect(node.path, node)}
         >
           {node.name}
         </span>
-        <span className="text-xs text-muted-foreground shrink-0">
-          {node.type}
-        </span>
+
+        {/* Array mode dropdown or type label */}
+        {node.isArray && isSelected ? (
+          <Select
+            value={currentArrayMode}
+            onValueChange={(value) => onArrayModeChange(node.path, value as ArrayPasteMode)}
+          >
+            <SelectTrigger 
+              className="h-6 w-24 text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="append">Append</SelectItem>
+              <SelectItem value="prepend">Prepend</SelectItem>
+              <SelectItem value="overwrite">Overwrite</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <span className="text-xs text-muted-foreground shrink-0">
+            {node.isArray ? `array[${node.arrayLength}]` : node.type}
+          </span>
+        )}
       </div>
 
       {/* Children */}
@@ -181,8 +247,10 @@ function FieldTreeItem({
               node={child}
               selectedPaths={selectedPaths}
               expandedPaths={expandedPaths}
+              arrayModes={arrayModes}
               onToggleSelect={onToggleSelect}
               onToggleExpand={onToggleExpand}
+              onArrayModeChange={onArrayModeChange}
               depth={depth + 1}
             />
           ))}
@@ -202,6 +270,7 @@ export function PasteSelectedDialog({
 }: PasteSelectedDialogProps) {
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['']));
+  const [arrayModes, setArrayModes] = useState<Map<string, ArrayPasteMode>>(new Map());
 
   // Build the field tree
   const fieldTree = useMemo(() => {
@@ -212,6 +281,7 @@ export function PasteSelectedDialog({
   React.useEffect(() => {
     if (open) {
       setSelectedPaths(new Set());
+      setArrayModes(new Map());
       // Expand all by default
       const allPaths = getAllDescendantPaths(fieldTree);
       setExpandedPaths(new Set(allPaths));
@@ -252,6 +322,14 @@ export function PasteSelectedDialog({
     });
   }, []);
 
+  const handleArrayModeChange = useCallback((path: string, mode: ArrayPasteMode) => {
+    setArrayModes((prev) => {
+      const next = new Map(prev);
+      next.set(path, mode);
+      return next;
+    });
+  }, []);
+
   const handleSelectAll = useCallback(() => {
     const allLeafPaths = getAllLeafPaths(fieldTree);
     setSelectedPaths(new Set(allLeafPaths));
@@ -262,9 +340,23 @@ export function PasteSelectedDialog({
   }, []);
 
   const handlePaste = useCallback(() => {
-    onPaste(Array.from(selectedPaths));
+    // Get all array paths to check which selected paths are arrays
+    const allArrayPaths = new Set(getAllArrayPaths(fieldTree));
+    
+    // Build selections with array modes
+    const selections: PasteFieldSelection[] = Array.from(selectedPaths).map(path => {
+      if (allArrayPaths.has(path)) {
+        return {
+          path,
+          arrayMode: arrayModes.get(path) || 'overwrite',
+        };
+      }
+      return { path };
+    });
+    
+    onPaste(selections);
     onOpenChange(false);
-  }, [selectedPaths, onPaste, onOpenChange]);
+  }, [selectedPaths, arrayModes, fieldTree, onPaste, onOpenChange]);
 
   const targetCount = targetPaths.length;
   const selectedCount = selectedPaths.size;
@@ -302,8 +394,10 @@ export function PasteSelectedDialog({
                   node={child}
                   selectedPaths={selectedPaths}
                   expandedPaths={expandedPaths}
+                  arrayModes={arrayModes}
                   onToggleSelect={handleToggleSelect}
                   onToggleExpand={handleToggleExpand}
+                  onArrayModeChange={handleArrayModeChange}
                   depth={0}
                 />
               ))
