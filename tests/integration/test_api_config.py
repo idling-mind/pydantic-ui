@@ -15,7 +15,7 @@ class TestGetConfig:
         response = await client_simple.get("/editor/api/config")
         assert response.status_code == 200
         config = response.json()
-        
+
         # Check default values
         assert config["title"] == "Data Editor"
         assert config["description"] == ""
@@ -35,7 +35,7 @@ class TestGetConfig:
         response = await client_with_config.get("/editor/api/config")
         assert response.status_code == 200
         config = response.json()
-        
+
         # Check custom values
         assert config["title"] == "Custom Editor"
         assert config["description"] == "A custom editor"
@@ -49,15 +49,15 @@ class TestGetConfig:
         """Test configuration includes action buttons."""
         response = await client_with_config.get("/editor/api/config")
         config = response.json()
-        
+
         assert len(config["actions"]) == 2
-        
+
         # Check first action (validate)
         validate_action = config["actions"][0]
         assert validate_action["id"] == "validate"
         assert validate_action["label"] == "Validate"
         assert validate_action["variant"] == "secondary"
-        
+
         # Check second action (export)
         export_action = config["actions"][1]
         assert export_action["id"] == "export"
@@ -69,7 +69,7 @@ class TestGetConfig:
         """Test config response has all required fields."""
         response = await client_simple.get("/editor/api/config")
         config = response.json()
-        
+
         required_fields = [
             "title",
             "description",
@@ -83,6 +83,6 @@ class TestGetConfig:
             "actions",
             "show_save_reset",
         ]
-        
+
         for field in required_fields:
             assert field in config, f"Missing required field: {field}"

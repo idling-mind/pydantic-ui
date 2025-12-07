@@ -1,7 +1,7 @@
 """API route handlers for Pydantic UI."""
 
-import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
@@ -9,8 +9,10 @@ from pydantic_ui.config import FieldConfig, UIConfig
 from pydantic_ui.models import (
     ActionButtonResponse,
     ConfigResponse,
-    ValidationError as ValidationErrorModel,
     ValidationResponse,
+)
+from pydantic_ui.models import (
+    ValidationError as ValidationErrorModel,
 )
 from pydantic_ui.schema import model_to_data, parse_model
 from pydantic_ui.utils import set_value_at_path
@@ -54,10 +56,11 @@ class DataHandler:
         # Direct match
         if path in self.field_configs:
             return self.field_configs[path]
-        
+
         # Try wildcard patterns - replace array indices with []
         # e.g., "users.0.age" should match "users.[].age"
         import re
+
         for pattern, config in self.field_configs.items():
             if "[]" in pattern:
                 # Convert pattern to regex: "users.[].age" -> "users\.\d+\.age"
@@ -65,12 +68,10 @@ class DataHandler:
                 regex_pattern = f"^{regex_pattern}$"
                 if re.match(regex_pattern, path):
                     return config
-        
+
         return None
 
-    def _apply_field_configs(
-        self, fields: dict[str, Any], prefix: str = ""
-    ) -> None:
+    def _apply_field_configs(self, fields: dict[str, Any], prefix: str = "") -> None:
         """Apply field configurations to schema fields."""
         for field_name, field_schema in fields.items():
             full_path = f"{prefix}{field_name}" if prefix else field_name
@@ -104,19 +105,13 @@ class DataHandler:
 
             # Recurse into nested fields
             if field_schema.get("fields"):
-                self._apply_field_configs(
-                    field_schema["fields"], f"{full_path}."
-                )
-            
+                self._apply_field_configs(field_schema["fields"], f"{full_path}.")
+
             # Recurse into array items
             if field_schema.get("items"):
-                self._apply_field_configs_to_items(
-                    field_schema["items"], f"{full_path}.[]."
-                )
+                self._apply_field_configs_to_items(field_schema["items"], f"{full_path}.[].")
 
-    def _apply_field_configs_to_items(
-        self, item_schema: dict[str, Any], prefix: str
-    ) -> None:
+    def _apply_field_configs_to_items(self, item_schema: dict[str, Any], prefix: str) -> None:
         """Apply field configurations to array item schema."""
         # If items is an object with fields, recurse into those fields
         if item_schema.get("fields"):
@@ -229,7 +224,7 @@ class DataHandler:
             )
             for action in self.ui_config.actions
         ]
-        
+
         return ConfigResponse(
             title=self.ui_config.title,
             description=self.ui_config.description,

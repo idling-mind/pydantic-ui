@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 class ActionButtonResponse(BaseModel):
     """Action button configuration for API response."""
-    
+
     id: str
     label: str
     variant: Literal["default", "secondary", "outline", "ghost", "destructive"] = "default"

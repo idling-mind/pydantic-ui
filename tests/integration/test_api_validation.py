@@ -54,7 +54,7 @@ class TestValidateData:
             json={"data": {"name": 123, "value": 42}},
         )
         result = response.json()
-        
+
         if not result["valid"]:
             error = result["errors"][0]
             assert "path" in error
@@ -69,13 +69,13 @@ class TestValidateData:
             "/editor/api/data",
             json={"data": {"name": "Original", "value": 10}},
         )
-        
+
         # Validate new data (valid)
         await client_simple.post(
             "/editor/api/validate",
             json={"data": {"name": "New", "value": 99}},
         )
-        
+
         # Get data should still return original
         response = await client_simple.get("/editor/api/data")
         data = response.json()
@@ -91,7 +91,7 @@ class TestValidateData:
         )
         result = response.json()
         assert result["valid"] is False
-        
+
         # Should have error for age being negative
         error_paths = [e["path"] for e in result["errors"]]
         assert "age" in error_paths

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from pydantic_ui.utils import delete_at_path, get_value_at_path, set_value_at_path
-
 
 # =============================================================================
 # Tests for get_value_at_path()

@@ -12,10 +12,9 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel, Field
 
-from pydantic_ui import FieldConfig, Renderer, UIConfig, ActionButton, create_pydantic_ui
-from pydantic_ui.sessions import SessionManager, Session
+from pydantic_ui import ActionButton, FieldConfig, Renderer, UIConfig, create_pydantic_ui
 from pydantic_ui.handlers import DataHandler
-
+from pydantic_ui.sessions import Session, SessionManager
 
 # =============================================================================
 # Test Models
@@ -377,15 +376,15 @@ def app_with_config(
 def app_with_loader_saver(simple_model: type[SimpleModel]) -> FastAPI:
     """Return a FastAPI app with data loader and saver."""
     saved_data: list[SimpleModel] = []
-    
+
     def load_data() -> SimpleModel:
         if saved_data:
             return saved_data[-1]
         return SimpleModel(name="loaded", value=100)
-    
+
     def save_data(instance: SimpleModel) -> None:
         saved_data.append(instance)
-    
+
     app = FastAPI()
     router = create_pydantic_ui(
         simple_model,

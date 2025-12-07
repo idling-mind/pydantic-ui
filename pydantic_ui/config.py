@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 
 class ActionButton(BaseModel):
     """Configuration for a custom action button.
-    
+
     Action buttons appear in the header and trigger Python callbacks
     when clicked.
-    
+
     Example:
         ActionButton(
             id="validate",
@@ -21,32 +21,20 @@ class ActionButton(BaseModel):
             tooltip="Run custom validation"
         )
     """
-    
-    id: str = Field(
-        description="Unique identifier for the action"
-    )
-    label: str = Field(
-        description="Button label text"
-    )
+
+    id: str = Field(description="Unique identifier for the action")
+    label: str = Field(description="Button label text")
     variant: Literal["default", "secondary", "outline", "ghost", "destructive"] = Field(
-        default="default",
-        description="Button style variant"
+        default="default", description="Button style variant"
     )
     icon: str | None = Field(
-        default=None,
-        description="Lucide icon name (e.g., 'check', 'trash', 'play')"
+        default=None, description="Lucide icon name (e.g., 'check', 'trash', 'play')"
     )
-    disabled: bool = Field(
-        default=False,
-        description="Whether the button is disabled"
-    )
-    tooltip: str | None = Field(
-        default=None,
-        description="Tooltip text on hover"
-    )
+    disabled: bool = Field(default=False, description="Whether the button is disabled")
+    tooltip: str | None = Field(default=None, description="Tooltip text on hover")
     confirm: str | None = Field(
         default=None,
-        description="If set, show confirmation dialog with this message before triggering"
+        description="If set, show confirmation dialog with this message before triggering",
     )
 
 

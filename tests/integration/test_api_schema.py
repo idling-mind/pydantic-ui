@@ -15,7 +15,7 @@ class TestGetSchema:
         response = await client_simple.get("/editor/api/schema")
         assert response.status_code == 200
         schema = response.json()
-        
+
         assert schema["name"] == "SimpleModel"
         assert schema["type"] == "object"
         assert "fields" in schema
@@ -27,7 +27,7 @@ class TestGetSchema:
         """Test schema includes correct field types."""
         response = await client_simple.get("/editor/api/schema")
         schema = response.json()
-        
+
         # name is str
         assert schema["fields"]["name"]["type"] == "string"
         # value is int
@@ -38,7 +38,7 @@ class TestGetSchema:
         """Test schema includes field titles."""
         response = await client_simple.get("/editor/api/schema")
         schema = response.json()
-        
+
         assert schema["fields"]["name"]["title"] == "Name"
         assert schema["fields"]["value"]["title"] == "Value"
 
@@ -47,7 +47,7 @@ class TestGetSchema:
         """Test schema reflects field configurations."""
         response = await client_with_config.get("/editor/api/schema")
         schema = response.json()
-        
+
         # Check that ui_config is applied
         name_field = schema["fields"]["name"]
         if name_field.get("ui_config"):
@@ -58,12 +58,12 @@ class TestGetSchema:
         """Test schema response has expected format."""
         response = await client_simple.get("/editor/api/schema")
         schema = response.json()
-        
+
         # Required top-level fields
         assert "name" in schema
         assert "type" in schema
         assert "fields" in schema
-        
+
         # Each field should have type and title
         for field_name, field_schema in schema["fields"].items():
             assert "type" in field_schema
@@ -78,7 +78,7 @@ class TestSchemaWithConstraints:
         """Test schema includes field constraints."""
         response = await client_with_config.get("/editor/api/schema")
         schema = response.json()
-        
+
         # Person model has age with ge=0, le=150
         age_field = schema["fields"]["age"]
         constraints = age_field.get("constraints", {})
@@ -90,7 +90,7 @@ class TestSchemaWithConstraints:
         """Test schema includes default values."""
         response = await client_simple.get("/editor/api/schema")
         schema = response.json()
-        
+
         # SimpleModel.value has default=0
         value_field = schema["fields"]["value"]
         assert value_field.get("default") == 0
@@ -104,7 +104,7 @@ class TestSchemaWithNestedModels:
         """Test schema properly represents nested models."""
         response = await client_with_config.get("/editor/api/schema")
         schema = response.json()
-        
+
         # Verify it's a valid schema structure
         assert schema["type"] == "object"
         assert "fields" in schema

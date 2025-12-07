@@ -7,7 +7,6 @@ from pydantic import ValidationError
 
 from pydantic_ui.config import ActionButton, FieldConfig, Renderer, UIConfig
 
-
 # =============================================================================
 # Tests for Renderer Enum
 # =============================================================================

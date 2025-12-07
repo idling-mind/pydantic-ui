@@ -9,7 +9,6 @@ import pytest
 
 from pydantic_ui.sessions import Session, SessionManager
 
-
 # =============================================================================
 # Tests for Session
 # =============================================================================
@@ -48,25 +47,25 @@ class TestSession:
     async def test_push_event_to_subscribers(self):
         """Test events are pushed to subscribers."""
         session = Session(id="test-123")
-        
+
         received_events = []
-        
+
         async def collect_events():
             async for event in session.subscribe():
                 received_events.append(event)
                 if len(received_events) >= 2:
                     break
-        
+
         # Start collecting in background
         task = asyncio.create_task(collect_events())
         await asyncio.sleep(0.01)  # Let subscriber start
-        
+
         # Push events
         await session.push_event("toast", {"message": "First"})
         await session.push_event("toast", {"message": "Second"})
-        
+
         await asyncio.wait_for(task, timeout=1.0)
-        
+
         assert len(received_events) == 2
         assert received_events[0]["payload"]["message"] == "First"
         assert received_events[1]["payload"]["message"] == "Second"
@@ -75,16 +74,16 @@ class TestSession:
     async def test_get_pending_events(self):
         """Test getting pending events since timestamp."""
         session = Session(id="test-123")
-        
+
         # Push first event
         await session.push_event("event1", {})
         await asyncio.sleep(0.01)
         mid_time = time.time()
         await asyncio.sleep(0.01)
-        
+
         # Push second event
         await session.push_event("event2", {})
-        
+
         # Get events since mid_time
         events = await session.get_pending_events(mid_time)
         assert len(events) == 1
@@ -105,7 +104,7 @@ class TestSession:
         # Default maxlen is 100
         for i in range(150):
             await session.push_event(f"event{i}", {})
-        
+
         assert len(session.events) == 100
         # Oldest events should be dropped
         assert session.events[0]["type"] == "event50"
@@ -114,30 +113,30 @@ class TestSession:
     async def test_multiple_subscribers(self):
         """Test multiple subscribers receive events."""
         session = Session(id="test-123")
-        
+
         received1 = []
         received2 = []
-        
+
         async def subscriber1():
             async for event in session.subscribe():
                 received1.append(event)
                 if len(received1) >= 1:
                     break
-        
+
         async def subscriber2():
             async for event in session.subscribe():
                 received2.append(event)
                 if len(received2) >= 1:
                     break
-        
+
         task1 = asyncio.create_task(subscriber1())
         task2 = asyncio.create_task(subscriber2())
         await asyncio.sleep(0.01)
-        
+
         await session.push_event("test", {"data": "shared"})
-        
+
         await asyncio.wait_for(asyncio.gather(task1, task2), timeout=1.0)
-        
+
         assert len(received1) == 1
         assert len(received2) == 1
         assert received1[0]["payload"] == received2[0]["payload"]
@@ -173,13 +172,13 @@ class TestSessionManager:
     async def test_get_or_create_existing(self):
         """Test getting an existing session."""
         manager = SessionManager()
-        
+
         # Create session
         session1, is_new1 = await manager.get_or_create_session(
             "fixed-id", {"initial": "data"}
         )
         assert is_new1 is True
-        
+
         # Get same session
         session2, is_new2 = await manager.get_or_create_session(
             "fixed-id", {"different": "data"}
@@ -193,10 +192,10 @@ class TestSessionManager:
     async def test_get_session(self):
         """Test getting session by ID."""
         manager = SessionManager()
-        
+
         # Create session
         session, _ = await manager.get_or_create_session("test-id", {})
-        
+
         # Get session
         retrieved = await manager.get_session("test-id")
         assert retrieved is not None
@@ -213,14 +212,14 @@ class TestSessionManager:
     async def test_remove_session(self):
         """Test removing a session."""
         manager = SessionManager()
-        
+
         # Create and remove session
         await manager.get_or_create_session("test-id", {})
         assert manager.session_count == 1
-        
+
         await manager.remove_session("test-id")
         assert manager.session_count == 0
-        
+
         # Session should no longer exist
         result = await manager.get_session("test-id")
         assert result is None
@@ -230,14 +229,14 @@ class TestSessionManager:
         """Test cleaning up inactive sessions."""
         # Short timeout for testing
         manager = SessionManager(session_timeout=0.01)
-        
+
         # Create session
         await manager.get_or_create_session("old-session", {})
         assert manager.session_count == 1
-        
+
         # Wait for timeout
         await asyncio.sleep(0.02)
-        
+
         # Cleanup
         removed = await manager.cleanup_inactive_sessions()
         assert removed == 1
@@ -247,25 +246,25 @@ class TestSessionManager:
     async def test_cleanup_preserves_active(self):
         """Test cleanup preserves active sessions."""
         manager = SessionManager(session_timeout=0.05)
-        
+
         # Create two sessions
         session1, _ = await manager.get_or_create_session("session-1", {})
         await manager.get_or_create_session("session-2", {})
-        
+
         # Wait partial timeout
         await asyncio.sleep(0.03)
-        
+
         # Touch session-1 to keep it active
         session1.touch()
-        
+
         # Wait more
         await asyncio.sleep(0.03)
-        
+
         # Cleanup should remove only session-2
         removed = await manager.cleanup_inactive_sessions()
         assert removed == 1
         assert manager.session_count == 1
-        
+
         result = await manager.get_session("session-1")
         assert result is not None
 
@@ -278,14 +277,14 @@ class TestSessionManager:
     async def test_broadcast_event(self):
         """Test broadcasting event to all sessions."""
         manager = SessionManager()
-        
+
         # Create multiple sessions
         session1, _ = await manager.get_or_create_session("session-1", {})
         session2, _ = await manager.get_or_create_session("session-2", {})
-        
+
         # Broadcast event
         await manager.broadcast_event("global_toast", {"message": "Hello all"})
-        
+
         # Both sessions should have the event
         assert len(session1.events) == 1
         assert len(session2.events) == 1

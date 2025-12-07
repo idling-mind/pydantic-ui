@@ -2,7 +2,7 @@
 
 import datetime
 import types
-from enum import Enum, StrEnum
+from enum import Enum
 from typing import Any, Literal, Union, get_args, get_origin
 
 from pydantic import BaseModel
@@ -382,9 +382,9 @@ def _get_type_default(field_type: type | None) -> Any:
     """Get a reasonable default value for a given type."""
     if field_type is None:
         return None
-    
+
     origin = get_origin(field_type)
-    
+
     # Handle Optional types
     if origin is Union or origin is types.UnionType:
         args = get_args(field_type)
@@ -392,7 +392,7 @@ def _get_type_default(field_type: type | None) -> Any:
         if non_none:
             return _get_type_default(non_none[0])
         return None
-    
+
     # Handle basic types
     if field_type is str:
         return ""
@@ -406,5 +406,5 @@ def _get_type_default(field_type: type | None) -> Any:
         return []
     if origin is dict or field_type is dict:
         return {}
-    
+
     return None

@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import datetime
-from enum import Enum, StrEnum
+from enum import Enum
 from typing import Annotated, Any, Literal
 
 import pytest
-from pydantic import BaseModel, Field
-from pydantic_core import PydanticUndefined
 
 from pydantic_ui.config import FieldConfig, Renderer
 from pydantic_ui.schema import (
@@ -26,19 +24,10 @@ from pydantic_ui.schema import (
 # Import test fixtures
 from tests.conftest import (
     Address,
-    AnnotatedModel,
-    Config,
     DateTimeModel,
-    LiteralModel,
-    Person,
-    PersonWithAddress,
     Priority,
-    Project,
-    SimpleModel,
     Status,
-    Task,
 )
-
 
 # =============================================================================
 # Tests for get_json_type()
@@ -211,8 +200,8 @@ class TestExtractFieldConfig:
 
     def test_config_from_annotated(self):
         """Test FieldConfig from Annotated type."""
+
         from pydantic.fields import FieldInfo
-        from typing import get_args
 
         config = FieldConfig(renderer=Renderer.TEXT_AREA)
         annotated_type = Annotated[str, config]

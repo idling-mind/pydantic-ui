@@ -8,7 +8,6 @@ from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel
 
 from pydantic_ui import (
-    ActionButton,
     FieldConfig,
     Renderer,
     UIConfig,
@@ -48,17 +47,17 @@ class TestCreateRouter:
         app = FastAPI()
         router = create_pydantic_ui(TestModel, prefix="/test")
         app.include_router(router)
-        
+
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             # Test schema endpoint
             response = await client.get("/test/api/schema")
             assert response.status_code == 200
-            
+
             # Test config endpoint
             response = await client.get("/test/api/config")
             assert response.status_code == 200
-            
+
             # Test data endpoint
             response = await client.get("/test/api/data")
             assert response.status_code == 200
@@ -70,11 +69,11 @@ class TestRouterDecorators:
     def test_action_decorator(self):
         """Test @router.action decorator registers handler."""
         router = create_pydantic_ui(TestModel)
-        
+
         @router.action("custom_action")
         def custom_handler(data, controller):
             return {"processed": True}
-        
+
         # Handler should be registered
         assert hasattr(router, "action")
 
@@ -84,14 +83,14 @@ class TestRouterDecorators:
         app = FastAPI()
         router = create_pydantic_ui(TestModel, prefix="/test")
         app.include_router(router)
-        
+
         handler_called = []
-        
+
         @router.action("test_action")
         def test_handler(data, controller):
             handler_called.append(data)
             return {"success": True}
-        
+
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
@@ -109,11 +108,11 @@ class TestRouterDecorators:
         app = FastAPI()
         router = create_pydantic_ui(TestModel, prefix="/test")
         app.include_router(router)
-        
+
         @router.action("async_action")
         async def async_handler(data, controller):
             return {"async": True}
-        
+
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
@@ -130,7 +129,7 @@ class TestRouterDecorators:
         app = FastAPI()
         router = create_pydantic_ui(TestModel, prefix="/test")
         app.include_router(router)
-        
+
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
@@ -147,11 +146,11 @@ class TestDataLoaderSaver:
     async def test_data_loader_called(self):
         """Test data loader is called for GET /api/data."""
         loader_calls = []
-        
+
         def custom_loader():
             loader_calls.append(1)
             return TestModel(name="loaded", count=100)
-        
+
         app = FastAPI()
         router = create_pydantic_ui(
             TestModel,
@@ -159,7 +158,7 @@ class TestDataLoaderSaver:
             prefix="/test",
         )
         app.include_router(router)
-        
+
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/test/api/data")
@@ -172,10 +171,10 @@ class TestDataLoaderSaver:
     async def test_data_saver_called(self):
         """Test data saver is called for POST /api/data."""
         saved_instances = []
-        
+
         def custom_saver(instance):
             saved_instances.append(instance)
-        
+
         app = FastAPI()
         router = create_pydantic_ui(
             TestModel,
@@ -183,7 +182,7 @@ class TestDataLoaderSaver:
             prefix="/test",
         )
         app.include_router(router)
-        
+
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
@@ -197,21 +196,21 @@ class TestDataLoaderSaver:
     def test_data_loader_decorator(self):
         """Test @router.data_loader decorator."""
         router = create_pydantic_ui(TestModel)
-        
+
         @router.data_loader
         def load():
             return TestModel(name="decorated")
-        
+
         assert hasattr(router, "data_loader")
 
     def test_data_saver_decorator(self):
         """Test @router.data_saver decorator."""
         router = create_pydantic_ui(TestModel)
-        
+
         @router.data_saver
         def save(instance):
             pass
-        
+
         assert hasattr(router, "data_saver")
 
 
@@ -222,7 +221,7 @@ class TestInitialData:
     async def test_initial_data_used(self):
         """Test initial_data is used as starting data."""
         initial = TestModel(name="initial", count=99)
-        
+
         app = FastAPI()
         router = create_pydantic_ui(
             TestModel,
@@ -230,7 +229,7 @@ class TestInitialData:
             prefix="/test",
         )
         app.include_router(router)
-        
+
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/test/api/data")
@@ -251,7 +250,7 @@ class TestFieldConfigs:
                 renderer=Renderer.TEXT_INPUT,
             ),
         }
-        
+
         app = FastAPI()
         router = create_pydantic_ui(
             TestModel,
@@ -259,12 +258,12 @@ class TestFieldConfigs:
             prefix="/test",
         )
         app.include_router(router)
-        
+
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/test/api/schema")
             schema = response.json()
-            
+
             name_field = schema["fields"]["name"]
             ui_config = name_field.get("ui_config")
             if ui_config:

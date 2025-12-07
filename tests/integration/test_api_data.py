@@ -5,9 +5,6 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import SimpleModel
-
-
 # =============================================================================
 # Tests for GET /api/data
 # =============================================================================
@@ -96,7 +93,7 @@ class TestPostData:
             "/editor/api/data",
             json={"data": {"name": "Persisted", "value": 42}},
         )
-        
+
         # Get data should return persisted value
         response = await client_simple.get("/editor/api/data")
         data = response.json()
@@ -119,7 +116,7 @@ class TestPatchData:
             "/editor/api/data",
             json={"data": {"name": "Original", "value": 10}},
         )
-        
+
         # Patch just the name
         response = await client_simple.patch(
             "/editor/api/data",
