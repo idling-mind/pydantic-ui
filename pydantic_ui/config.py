@@ -89,6 +89,7 @@ class FieldConfig(BaseModel):
     help_text: str | None = Field(
         default=None,
         description="Help text shown below the field",
+        alias="description",
     )
     hidden: bool = Field(
         default=False,
@@ -105,6 +106,7 @@ class FieldConfig(BaseModel):
 
     class Config:
         use_enum_values = True
+        allow_population_by_field_name = True
 
 
 class UIConfig(BaseModel):

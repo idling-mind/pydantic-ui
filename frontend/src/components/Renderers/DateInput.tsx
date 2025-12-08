@@ -50,6 +50,9 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>
       )}
+      {schema.ui_config?.help_text && (
+        <p className="text-xs text-muted-foreground">{schema.ui_config.help_text}</p>
+      )}
       {hasError && (
         <p className="text-xs text-destructive">{errors[0].message}</p>
       )}

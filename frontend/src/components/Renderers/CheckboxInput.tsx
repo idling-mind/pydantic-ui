@@ -32,6 +32,9 @@ export function CheckboxInput({ name, path, schema, value, errors, disabled, onC
       {schema.description && (
         <p className="text-xs text-muted-foreground ml-6">{schema.description}</p>
       )}
+      {schema.ui_config?.help_text && (
+        <p className="text-xs text-muted-foreground ml-6">{schema.ui_config.help_text}</p>
+      )}
       {hasError && (
         <p className="text-xs text-destructive ml-6">{errors[0].message}</p>
       )}
