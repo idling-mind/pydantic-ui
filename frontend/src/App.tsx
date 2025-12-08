@@ -6,6 +6,7 @@ import { EventProvider } from '@/context/EventContext';
 import { Layout } from '@/components/Layout';
 import { ToastContainer } from '@/components/ToastContainer';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
+import { useEffect } from 'react';
 
 interface AppProps {
   apiBase?: string;
@@ -19,7 +20,15 @@ function AppContent() {
     setExternalData, 
     refresh,
     apiBase,
+    config,
   } = useData();
+
+  // Set document title based on config
+  useEffect(() => {
+    if (config?.title) {
+      document.title = config.title;
+    }
+  }, [config?.title]);
 
   return (
     <EventProvider
