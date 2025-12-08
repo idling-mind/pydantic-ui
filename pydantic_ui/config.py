@@ -54,6 +54,7 @@ class Renderer(str, Enum):
     DATETIME_PICKER = "datetime_picker"
     COLOR_PICKER = "color_picker"
     FILE_UPLOAD = "file_upload"
+    FILE_SELECT = "file_select"
     PASSWORD = "password"
     EMAIL = "email"
     URL = "url"
@@ -106,7 +107,7 @@ class FieldConfig(BaseModel):
 
     class Config:
         use_enum_values = True
-        allow_population_by_field_name = True
+        validate_by_name = True
 
 
 class UIConfig(BaseModel):

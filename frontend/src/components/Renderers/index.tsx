@@ -9,6 +9,8 @@ import { SelectInput } from './SelectInput';
 import { DateInput } from './DateInput';
 import { ColorInput } from './ColorInput';
 import { JsonInput } from './JsonInput';
+import { FileSelectInput } from './FileSelectInput';
+import { FileUploadInput } from './FileUploadInput';
 import { useData } from '@/context/DataContext';
 import type { RendererProps } from './types';
 import type { SchemaField, FieldError } from '@/types';
@@ -34,6 +36,8 @@ const rendererMap: Record<string, React.ComponentType<RendererProps>> = {
   color: ColorInput,
   color_picker: ColorInput,
   json: JsonInput,
+  file_select: FileSelectInput,
+  file_upload: FileUploadInput,
   // Aliases
   input: TextInput,
   switch: ToggleInput,
@@ -166,6 +170,8 @@ export {
   DateInput,
   ColorInput,
   JsonInput,
+  FileSelectInput,
+  FileUploadInput,
 };
 
 // Export utility
