@@ -2,14 +2,21 @@
 import sys
 from datetime import datetime, timedelta
 
-from fastapi import FastAPI
-from pydantic_core import ValidationError
 import uvicorn
+from fastapi import FastAPI
 from nested import DeepNestedModel
+from pydantic_core import ValidationError
 
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
-from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui, ActionButton, PydanticUIController
+from pydantic_ui import (
+    ActionButton,
+    FieldConfig,
+    PydanticUIController,
+    Renderer,
+    UIConfig,
+    create_pydantic_ui,
+)
 
 # Create FastAPI app
 app = FastAPI(title="Pydantic UI Example")
@@ -57,6 +64,11 @@ field_configs = {
         label="Value of the type",
         description="The value associated with the contact type",
     ),
+    "contacts.[].photo": FieldConfig(
+        label="Photo",
+        description="Path to the contact's photo",
+        renderer=Renderer.FILE_UPLOAD,
+    ),
 }
 
 # Create and mount the pydantic-ui router
@@ -71,14 +83,14 @@ pydantic_ui_router = create_pydantic_ui(
 async def handle_validate(data: dict, controller: PydanticUIController):
     """
     Full Pydantic validation + custom business rules.
-    
+
     This demonstrates how to:
     1. Run Pydantic's built-in validation (type checks, constraints like ge/le, etc.)
     2. Add custom business rule validation on top
     3. Convert all errors to the UI format
     """
     errors = []
-    
+
     # Step 1: Run Pydantic's built-in validation
     try:
         # This validates all field types, constraints (ge, le, min_length, etc.)
@@ -96,14 +108,13 @@ async def handle_validate(data: dict, controller: PydanticUIController):
         await controller.show_toast(f"Unexpected error: {e}", "error")
         return {"valid": False, "error_count": 1}
     # Custom validation
-    print("here")
     try:
+        print(data.get("contacts")[0].get("photo"))
         if validated.created_at > datetime.now().date():
             errors.append({
                 "path": "created_at",
                 "message": "Created date cannot be in the future."
             })
-        print(" and here")
         if validated.created_at < datetime.now().date()-timedelta(days=7) and validated.optional_field is None:
             print(" and and here")
             errors.append({
@@ -112,7 +123,6 @@ async def handle_validate(data: dict, controller: PydanticUIController):
             })
     except Exception as e:
         await controller.show_toast(f"Unexpected error during custom validation: {e}", "error")
-        return {"valid": False, "error_count": 1}
     # Step 3: Show results in the UI
     if errors:
         await controller.show_validation_errors(errors)

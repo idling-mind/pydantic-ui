@@ -27,6 +27,7 @@ class Address(BaseModel):
 class Contact(BaseModel):
     type: ContactType
     value: str
+    photo: str | None = None
     is_primary: bool = Field(default=False)
 
 
