@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { FieldRenderer } from '@/components/Renderers';
 import { NestedFieldCard } from './NestedFieldCard';
+import { OrphanedErrors } from './OrphanedErrors';
 import { TableView } from '@/components/TableView';
 import { useData } from '@/context/DataContext';
 import type { SchemaField, FieldError, UIConfig } from '@/types';
@@ -840,6 +841,15 @@ export function ArrayListEditor({
     <div className="space-y-4">
       {schema.description && (
         <p className="text-sm text-muted-foreground">{schema.description}</p>
+      )}
+
+      {/* Show orphaned errors (errors for paths not found in schema) */}
+      {errors && errors.length > 0 && (
+        <OrphanedErrors
+          errors={errors}
+          basePath={path || ''}
+          schema={schema}
+        />
       )}
       
       <div className="flex items-center justify-between">

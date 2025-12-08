@@ -9,6 +9,7 @@ import { useData } from '@/context/DataContext';
 import { ObjectEditor, ArrayEditor, ArrayListEditor } from './ObjectEditor';
 import { FieldRenderer } from '@/components/Renderers';
 import { ActionButtons } from '@/components/ActionButtons';
+import { OrphanedErrors } from './OrphanedErrors';
 
 interface DetailPanelProps {
   className?: string;
@@ -260,6 +261,15 @@ export function DetailPanel({ className }: DetailPanelProps) {
         )}
         {basePath && (
           <p className="text-xs text-muted-foreground font-mono">{basePath}</p>
+        )}
+        {/* Show orphaned errors (errors for paths not found in schema) */}
+        {selectedSchema && relevantErrors && relevantErrors.length > 0 && (
+          <OrphanedErrors
+            errors={relevantErrors}
+            basePath={basePath || ''}
+            schema={selectedSchema}
+            className="mt-3"
+          />
         )}
       </div>
 
