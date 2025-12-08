@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "Your Name", email = "your@email.com" }
+    { name = "Najeem Muhammed", email = "najeem@gmail.com" }
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -54,10 +54,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/pydantic-ui"
-Documentation = "https://github.com/yourusername/pydantic-ui#readme"
-Repository = "https://github.com/yourusername/pydantic-ui"
-Issues = "https://github.com/yourusername/pydantic-ui/issues"
+Homepage = "https://github.com/idling-mind/pydantic-ui"
+Documentation = "https://github.com/idling-mind/pydantic-ui#readme"
+Repository = "https://github.com/idling-mind/pydantic-ui"
+Issues = "https://github.com/idling-mind/pydantic-ui/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["pydantic_ui"]
