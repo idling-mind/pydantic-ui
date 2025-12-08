@@ -1048,33 +1048,33 @@ describe('TreeNode', () => {
 
 ## 📦 Build & Deploy
 
-### Development Testing with test-app.ps1
+### Development Testing with build-test.ps1
 
-The primary script for building and testing the full application is `./scripts/test-app.ps1`. This script builds the React frontend, copies it to the static folder, and starts a dev server.
+The primary script for building and testing the full application is `./scripts/build-test.ps1`. This script builds the React frontend, copies it to the static folder, and starts a dev server.
 
 **Usage:**
 
 ```powershell
 # Full build and run with defaults (main.py example on port 8000)
-./scripts/test-app.ps1
+./scripts/build-test.ps1
 
 # Skip frontend build (use existing build)
-./scripts/test-app.ps1 -SkipBuild
+./scripts/build-test.ps1 -SkipBuild
 
 # Skip npm install (faster if node_modules exists)
-./scripts/test-app.ps1 -SkipNpmInstall
+./scripts/build-test.ps1 -SkipNpmInstall
 
 # Run the simple.py example instead of main.py
-./scripts/test-app.ps1 -Example simple
+./scripts/build-test.ps1 -Example simple
 
 # Run on a different port
-./scripts/test-app.ps1 -Port 3000
+./scripts/build-test.ps1 -Port 3000
 
 # Automatically open browser after server starts
-./scripts/test-app.ps1 -OpenBrowser
+./scripts/build-test.ps1 -OpenBrowser
 
 # Combine options for fast iteration
-./scripts/test-app.ps1 -SkipBuild -SkipNpmInstall -Example simple -Port 3000 -OpenBrowser
+./scripts/build-test.ps1 -SkipBuild -SkipNpmInstall -Example simple -Port 3000 -OpenBrowser
 ```
 
 **Parameters:**
