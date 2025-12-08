@@ -2,6 +2,7 @@ import React from 'react';
 import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 import { TreePanel } from '@/components/TreePanel';
 import { DetailPanel } from '@/components/DetailPanel';
 import { useData } from '@/context/DataContext';
@@ -78,6 +79,11 @@ export function Layout({}: LayoutProps) {
           <DetailPanel />
         </div>
       </div>
+
+      <Footer 
+        text={config?.footer_text}
+        url={config?.footer_url}
+      />
     </div>
   );
 }

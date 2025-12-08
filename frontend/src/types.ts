@@ -74,6 +74,8 @@ export interface UIConfig {
   actions: ActionButton[];
   show_save_reset: boolean;
   responsive_columns: Record<number, number>;
+  footer_text: string;
+  footer_url: string;
 }
 
 // SSE Event types

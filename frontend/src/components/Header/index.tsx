@@ -1,4 +1,5 @@
 
+import { useState } from 'react';
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,17 +18,25 @@ interface HeaderProps {
   className?: string;
 }
 
+// Default logo path - bundled with the package
+const DEFAULT_LOGO_URL = './logo.png';
+
 export function Header({ title = 'Pydantic UI', logoText, logoUrl, className }: HeaderProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const [logoError, setLogoError] = useState(false);
 
   // Determine what to show in the logo area
   const renderLogo = () => {
-    if (logoUrl) {
+    // Use provided logoUrl, or fall back to default bundled logo
+    const effectiveLogoUrl = logoUrl ?? DEFAULT_LOGO_URL;
+    
+    if (effectiveLogoUrl && !logoError) {
       return (
         <img 
-          src={logoUrl} 
+          src={effectiveLogoUrl} 
           alt={title} 
           className="h-8 w-8 rounded-md object-contain"
+          onError={() => setLogoError(true)}
         />
       );
     }

@@ -169,3 +169,11 @@ class UIConfig(BaseModel):
         default_factory=lambda: {640: 1, 1000: 2, 1600: 3},
         description="Responsive column breakpoints. Keys are max-width in pixels, values are number of columns. E.g., {640: 1, 1000: 2, 1600: 3} means 1 column up to 640px, 2 columns from 640-1000px, 3 columns above 1000px.",
     )
+    footer_text: str = Field(
+        default="Powered by Pydantic UI",
+        description="Text shown in the footer. Set to empty string to hide footer.",
+    )
+    footer_url: str = Field(
+        default="https://github.com/idling-mind/pydantic-ui",
+        description="URL that the footer links to",
+    )

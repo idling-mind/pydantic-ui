@@ -194,6 +194,8 @@ class TestUIConfig:
         assert config.show_types is True
         assert config.actions == []
         assert config.show_save_reset is False
+        assert config.footer_text == "Powered by Pydantic UI"
+        assert config.footer_url == "https://github.com/idling-mind/pydantic-ui"
 
     def test_all_options(self):
         """Test UIConfig with all options."""
@@ -215,6 +217,8 @@ class TestUIConfig:
             show_types=False,
             actions=actions,
             show_save_reset=True,
+            footer_text="Custom Footer",
+            footer_url="https://example.com",
         )
         assert config.title == "Custom Editor"
         assert config.description == "A custom configuration editor"
@@ -229,6 +233,8 @@ class TestUIConfig:
         assert config.show_types is False
         assert len(config.actions) == 2
         assert config.show_save_reset is True
+        assert config.footer_text == "Custom Footer"
+        assert config.footer_url == "https://example.com"
 
     def test_with_actions(self):
         """Test UIConfig with action buttons."""

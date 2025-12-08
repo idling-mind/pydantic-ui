@@ -343,6 +343,7 @@ def create_pydantic_ui(
     # Static file serving
     index_file = static_dir / "index.html"
     assets_dir = static_dir / "assets"
+    logo_file = static_dir / "logo.png"
 
     if index_file.exists() and assets_dir.exists():
         # Serve index.html for the root
@@ -350,6 +351,14 @@ def create_pydantic_ui(
         async def serve_index() -> FileResponse:
             """Serve the main UI."""
             return FileResponse(index_file)
+
+        # Serve the bundled logo
+        @router.get("/logo.png")
+        async def serve_logo() -> FileResponse:
+            """Serve the bundled logo."""
+            if logo_file.exists():
+                return FileResponse(logo_file, media_type="image/png")
+            raise HTTPException(status_code=404, detail="Logo not found")
 
         # Serve individual asset files explicitly
         @router.get("/assets/{file_path:path}")
