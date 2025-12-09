@@ -109,7 +109,6 @@ async def handle_validate(data: dict, controller: PydanticUIController):
         return {"valid": False, "error_count": 1}
     # Custom validation
     try:
-        print(data.get("contacts")[0].get("photo"))
         if validated.created_at > datetime.now().date():
             errors.append({
                 "path": "created_at",

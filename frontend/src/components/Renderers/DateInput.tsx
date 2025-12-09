@@ -43,12 +43,17 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
       return;
     }
     
-    // If including time, preserve existing time
-    if (includeTime && date) {
-      selectedDate.setHours(date.getHours(), date.getMinutes(), date.getSeconds());
+    if (includeTime) {
+      // If including time, preserve existing time
+      if (date) {
+        selectedDate.setHours(date.getHours(), date.getMinutes(), date.getSeconds());
+      }
+      onChange(selectedDate.toISOString());
+    } else {
+      // For date-only fields, format as YYYY-MM-DD to avoid time zone issues
+      // and to comply with Pydantic's date type expectations
+      onChange(format(selectedDate, 'yyyy-MM-dd'));
     }
-    
-    onChange(selectedDate.toISOString());
     setOpen(false);
   };
 

@@ -1,6 +1,7 @@
 from datetime import date
-from typing import Dict, List, Optional, Literal
 from enum import Enum
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -34,7 +35,7 @@ class Contact(BaseModel):
 class SubSettings(BaseModel):
     enabled: bool
     level: int = Field(ge=1, le=10)
-    options: List[str]
+    options: list[str]
 
 
 class Settings(BaseModel):
@@ -42,36 +43,35 @@ class Settings(BaseModel):
     notifications: bool
     language: str = Field(default="en")
     sub_settings: SubSettings
-    preferences: Dict[str, str]
+    preferences: dict[str, str]
 
 
 class Item(BaseModel):
     id: int
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     quantity: float
-    tags: List[str]
-    metadata: Dict[str, str]
+    tags: list[str]
+    metadata: dict[str, str]
 
 
 class Category(BaseModel):
     name: str
-    items: List[Item]
-    subcategories: List["Category"]  # Recursive
+    items: list[Item]
 
 
 class DeepNestedModel(BaseModel):
     name: str
-    age: int
+    age: int = Field(ge=0)
     is_active: bool
     created_at: date
-    tags: List[str]
-    metadata: Dict[str, str] = Field(description="Additional metadata as key-value pairs")
+    tags: list[str]
+    metadata: dict[str, str] = Field(description="Additional metadata as key-value pairs")
     address: Address
-    contacts: List[Contact]
+    contacts: list[Contact]
     settings: Settings | None = None
-    categories: List[Category]
-    optional_field: Optional[str] = None
+    categories: list[Category]
+    optional_field: str | None = None
     literal_field: Literal["option1", "option2", "option3"] = "option1"
-    dict_of_models: Dict[str, Address]
-    list_of_dicts: List[Dict[str, int]]
+    dict_of_models: dict[str, Address]
+    list_of_dicts: list[dict[str, int]]
