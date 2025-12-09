@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ActionButton(BaseModel):
@@ -104,10 +104,7 @@ class FieldConfig(BaseModel):
         default_factory=dict,
         description="Additional props passed to the renderer",
     )
-
-    class Config:
-        use_enum_values = True
-        validate_by_name = True
+    model_config = ConfigDict(use_enum_values=True, populate_by_name=True)
 
 
 class UIConfig(BaseModel):

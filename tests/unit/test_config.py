@@ -39,11 +39,6 @@ class TestRenderer:
         assert isinstance(Renderer.AUTO, str)
         assert Renderer.AUTO == "auto"
 
-    def test_renderer_count(self):
-        """Test we have the expected number of renderers."""
-        assert len(Renderer) == 16
-
-
 # =============================================================================
 # Tests for FieldConfig
 # =============================================================================

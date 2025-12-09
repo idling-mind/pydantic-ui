@@ -90,10 +90,7 @@ class PydanticUIController:
             new_config = MyModel(name="Updated", ...)
             await controller.push_data(new_config)
         """
-        if isinstance(data, BaseModel):
-            data_dict = data.model_dump(mode="json")
-        else:
-            data_dict = data
+        data_dict = data.model_dump(mode="json") if isinstance(data, BaseModel) else data
 
         session = await self._get_session()
         # Also update the session's data

@@ -138,7 +138,7 @@ def create_pydantic_ui(
         return JSONResponse(content=schema)
 
     @router.get("/api/data")
-    async def get_data(request: Request, response: Response) -> JSONResponse:
+    async def get_data(request: Request, _response: Response) -> JSONResponse:
         """Get the current data for this session."""
         session = await get_session_from_request(request)
 
@@ -160,7 +160,7 @@ def create_pydantic_ui(
         return resp
 
     @router.post("/api/data")
-    async def update_data(request: Request, response: Response) -> JSONResponse:
+    async def update_data(request: Request, _response: Response) -> JSONResponse:
         """Update the data for this session."""
         session = await get_session_from_request(request)
         body = await request.json()
@@ -201,7 +201,7 @@ def create_pydantic_ui(
             return resp
 
     @router.patch("/api/data")
-    async def partial_update(request: Request, response: Response) -> JSONResponse:
+    async def partial_update(request: Request, _response: Response) -> JSONResponse:
         """Partially update the data for this session."""
         from pydantic import ValidationError
 
@@ -262,7 +262,7 @@ def create_pydantic_ui(
         return JSONResponse(content=config.model_dump())
 
     @router.get("/api/session")
-    async def get_session_info(request: Request, response: Response) -> JSONResponse:
+    async def get_session_info(request: Request, _response: Response) -> JSONResponse:
         """Get or create a session and return its ID."""
         session = await get_session_from_request(request)
         resp = JSONResponse(content={"session_id": session.id})

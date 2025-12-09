@@ -1,6 +1,7 @@
 """Event queue and SSE management for real-time UI updates."""
 
 import asyncio
+import contextlib
 import time
 from collections import deque
 from collections.abc import AsyncGenerator
@@ -45,10 +46,9 @@ class EventQueue:
         async with self._lock:
             self.events.append(event)
             for queue in self.subscribers:
-                try:
+                # Skip if queue is full (subscriber is slow)
+                with contextlib.suppress(asyncio.QueueFull):
                     queue.put_nowait(event)
-                except asyncio.QueueFull:
-                    # Skip if queue is full (subscriber is slow)
                     pass
 
     async def subscribe(self) -> AsyncGenerator[dict[str, Any], None]:

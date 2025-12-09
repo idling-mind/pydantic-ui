@@ -26,8 +26,8 @@ class TestGetData:
         """Test session is created/used for data."""
         response = await client_simple.get("/editor/api/data")
         assert response.status_code == 200
-        # Should set session cookie
-        assert "pydantic_ui_session" in response.cookies or True  # Cookie may be set
+        # Session cookie may or may not be set depending on implementation
+        # Just verify we got a successful response
 
     @pytest.mark.asyncio
     async def test_get_data_with_loader(self, client_with_loader: AsyncClient):

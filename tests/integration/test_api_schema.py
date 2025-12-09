@@ -65,7 +65,7 @@ class TestGetSchema:
         assert "fields" in schema
 
         # Each field should have type and title
-        for field_name, field_schema in schema["fields"].items():
+        for _field_name, field_schema in schema["fields"].items():
             assert "type" in field_schema
             assert "title" in field_schema
 

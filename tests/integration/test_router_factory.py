@@ -15,7 +15,7 @@ from pydantic_ui import (
 )
 
 
-class TestModel(BaseModel):
+class SampleModel(BaseModel):
     """Simple test model."""
     name: str
     count: int = 0
@@ -26,26 +26,26 @@ class TestCreateRouter:
 
     def test_create_router_basic(self):
         """Test creating a basic router."""
-        router = create_pydantic_ui(TestModel)
+        router = create_pydantic_ui(SampleModel)
         assert router is not None
         assert hasattr(router, "controller")
 
     def test_create_router_with_prefix(self):
         """Test creating router with prefix."""
-        router = create_pydantic_ui(TestModel, prefix="/custom")
+        router = create_pydantic_ui(SampleModel, prefix="/custom")
         assert router.prefix == "/custom"
 
     def test_create_router_with_config(self):
         """Test creating router with UI config."""
         config = UIConfig(title="Test Editor", theme="dark")
-        router = create_pydantic_ui(TestModel, ui_config=config)
+        router = create_pydantic_ui(SampleModel, ui_config=config)
         assert router is not None
 
     @pytest.mark.asyncio
     async def test_router_serves_endpoints(self):
         """Test router serves all expected endpoints."""
         app = FastAPI()
-        router = create_pydantic_ui(TestModel, prefix="/test")
+        router = create_pydantic_ui(SampleModel, prefix="/test")
         app.include_router(router)
 
         transport = ASGITransport(app=app)
@@ -68,10 +68,10 @@ class TestRouterDecorators:
 
     def test_action_decorator(self):
         """Test @router.action decorator registers handler."""
-        router = create_pydantic_ui(TestModel)
+        router = create_pydantic_ui(SampleModel)
 
         @router.action("custom_action")
-        def custom_handler(data, controller):
+        def custom_handler(_data, _controller):
             return {"processed": True}
 
         # Handler should be registered
@@ -81,13 +81,13 @@ class TestRouterDecorators:
     async def test_action_handler_called(self):
         """Test action handler is called when action triggered."""
         app = FastAPI()
-        router = create_pydantic_ui(TestModel, prefix="/test")
+        router = create_pydantic_ui(SampleModel, prefix="/test")
         app.include_router(router)
 
         handler_called = []
 
         @router.action("test_action")
-        def test_handler(data, controller):
+        def test_handler(data, _controller):
             handler_called.append(data)
             return {"success": True}
 
@@ -106,11 +106,11 @@ class TestRouterDecorators:
     async def test_async_action_handler(self):
         """Test async action handler works."""
         app = FastAPI()
-        router = create_pydantic_ui(TestModel, prefix="/test")
+        router = create_pydantic_ui(SampleModel, prefix="/test")
         app.include_router(router)
 
         @router.action("async_action")
-        async def async_handler(data, controller):
+        async def async_handler(_data, _controller):
             return {"async": True}
 
         transport = ASGITransport(app=app)
@@ -127,7 +127,7 @@ class TestRouterDecorators:
     async def test_unknown_action_returns_404(self):
         """Test unknown action returns 404."""
         app = FastAPI()
-        router = create_pydantic_ui(TestModel, prefix="/test")
+        router = create_pydantic_ui(SampleModel, prefix="/test")
         app.include_router(router)
 
         transport = ASGITransport(app=app)
@@ -149,11 +149,11 @@ class TestDataLoaderSaver:
 
         def custom_loader():
             loader_calls.append(1)
-            return TestModel(name="loaded", count=100)
+            return SampleModel(name="loaded", count=100)
 
         app = FastAPI()
         router = create_pydantic_ui(
-            TestModel,
+            SampleModel,
             data_loader=custom_loader,
             prefix="/test",
         )
@@ -177,7 +177,7 @@ class TestDataLoaderSaver:
 
         app = FastAPI()
         router = create_pydantic_ui(
-            TestModel,
+            SampleModel,
             data_saver=custom_saver,
             prefix="/test",
         )
@@ -195,17 +195,17 @@ class TestDataLoaderSaver:
 
     def test_data_loader_decorator(self):
         """Test @router.data_loader decorator."""
-        router = create_pydantic_ui(TestModel)
+        router = create_pydantic_ui(SampleModel)
 
         @router.data_loader
         def load():
-            return TestModel(name="decorated")
+            return SampleModel(name="decorated")
 
         assert hasattr(router, "data_loader")
 
     def test_data_saver_decorator(self):
         """Test @router.data_saver decorator."""
-        router = create_pydantic_ui(TestModel)
+        router = create_pydantic_ui(SampleModel)
 
         @router.data_saver
         def save(instance):
@@ -220,11 +220,11 @@ class TestInitialData:
     @pytest.mark.asyncio
     async def test_initial_data_used(self):
         """Test initial_data is used as starting data."""
-        initial = TestModel(name="initial", count=99)
+        initial = SampleModel(name="initial", count=99)
 
         app = FastAPI()
         router = create_pydantic_ui(
-            TestModel,
+            SampleModel,
             initial_data=initial,
             prefix="/test",
         )
@@ -253,7 +253,7 @@ class TestFieldConfigs:
 
         app = FastAPI()
         router = create_pydantic_ui(
-            TestModel,
+            SampleModel,
             field_configs=field_configs,
             prefix="/test",
         )
