@@ -59,6 +59,12 @@ Documentation = "https://github.com/idling-mind/pydantic-ui#readme"
 Repository = "https://github.com/idling-mind/pydantic-ui"
 Issues = "https://github.com/idling-mind/pydantic-ui/issues"
 
+
+[tool.hatch.build]
+artifacts = [
+  "pydantic_ui/static/*"
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["pydantic_ui"]
 
