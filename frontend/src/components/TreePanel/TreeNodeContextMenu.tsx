@@ -290,11 +290,18 @@ export function TreeNodeContextMenu({
   const createClearedValue = useCallback((fieldSchema: SchemaField): unknown => {
     switch (fieldSchema.type) {
       case 'object':
-        // For objects, recursively clear all sub-fields
+        // For objects, create structure with null values for optional fields
+        // This ensures optional fields are explicitly cleared to null
         if (fieldSchema.fields) {
           const cleared: Record<string, unknown> = {};
           for (const [key, subSchema] of Object.entries(fieldSchema.fields)) {
-            cleared[key] = createClearedValue(subSchema);
+            if (subSchema.required === false) {
+              // Optional fields get set to null
+              cleared[key] = null;
+            } else {
+              // Required fields get recursively cleared
+              cleared[key] = createClearedValue(subSchema);
+            }
           }
           return cleared;
         }
@@ -314,15 +321,21 @@ export function TreeNodeContextMenu({
   }, []);
 
   const handleClear = useCallback(() => {
-    const clearedValue = createClearedValue(schema);
-    
     if (path === '') {
-      // Clearing root - update all top-level fields
-      const clearedData = clearedValue as Record<string, unknown>;
-      for (const key of Object.keys(clearedData)) {
-        updateValue(key, clearedData[key]);
+      // Clearing root - update each top-level field based on schema
+      if (schema.fields) {
+        for (const [key, fieldSchema] of Object.entries(schema.fields)) {
+          if (fieldSchema.required === false) {
+            // Optional fields get set to null
+            updateValue(key, null);
+          } else {
+            // Required fields get recursively cleared
+            updateValue(key, createClearedValue(fieldSchema));
+          }
+        }
       }
     } else {
+      const clearedValue = createClearedValue(schema);
       updateValue(path, clearedValue);
     }
     
