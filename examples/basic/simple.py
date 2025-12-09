@@ -6,9 +6,16 @@ This example shows how to create a simple data editing UI for a configuration mo
 
 # Import pydantic_ui components
 import sys
-from enum import StrEnum
 from datetime import date, datetime
 from typing import Annotated, Literal, Optional
+
+# StrEnum is available in Python 3.11+, define it for older versions
+try:
+    from enum import StrEnum
+except ImportError:
+    from enum import Enum
+    class StrEnum(str, Enum):
+        pass
 
 import uvicorn
 from fastapi import FastAPI

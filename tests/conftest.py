@@ -1,11 +1,16 @@
-"""Shared fixtures for pydantic-ui tests."""
-
 from __future__ import annotations
 
 import asyncio
 from datetime import date, datetime
-from enum import Enum, StrEnum
+from enum import Enum
 from typing import Annotated, Any, Literal
+
+# StrEnum is available in Python 3.11+, define it for older versions
+try:
+    from enum import StrEnum
+except ImportError:
+    class StrEnum(str, Enum):
+        pass
 
 import pytest
 from fastapi import FastAPI
