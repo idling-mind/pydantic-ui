@@ -7,6 +7,8 @@ A dynamic, modern UI for editing deeply nested Pydantic models with FastAPI inte
 ![FastAPI](https://img.shields.io/badge/fastapi-0.100+-green.svg)
 ![Pydantic](https://img.shields.io/badge/pydantic-v2-green.svg)
 
+![Screenshot](./screenshot.png)
+
 ## Features
 
 - 🌳 **Tree Navigation**: Sidebar showing hierarchical structure of nested models
