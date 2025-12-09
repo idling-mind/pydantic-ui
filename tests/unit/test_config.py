@@ -39,6 +39,7 @@ class TestRenderer:
         assert isinstance(Renderer.AUTO, str)
         assert Renderer.AUTO == "auto"
 
+
 # =============================================================================
 # Tests for FieldConfig
 # =============================================================================

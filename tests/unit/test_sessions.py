@@ -162,9 +162,7 @@ class TestSessionManager:
     async def test_get_or_create_new(self):
         """Test creating a new session."""
         manager = SessionManager()
-        session, is_new = await manager.get_or_create_session(
-            None, {"initial": "data"}
-        )
+        session, is_new = await manager.get_or_create_session(None, {"initial": "data"})
         assert is_new is True
         assert session.data == {"initial": "data"}
 
@@ -174,15 +172,11 @@ class TestSessionManager:
         manager = SessionManager()
 
         # Create session
-        session1, is_new1 = await manager.get_or_create_session(
-            "fixed-id", {"initial": "data"}
-        )
+        session1, is_new1 = await manager.get_or_create_session("fixed-id", {"initial": "data"})
         assert is_new1 is True
 
         # Get same session
-        session2, is_new2 = await manager.get_or_create_session(
-            "fixed-id", {"different": "data"}
-        )
+        session2, is_new2 = await manager.get_or_create_session("fixed-id", {"different": "data"})
         assert is_new2 is False
         assert session1.id == session2.id
         # Original data should be preserved

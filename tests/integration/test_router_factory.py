@@ -17,6 +17,7 @@ from pydantic_ui import (
 
 class SampleModel(BaseModel):
     """Simple test model."""
+
     name: str
     count: int = 0
 
