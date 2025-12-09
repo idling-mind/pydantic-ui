@@ -108,7 +108,9 @@ export function ObjectEditor({
   const getFieldErrors = (fieldPath: string): FieldError[] => {
     if (!errors) return [];
     return errors.filter(
-      (e) => e.path === fieldPath || e.path.startsWith(fieldPath + '.')
+      (e) => e.path === fieldPath || 
+             e.path.startsWith(fieldPath + '.') ||
+             e.path.startsWith(fieldPath + '[')  // Include array item errors like users[0].name
     );
   };
 
@@ -343,7 +345,9 @@ export function ArrayEditor({
     const basePath = path && path !== 'root' ? path : '';
     const itemPath = basePath ? `${basePath}[${index}]` : `[${index}]`;
     return errors.filter(
-      (e) => e.path === itemPath || e.path.startsWith(itemPath + '.')
+      (e) => e.path === itemPath || 
+             e.path.startsWith(itemPath + '.') ||
+             e.path.startsWith(itemPath + '[')  // Include nested array errors
     );
   };
 
@@ -833,7 +837,9 @@ export function ArrayListEditor({
     const basePath = path && path !== 'root' ? path : '';
     const itemPath = basePath ? `${basePath}[${index}]` : `[${index}]`;
     return errors.filter(
-      (e) => e.path === itemPath || e.path.startsWith(itemPath + '.')
+      (e) => e.path === itemPath || 
+             e.path.startsWith(itemPath + '.') ||
+             e.path.startsWith(itemPath + '[')  // Include nested array errors
     );
   };
 
