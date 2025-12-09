@@ -55,7 +55,7 @@ class DataHandler:
         """Match a field path against field_configs, supporting [] wildcards."""
         # Direct match
         if path in self.field_configs:
-            return self.field_configs[path]
+            return self.field_configs[path]  # type: ignore
 
         # Try wildcard patterns - replace array indices with []
         # e.g., "users.0.age" should match "users.[].age"
@@ -67,7 +67,7 @@ class DataHandler:
                 regex_pattern = re.escape(pattern).replace(r"\[\]", r"\d+")
                 regex_pattern = f"^{regex_pattern}$"
                 if re.match(regex_pattern, path):
-                    return config
+                    return config  # type: ignore
 
         return None
 
@@ -145,7 +145,7 @@ class DataHandler:
             if self.data_saver is not None:
                 result = self.data_saver(instance)
                 if hasattr(result, "__await__"):
-                    await result
+                    await result  # type: ignore
 
             return {"data": self._data, "valid": True}
         except ValidationError as e:
@@ -174,7 +174,7 @@ class DataHandler:
             if self.data_saver is not None:
                 result = self.data_saver(instance)
                 if hasattr(result, "__await__"):
-                    await result
+                    await result  # type: ignore
 
             return {"data": self._data, "valid": True}
         except ValidationError as e:

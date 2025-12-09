@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
 from typing import Any
 
@@ -177,7 +177,7 @@ def create_pydantic_ui(
             if data_saver is not None:
                 result = data_saver(instance)
                 if hasattr(result, "__await__"):
-                    await result
+                    await result  # type: ignore
 
             resp = JSONResponse(content={"data": session.data, "valid": True})
             set_session_cookie(resp, session)
@@ -222,7 +222,7 @@ def create_pydantic_ui(
             if data_saver is not None:
                 result = data_saver(instance)
                 if hasattr(result, "__await__"):
-                    await result
+                    await result  # type: ignore
 
             resp = JSONResponse(content={"data": session.data, "valid": True})
             set_session_cookie(resp, session)
@@ -275,7 +275,7 @@ def create_pydantic_ui(
         """Server-Sent Events endpoint for real-time UI updates."""
         session = await get_session_from_request(request)
 
-        async def event_generator():
+        async def event_generator() -> AsyncGenerator[str, None]:
             async for event in session.subscribe():
                 yield f"data: {json.dumps(event)}\n\n"
 

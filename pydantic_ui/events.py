@@ -31,8 +31,8 @@ class EventQueue:
         events = await queue.get_pending(since=last_timestamp)
     """
 
-    events: deque = field(default_factory=lambda: deque(maxlen=100))
-    subscribers: list[asyncio.Queue] = field(default_factory=list)
+    events: deque = field(default_factory=lambda: deque(maxlen=100))  # type: ignore
+    subscribers: list[asyncio.Queue] = field(default_factory=list)  # type: ignore
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     async def push(self, event_type: str, payload: dict[str, Any] | None = None) -> None:

@@ -9,8 +9,10 @@ from typing import Annotated, Any, Literal
 try:
     from enum import StrEnum
 except ImportError:
+
     class StrEnum(str, Enum):
         pass
+
 
 import pytest
 from fastapi import FastAPI

@@ -240,7 +240,7 @@ def parse_field(
 
     # Handle Dict
     if origin is dict:
-        value_type = args[1] if len(args) > 1 else Any
+        value_type = args[1] if len(args) > 1 else Any  # type: ignore
         return {
             "type": "object",
             "python_type": get_python_type_name(field_type),
@@ -248,7 +248,11 @@ def parse_field(
             "description": field_info.description,
             "required": True,
             "additionalProperties": parse_field(
-                "value", FieldInfo(), value_type, max_depth, current_depth + 1
+                "value",
+                FieldInfo(),
+                value_type,
+                max_depth,
+                current_depth + 1,  # type: ignore
             ),
         }
 
@@ -292,7 +296,7 @@ def parse_field(
             default_value = default_value.isoformat()
     elif field_info.default_factory is not None:
         try:
-            default_value = field_info.default_factory()
+            default_value = field_info.default_factory()  # type: ignore
             # Handle datetime factory defaults
             if isinstance(default_value, (datetime.datetime, datetime.date, datetime.time)):
                 default_value = default_value.isoformat()
@@ -370,7 +374,7 @@ def model_to_data(model: type[BaseModel], instance: BaseModel | None = None) -> 
                 data[field_name] = field_info.default
             elif field_info.default_factory is not None:
                 try:
-                    data[field_name] = field_info.default_factory()
+                    data[field_name] = field_info.default_factory()  # type: ignore
                 except Exception:
                     data[field_name] = _get_type_default(field_info.annotation)
             else:

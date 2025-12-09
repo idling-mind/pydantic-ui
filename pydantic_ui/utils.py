@@ -34,7 +34,7 @@ def get_value_at_path(data: dict[str, Any], path: str) -> Any:
             except (ValueError, IndexError):
                 return None
         elif isinstance(current, dict):
-            current = current.get(part)
+            current = current.get(part)  # type: ignore
             if current is None:
                 return None
         elif isinstance(current, list):
