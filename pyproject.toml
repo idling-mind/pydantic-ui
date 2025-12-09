@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pydantic-ui"
-version = "0.1.4"
+version = "0.1.5"
 description = "Dynamic UI for editing deeply nested Pydantic models"
 readme = "README.md"
 license = "MIT"

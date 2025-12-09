@@ -34,13 +34,17 @@ class Currency(StrEnum):
     SEK = "SEK"
 
 class Compensation(BaseModel):
-    amount: float
+    amount: Annotated[float, FieldConfig(renderer=Renderer.SLIDER, props={"min": 0, "max": 1000000, "step": 1000})]
     currency: Currency
+
 class Person(BaseModel):
     name: str
     age: int
     birthday: date
-    compensation: Compensation
+    compensation: Compensation = Field(
+        description="Compensation details for the person",
+        title="Salary"
+    )
     fields: dict[str, str] | None = None
 
 class MyModel(BaseModel):

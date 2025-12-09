@@ -264,6 +264,25 @@ def parse_field(
         # Nested models are required by default unless wrapped in Optional
         result["required"] = field_info.is_required()
         result["python_type"] = field_type.__name__
+        # Add description from field_info
+        if field_info.description:
+            result["description"] = field_info.description
+        # Extract and add ui_config for nested models
+        field_config = extract_field_config(field_info, field_type)
+        if field_config:
+            result["ui_config"] = {
+                "renderer": (
+                    field_config.renderer.value
+                    if isinstance(field_config.renderer, Renderer)
+                    else field_config.renderer
+                ),
+                "label": field_config.label,
+                "placeholder": field_config.placeholder,
+                "help_text": field_config.help_text,
+                "hidden": field_config.hidden,
+                "read_only": field_config.read_only,
+                "props": field_config.props,
+            }
         return result
 
     # Handle datetime types

@@ -1,9 +1,10 @@
 """Configuration classes for Pydantic UI."""
 
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class ActionButton(BaseModel):
@@ -60,7 +61,8 @@ class Renderer(str, Enum):
     URL = "url"
 
 
-class FieldConfig(BaseModel):
+@dataclass
+class FieldConfig:
     """Per-field UI configuration.
 
     Use with Annotated types to customize how fields are rendered:
@@ -75,36 +77,27 @@ class FieldConfig(BaseModel):
             )]
     """
 
-    renderer: Renderer | str = Field(
-        default=Renderer.AUTO,
-        description="The renderer to use for this field",
-    )
-    label: str | None = Field(
-        default=None,
-        description="Custom label (defaults to field name)",
-    )
-    placeholder: str | None = Field(
-        default=None,
-        description="Placeholder text for input fields",
-    )
-    help_text: str | None = Field(
-        default=None,
-        description="Help text shown below the field",
-        alias="description",
-    )
-    hidden: bool = Field(
-        default=False,
-        description="Hide this field from the UI",
-    )
-    read_only: bool = Field(
-        default=False,
-        description="Make this field read-only",
-    )
-    props: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional props passed to the renderer",
-    )
-    model_config = ConfigDict(use_enum_values=True, populate_by_name=True)
+    renderer: Renderer | str = Renderer.AUTO
+    label: str | None = None
+    placeholder: str | None = None
+    help_text: str | None = None
+    hidden: bool = False
+    read_only: bool = False
+    props: dict[str, Any] = field(default_factory=dict)
+
+    def model_dump(self) -> dict[str, Any]:
+        """Return a dict representation (for compatibility with Pydantic API)."""
+        return {
+            "renderer": self.renderer.value
+            if isinstance(self.renderer, Renderer)
+            else self.renderer,
+            "label": self.label,
+            "placeholder": self.placeholder,
+            "help_text": self.help_text,
+            "hidden": self.hidden,
+            "read_only": self.read_only,
+            "props": self.props,
+        }
 
 
 class UIConfig(BaseModel):
