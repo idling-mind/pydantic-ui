@@ -23,6 +23,7 @@ from pydantic_ui.sessions import Session, SessionManager
 
 class Priority(StrEnum):
     """Priority levels for tasks."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -30,6 +31,7 @@ class Priority(StrEnum):
 
 class Status(Enum):
     """Status values."""
+
     DRAFT = "draft"
     PUBLISHED = "published"
     ARCHIVED = "archived"
@@ -37,6 +39,7 @@ class Status(Enum):
 
 class Address(BaseModel):
     """A simple address model."""
+
     street: str = Field(description="Street address")
     city: str = Field(description="City name")
     zip_code: str = Field(max_length=10)
@@ -45,6 +48,7 @@ class Address(BaseModel):
 
 class Person(BaseModel):
     """A person with basic information."""
+
     name: str = Field(min_length=1, max_length=100)
     age: int = Field(ge=0, le=150)
     email: str | None = None
@@ -53,6 +57,7 @@ class Person(BaseModel):
 
 class PersonWithAddress(BaseModel):
     """A person with an address."""
+
     name: str
     age: int = 25
     address: Address
@@ -60,6 +65,7 @@ class PersonWithAddress(BaseModel):
 
 class Task(BaseModel):
     """A task with priority."""
+
     title: str
     description: str | None = None
     priority: Priority = Priority.MEDIUM
@@ -70,6 +76,7 @@ class Task(BaseModel):
 
 class Project(BaseModel):
     """A project containing tasks and team members."""
+
     name: str
     description: str | None = None
     tasks: list[Task] = Field(default_factory=list)
@@ -79,6 +86,7 @@ class Project(BaseModel):
 
 class Config(BaseModel):
     """A configuration model with various types."""
+
     app_name: str = "My App"
     debug: bool = False
     max_connections: int = Field(default=100, ge=1, le=1000)
@@ -89,12 +97,14 @@ class Config(BaseModel):
 
 class LiteralModel(BaseModel):
     """Model with Literal types."""
+
     color: Literal["red", "green", "blue"] = "blue"
     size: Literal["small", "medium", "large"]
 
 
 class AnnotatedModel(BaseModel):
     """Model with Annotated field configurations."""
+
     name: str
     age: Annotated[
         int,
@@ -115,11 +125,13 @@ class AnnotatedModel(BaseModel):
 
 class DeepNestedModel(BaseModel):
     """Model with deep nesting."""
+
     level1: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
 
 
 class DateTimeModel(BaseModel):
     """Model with datetime fields."""
+
     created_at: datetime
     updated_at: datetime | None = None
     birth_date: date | None = None
@@ -127,6 +139,7 @@ class DateTimeModel(BaseModel):
 
 class SimpleModel(BaseModel):
     """The simplest model for basic tests."""
+
     name: str
     value: int = 0
 
@@ -306,9 +319,7 @@ def session_manager() -> SessionManager:
 @pytest.fixture
 async def session(session_manager: SessionManager) -> Session:
     """Return a session."""
-    session, _ = await session_manager.get_or_create_session(
-        None, {"name": "test", "value": 0}
-    )
+    session, _ = await session_manager.get_or_create_session(None, {"name": "test", "value": 0})
     return session
 
 
