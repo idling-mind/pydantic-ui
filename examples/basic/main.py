@@ -4,27 +4,28 @@ Example: Basic usage of pydantic-ui
 This example shows how to create a simple data editing UI for a configuration model.
 """
 
-from typing import Annotated, Literal, Optional
-from datetime import date, datetime
-from pydantic import BaseModel, Field
+import sys
+from typing import Annotated, Literal
+
 import uvicorn
 from fastapi import FastAPI
+from pydantic import BaseModel, Field
 
-# Import pydantic_ui components
-import sys
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
-from pydantic_ui import create_pydantic_ui, UIConfig, FieldConfig, Renderer
+# Import pydantic_ui components
+from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui
 
 
 # Define your Pydantic models
 class DatabaseConfig(BaseModel):
     """Database connection settings"""
+
     host: str = Field(default="localhost", description="Database server hostname")
     port: Annotated[
         int,
         Field(ge=1, le=65535, default=5432, description="Database server port"),
-        FieldConfig(renderer=Renderer.NUMBER_INPUT)
+        FieldConfig(renderer=Renderer.NUMBER_INPUT),
     ]
     database: str = Field(default="mydb", description="Database name")
     username: str = Field(default="admin", description="Database username")
@@ -32,88 +33,91 @@ class DatabaseConfig(BaseModel):
     ssl_enabled: Annotated[
         bool,
         Field(default=False, description="Enable SSL connection"),
-        FieldConfig(renderer=Renderer.TOGGLE)
+        FieldConfig(renderer=Renderer.TOGGLE),
     ]
     pool_size: Annotated[
         int,
         Field(ge=1, le=100, default=10, description="Connection pool size"),
-        FieldConfig(renderer=Renderer.SLIDER, props={"min": 1, "max": 100, "step": 1})
+        FieldConfig(renderer=Renderer.SLIDER, props={"min": 1, "max": 100, "step": 1}),
     ]
 
 
 class LoggingConfig(BaseModel):
     """Logging configuration"""
+
     level: Annotated[
         Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         Field(default="INFO", description="Logging level"),
-        FieldConfig(renderer=Renderer.SELECT)
+        FieldConfig(renderer=Renderer.SELECT),
     ]
     format: Annotated[
         str,
         Field(
             default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            description="Log message format"
+            description="Log message format",
         ),
-        FieldConfig(renderer=Renderer.TEXT_AREA, props={"rows": 2})
+        FieldConfig(renderer=Renderer.TEXT_AREA, props={"rows": 2}),
     ]
-    file_path: Optional[str] = Field(
-        default=None,
-        description="Path to log file (optional, logs to console if not set)"
+    file_path: str | None = Field(
+        default=None, description="Path to log file (optional, logs to console if not set)"
     )
     max_file_size: Annotated[
         int,
         Field(ge=1, le=1000, default=10, description="Max log file size in MB"),
-        FieldConfig(renderer=Renderer.SLIDER, props={"min": 1, "max": 1000})
+        FieldConfig(renderer=Renderer.SLIDER, props={"min": 1, "max": 1000}),
     ]
     backup_count: Annotated[
         int,
         Field(ge=0, le=10, default=5, description="Number of backup files to keep"),
-        FieldConfig(renderer=Renderer.NUMBER_INPUT)
+        FieldConfig(renderer=Renderer.NUMBER_INPUT),
     ]
 
 
 class ServerConfig(BaseModel):
     """Server settings"""
+
     name: str = Field(default="MyApp", description="Application name")
     version: str = Field(default="1.0.0", description="Application version")
     debug: Annotated[
         bool,
         Field(default=False, description="Enable debug mode"),
-        FieldConfig(renderer=Renderer.TOGGLE)
+        FieldConfig(renderer=Renderer.TOGGLE),
     ]
     workers: Annotated[
         int,
         Field(ge=1, le=32, default=4, description="Number of worker processes"),
-        FieldConfig(renderer=Renderer.SLIDER, props={"min": 1, "max": 32})
+        FieldConfig(renderer=Renderer.SLIDER, props={"min": 1, "max": 32}),
     ]
     allowed_hosts: list[str] = Field(
-        default=["localhost", "127.0.0.1"],
-        description="List of allowed hostnames"
+        default=["localhost", "127.0.0.1"], description="List of allowed hostnames"
     )
 
 
 class NotificationConfig(BaseModel):
     """Notification settings"""
+
     email_enabled: bool = Field(default=True, description="Enable email notifications")
-    smtp_host: Optional[str] = Field(default=None, description="SMTP server hostname")
+    smtp_host: str | None = Field(default=None, description="SMTP server hostname")
     smtp_port: int = Field(default=587, ge=1, le=65535, description="SMTP port")
     slack_enabled: bool = Field(default=False, description="Enable Slack notifications")
-    slack_webhook: Optional[str] = Field(default=None, description="Slack webhook URL")
+    slack_webhook: str | None = Field(default=None, description="Slack webhook URL")
 
 
 class AppConfig(BaseModel):
     """
     Application Configuration
-    
+
     This is the main configuration model for the application.
     It contains all the settings needed to run the app.
     """
+
     server: ServerConfig = Field(default_factory=ServerConfig, description="Server settings")
-    database: DatabaseConfig = Field(default_factory=DatabaseConfig, description="Database settings")
+    database: DatabaseConfig = Field(
+        default_factory=DatabaseConfig, description="Database settings"
+    )
     logging: LoggingConfig = Field(default_factory=LoggingConfig, description="Logging settings")
     notifications: NotificationConfig = Field(
-        default_factory=NotificationConfig,
-        description="Notification settings"
+        default_factory=NotificationConfig, description="Notification settings"
     )
     feature_flags: dict[str, bool] = Field(
         default={
@@ -121,12 +125,10 @@ class AppConfig(BaseModel):
             "beta_features": False,
             "analytics": True,
         },
-        description="Feature flags"
+        description="Feature flags",
     )
     metadata: Annotated[
-        dict,
-        Field(default={}, description="Additional metadata"),
-        FieldConfig(renderer="json")
+        dict, Field(default={}, description="Additional metadata"), FieldConfig(renderer="json")
     ]
 
 
@@ -183,5 +185,5 @@ if __name__ == "__main__":
     print("  - PUT  /config/api/data    - Update data")
     print("  - POST /config/api/validate - Validate data")
     print("=" * 60 + "\n")
-    
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

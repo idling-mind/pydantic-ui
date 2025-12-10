@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-import json
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel
 
-from pydantic_ui import UIConfig, create_pydantic_ui
+from pydantic_ui import create_pydantic_ui
 
 
 class SampleModel(BaseModel):
@@ -75,7 +74,7 @@ class TestSessionEndpoints:
         app.include_router(router)
 
         transport = ASGITransport(app=app)
-        
+
         # Use separate clients to ensure cookie isolation
         async with AsyncClient(transport=transport, base_url="http://test") as client1:
             # Session 1: Create and update data
@@ -101,7 +100,7 @@ class TestSessionEndpoints:
             # Session 2 should have default data, not session 1's data
             get2 = await client2.get("/test/api/data", cookies=cookies2)
             data2 = get2.json()["data"]
-            
+
             # Should be default values, not session1's values
             assert data2["name"] == "test"  # default value
             assert data2["value"] == 0  # default value
@@ -142,7 +141,7 @@ class TestEventPolling:
         app.include_router(router)
 
         @router.action("send_toast")
-        async def send_toast(data, controller):
+        async def send_toast(data, controller):  # noqa: ARG001
             await controller.show_toast("Test message", "success")
             return {"sent": True}
 
@@ -212,7 +211,7 @@ class TestConfirmationEndpoint:
         confirmation_result = []
 
         @router.action("confirm_action")
-        async def confirm_action(data, controller):
+        async def confirm_action(data, controller):  # noqa: ARG001
             result = await asyncio.wait_for(
                 controller.request_confirmation(
                     "Are you sure?",

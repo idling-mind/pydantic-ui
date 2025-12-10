@@ -5,7 +5,7 @@ import types
 from enum import Enum
 from typing import Annotated, Any, Literal, Union, get_args, get_origin
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
@@ -14,34 +14,33 @@ from pydantic_ui.config import FieldConfig, Renderer
 
 def extract_discriminator(field_info: FieldInfo) -> dict[str, Any] | None:
     """Extract discriminator information from field info.
-    
+
     Handles both string discriminators (field name) and Pydantic Discriminator objects.
     Returns dict with 'field' key if discriminator found, None otherwise.
     """
     # Check if discriminator is set directly on the field
     discriminator = getattr(field_info, "discriminator", None)
-    
-    if discriminator is None:
+
+    if discriminator is None and field_info.metadata:
         # Check metadata for Field with discriminator
-        if field_info.metadata:
-            for meta in field_info.metadata:
-                if hasattr(meta, "discriminator") and meta.discriminator is not None:
-                    discriminator = meta.discriminator
-                    break
-    
+        for meta in field_info.metadata:
+            if hasattr(meta, "discriminator") and meta.discriminator is not None:
+                discriminator = meta.discriminator
+                break
+
     if discriminator is None:
         return None
-    
+
     # Handle string discriminator (field name)
     if isinstance(discriminator, str):
         return {"field": discriminator, "type": "string"}
-    
+
     # Handle Pydantic Discriminator object (callable discriminator)
     # For callable discriminators, we can't easily extract the logic,
     # but we can still provide the schema structure
-    if hasattr(discriminator, "__call__"):
+    if callable(discriminator):
         return {"field": None, "type": "callable", "callable": str(discriminator)}
-    
+
     # Handle Discriminator class instance
     if hasattr(discriminator, "discriminator"):
         inner = discriminator.discriminator
@@ -49,45 +48,45 @@ def extract_discriminator(field_info: FieldInfo) -> dict[str, Any] | None:
             return {"field": inner, "type": "string"}
         elif callable(inner):
             return {"field": None, "type": "callable", "callable": str(inner)}
-    
+
     return None
 
 
 def get_discriminator_values(variant_type: type, discriminator_field: str) -> list[Any]:
     """Extract discriminator values from a variant type.
-    
+
     For Pydantic models, looks for Literal type annotations on the discriminator field.
     """
     if not isinstance(variant_type, type):
         return []
-    
+
     if not issubclass(variant_type, BaseModel):
         return []
-    
+
     # Check if the model has the discriminator field
     if discriminator_field not in variant_type.model_fields:
         return []
-    
+
     field_info = variant_type.model_fields[discriminator_field]
     field_type = field_info.annotation
-    
+
     if field_type is None:
         return []
-    
+
     # Handle Annotated types
     origin = get_origin(field_type)
     if origin is Annotated:
         field_type = get_args(field_type)[0]
         origin = get_origin(field_type)
-    
+
     # Check for Literal type
     if origin is Literal:
         return list(get_args(field_type))
-    
+
     # Check for default value
     if field_info.default is not PydanticUndefined:
         return [field_info.default]
-    
+
     return []
 
 
@@ -120,32 +119,32 @@ def parse_union_field(
     current_depth: int,
 ) -> dict[str, Any]:
     """Parse a Union type field, handling discriminated unions.
-    
+
     Returns a schema with type='union' containing variants array and optional discriminator.
     """
     non_none = [a for a in union_args if a is not type(None)]
     has_none = len(non_none) < len(union_args)
-    
+
     # Single type + None = Optional, handle normally
     if len(non_none) == 1:
         result = parse_field(name, field_info, non_none[0], max_depth, current_depth)
         result["required"] = not has_none
         return result
-    
+
     # Check if all non-None types are primitive (not BaseModel)
     all_primitive = all(not is_pydantic_model(t) for t in non_none)
-    
+
     # For primitive unions (e.g., Union[str, int]), use a simpler representation
     if all_primitive and len(non_none) <= 3:
         # Still create union schema but mark as primitive
         pass  # Fall through to full union handling for consistency
-    
+
     # Extract discriminator info from field_info
     discriminator_info = extract_discriminator(field_info)
-    
+
     variants = []
     discriminator_mapping: dict[str, int] = {}
-    
+
     for i, variant_type in enumerate(non_none):
         # Parse the variant schema
         variant_schema = parse_field(
@@ -155,15 +154,15 @@ def parse_union_field(
             max_depth,
             current_depth + 1,
         )
-        
+
         # Add variant metadata
         variant_schema["variant_index"] = i
         variant_schema["variant_name"] = get_variant_name(variant_type)
-        
+
         # Override the auto-generated title with the actual type name
         # This ensures "Cat" instead of "Variant 0" is displayed
         variant_schema["title"] = get_variant_name(variant_type)
-        
+
         # Extract discriminator values for this variant
         if discriminator_info and discriminator_info.get("field"):
             disc_field = discriminator_info["field"]
@@ -171,9 +170,9 @@ def parse_union_field(
             variant_schema["discriminator_values"] = disc_values
             for val in disc_values:
                 discriminator_mapping[str(val)] = i
-        
+
         variants.append(variant_schema)
-    
+
     # Build the union schema
     result: dict[str, Any] = {
         "type": "union",
@@ -184,7 +183,7 @@ def parse_union_field(
         "default": field_info.default if field_info.default is not PydanticUndefined else None,
         "variants": variants,
     }
-    
+
     # Add discriminator info if present
     if discriminator_info:
         result["discriminator"] = {
@@ -192,7 +191,7 @@ def parse_union_field(
             "type": discriminator_info.get("type"),
             "mapping": discriminator_mapping if discriminator_mapping else None,
         }
-    
+
     # Extract field config
     field_config = extract_field_config(field_info, type(None))
     if field_config:
@@ -212,7 +211,7 @@ def parse_union_field(
         }
     else:
         result["ui_config"] = None
-    
+
     return result
 
 

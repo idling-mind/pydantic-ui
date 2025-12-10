@@ -9,26 +9,28 @@ This example demonstrates how to use:
 - Push data updates from Python
 """
 
+import sys
 from typing import Literal
-from pydantic import BaseModel, Field, ValidationError
+
 import uvicorn
 from fastapi import FastAPI
+from pydantic import BaseModel, Field, ValidationError
 
-# Import pydantic_ui components
-import sys
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
+# Import pydantic_ui components
 from pydantic_ui import (
-    create_pydantic_ui,
-    UIConfig,
     ActionButton,
     PydanticUIController,
+    UIConfig,
+    create_pydantic_ui,
 )
 
 
 # Define your Pydantic models
 class ServerSettings(BaseModel):
     """Server configuration"""
+
     host: str = Field(default="localhost", description="Server hostname")
     port: int = Field(default=8080, ge=1, le=65535, description="Server port")
     debug: bool = Field(default=False, description="Enable debug mode")
@@ -37,6 +39,7 @@ class ServerSettings(BaseModel):
 
 class DatabaseSettings(BaseModel):
     """Database configuration"""
+
     host: str = Field(default="localhost", description="Database host")
     port: int = Field(default=5432, ge=1, le=65535, description="Database port")
     name: str = Field(default="mydb", description="Database name")
@@ -46,16 +49,15 @@ class DatabaseSettings(BaseModel):
 
 class AppSettings(BaseModel):
     """Application Settings"""
+
     app_name: str = Field(default="My Application", description="Application name")
     environment: Literal["development", "staging", "production"] = Field(
-        default="development",
-        description="Deployment environment"
+        default="development", description="Deployment environment"
     )
     server: ServerSettings = Field(default_factory=ServerSettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     features: dict[str, bool] = Field(
-        default={"feature_a": True, "feature_b": False},
-        description="Feature flags"
+        default={"feature_a": True, "feature_b": False}, description="Feature flags"
     )
 
 
@@ -66,21 +68,25 @@ ENVIRONMENT_TEMPLATES = {
         environment="development",
         server=ServerSettings(host="localhost", port=8080, debug=True, workers=1),
         database=DatabaseSettings(host="localhost", port=5432, name="dev_db", user="dev"),
-        features={"feature_a": True, "feature_b": True, "experimental": True}
+        features={"feature_a": True, "feature_b": True, "experimental": True},
     ),
     "staging": AppSettings(
         app_name="Staging App",
         environment="staging",
         server=ServerSettings(host="0.0.0.0", port=8080, debug=False, workers=2),
-        database=DatabaseSettings(host="staging-db.internal", port=5432, name="staging_db", user="staging"),
-        features={"feature_a": True, "feature_b": True, "experimental": False}
+        database=DatabaseSettings(
+            host="staging-db.internal", port=5432, name="staging_db", user="staging"
+        ),
+        features={"feature_a": True, "feature_b": True, "experimental": False},
     ),
     "production": AppSettings(
         app_name="Production App",
         environment="production",
         server=ServerSettings(host="0.0.0.0", port=80, debug=False, workers=8),
-        database=DatabaseSettings(host="prod-db.internal", port=5432, name="prod_db", user="prod_readonly"),
-        features={"feature_a": True, "feature_b": False, "experimental": False}
+        database=DatabaseSettings(
+            host="prod-db.internal", port=5432, name="prod_db", user="prod_readonly"
+        ),
+        features={"feature_a": True, "feature_b": False, "experimental": False},
     ),
 }
 
@@ -100,21 +106,21 @@ ui_config = UIConfig(
             label="Validate",
             variant="secondary",
             icon="check-circle",
-            tooltip="Run custom validation"
+            tooltip="Run custom validation",
         ),
         ActionButton(
             id="load_dev",
             label="Load Dev",
             variant="outline",
             icon="code",
-            tooltip="Load development template"
+            tooltip="Load development template",
         ),
         ActionButton(
             id="load_prod",
             label="Load Prod",
             variant="outline",
             icon="server",
-            tooltip="Load production template"
+            tooltip="Load production template",
         ),
         ActionButton(
             id="reset_all",
@@ -122,7 +128,7 @@ ui_config = UIConfig(
             variant="destructive",
             icon="refresh-cw",
             tooltip="Reset all settings",
-            confirm="Are you sure you want to reset all settings to defaults?"
+            confirm="Are you sure you want to reset all settings to defaults?",
         ),
         ActionButton(
             id="save",
@@ -149,60 +155,60 @@ app.include_router(router)
 async def handle_validate(data: dict, controller: PydanticUIController):
     """
     Full Pydantic validation + custom business rules.
-    
+
     This demonstrates how to:
     1. Run Pydantic's built-in validation (type checks, constraints like ge/le, etc.)
     2. Add custom business rule validation on top
     3. Convert all errors to the UI format
     """
     errors = []
-    
+
     # Step 1: Run Pydantic's built-in validation
     try:
         # This validates all field types, constraints (ge, le, min_length, etc.)
-        validated = AppSettings.model_validate(data)
+        AppSettings.model_validate(data)
     except ValidationError as e:
         # Convert Pydantic validation errors to UI format
         for error in e.errors():
             # error['loc'] is a tuple like ('server', 'port') - join with dots
-            path = ".".join(str(loc) for loc in error['loc'])
-            errors.append({
-                "path": path,
-                "message": error['msg']
-            })
-    
+            path = ".".join(str(loc) for loc in error["loc"])
+            errors.append({"path": path, "message": error["msg"]})
+
     # Step 2: Add custom business rule validation (only if Pydantic validation passed)
     if not errors:
         # Check if production environment has debug enabled
         if data.get("environment") == "production" and data.get("server", {}).get("debug"):
-            errors.append({
-                "path": "server.debug",
-                "message": "Debug mode should not be enabled in production"
-            })
-        
+            errors.append(
+                {
+                    "path": "server.debug",
+                    "message": "Debug mode should not be enabled in production",
+                }
+            )
+
         # Check if workers are appropriate for environment
         env = data.get("environment")
         workers = data.get("server", {}).get("workers", 1)
         if env == "production" and workers < 4:
-            errors.append({
-                "path": "server.workers",
-                "message": "Production environment should have at least 4 workers"
-            })
-        
+            errors.append(
+                {
+                    "path": "server.workers",
+                    "message": "Production environment should have at least 4 workers",
+                }
+            )
+
         # Check database password for production
         if env == "production" and not data.get("database", {}).get("password"):
-            errors.append({
-                "path": "database.password",
-                "message": "Database password is required for production"
-            })
-    
+            errors.append(
+                {
+                    "path": "database.password",
+                    "message": "Database password is required for production",
+                }
+            )
+
     # Step 3: Show results in the UI
     if errors:
         await controller.show_validation_errors(errors)
-        await controller.show_toast(
-            f"Validation failed with {len(errors)} error(s)",
-            "error"
-        )
+        await controller.show_toast(f"Validation failed with {len(errors)} error(s)", "error")
         return {"valid": False, "error_count": len(errors)}
     else:
         await controller.clear_validation_errors()
@@ -211,7 +217,7 @@ async def handle_validate(data: dict, controller: PydanticUIController):
 
 
 @router.action("load_dev")
-async def load_dev_template(data: dict, controller: PydanticUIController):
+async def load_dev_template(data: dict, controller: PydanticUIController):  # noqa: ARG001
     """Load development environment template."""
     template = ENVIRONMENT_TEMPLATES["development"]
     await controller.push_data(template)
@@ -221,7 +227,7 @@ async def load_dev_template(data: dict, controller: PydanticUIController):
 
 
 @router.action("load_prod")
-async def load_prod_template(data: dict, controller: PydanticUIController):
+async def load_prod_template(data: dict, controller: PydanticUIController):  # noqa: ARG001
     """Load production environment template with confirmation."""
     # Request confirmation before applying production settings
     confirmed = await controller.request_confirmation(
@@ -229,9 +235,9 @@ async def load_prod_template(data: dict, controller: PydanticUIController):
         title="Load Production Template",
         confirm_text="Load Production",
         cancel_text="Cancel",
-        variant="default"
+        variant="default",
     )
-    
+
     if confirmed:
         template = ENVIRONMENT_TEMPLATES["production"]
         await controller.push_data(template)
@@ -244,7 +250,7 @@ async def load_prod_template(data: dict, controller: PydanticUIController):
 
 
 @router.action("reset_all")
-async def reset_all_settings(data: dict, controller: PydanticUIController):
+async def reset_all_settings(data: dict, controller: PydanticUIController):  # noqa: ARG001
     """Reset all settings to defaults."""
     # The confirm dialog is already shown via the ActionButton.confirm property
     # So we just reset the data here
@@ -253,6 +259,7 @@ async def reset_all_settings(data: dict, controller: PydanticUIController):
     await controller.clear_validation_errors()
     await controller.show_toast("Settings reset to defaults", "info")
     return {"reset": True}
+
 
 @router.action("save")
 async def save_all_settings(data: dict, controller: PydanticUIController):
@@ -263,7 +270,7 @@ async def save_all_settings(data: dict, controller: PydanticUIController):
     except Exception as e:
         await controller.show_toast(f"Error saving settings: {e}", "error")
         return {"saved": False, "error": str(e)}
-    
+
     await controller.push_data(validated_data)
     await controller.show_toast("Settings saved successfully", "success")
     return {"saved": True}
@@ -274,19 +281,20 @@ async def save_all_settings(data: dict, controller: PydanticUIController):
 async def deploy_config():
     """Simulate a deployment that uses the controller."""
     controller = router.controller
-    
+
     # Get current data
     current_data = controller.get_current_data()
-    
+
     # Simulate deployment
     await controller.show_toast("Deployment started...", "info", duration=2000)
-    
+
     # In real app, you'd do actual deployment here
     import asyncio
+
     await asyncio.sleep(1)
-    
+
     await controller.show_toast("Deployment completed successfully!", "success")
-    
+
     return {"status": "deployed", "data": current_data}
 
 
@@ -303,5 +311,5 @@ if __name__ == "__main__":
     print("  - Push data updates from Python")
     print("\nTry clicking the action buttons to see them in action!")
     print("=" * 60 + "\n")
-    
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

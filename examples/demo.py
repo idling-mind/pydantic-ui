@@ -136,7 +136,7 @@ async def handle_validate(data: dict, controller: PydanticUIController):
         return {"valid": True}
 
 @pydantic_ui_router.action("clear")
-async def handle_clear(data: dict, controller: PydanticUIController):
+async def handle_clear(data: dict, controller: PydanticUIController):  # noqa: ARG001
     """
     Clear all data and reset to original configuration.
     """
@@ -167,5 +167,5 @@ if __name__ == "__main__":
     print("  - PUT  /config/api/data    - Update data")
     print("  - POST /config/api/validate - Validate data")
     print("=" * 60 + "\n")
-    
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

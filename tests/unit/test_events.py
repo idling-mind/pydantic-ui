@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 
 import pytest
@@ -185,7 +186,7 @@ class TestEventQueue:
 
         async def slow_subscriber():
             slow_started.set()
-            async for event in queue.subscribe():
+            async for _event in queue.subscribe():
                 await asyncio.sleep(0.1)  # Slow processing
                 break
 
@@ -205,10 +206,8 @@ class TestEventQueue:
 
         # Cancel slow subscriber
         slow_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await slow_task
-        except asyncio.CancelledError:
-            pass
 
     @pytest.mark.asyncio
     async def test_concurrent_push(self, queue: EventQueue):

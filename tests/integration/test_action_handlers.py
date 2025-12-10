@@ -58,7 +58,7 @@ class TestActionHandlers:
         controller_received = []
 
         @router.action("check_controller")
-        def check_controller(data, controller):
+        def check_controller(data, controller):  # noqa: ARG001
             controller_received.append(controller)
             return {"type": type(controller).__name__}
 
@@ -81,7 +81,7 @@ class TestActionHandlers:
         app.include_router(router)
 
         @router.action("async_action")
-        async def async_handler(data, controller):
+        async def async_handler(data, controller):  # noqa: ARG001
             # Simulate async operation
             return {"async": True, "name": data.get("name")}
 
@@ -106,7 +106,7 @@ class TestActionHandlers:
         app.include_router(router)
 
         @router.action("toast_action")
-        async def toast_action(data, controller: PydanticUIController):
+        async def toast_action(data, controller: PydanticUIController):  # noqa: ARG001
             await controller.show_toast("Action completed!", "success")
             return {"toast_sent": True}
 
@@ -189,7 +189,7 @@ class TestActionHandlers:
         app.include_router(router)
 
         @router.action("failing")
-        def failing_action(data, controller):
+        def failing_action(data, controller):  # noqa: ARG001
             raise ValueError("Something went wrong")
 
         transport = ASGITransport(app=app)
@@ -230,15 +230,15 @@ class TestActionHandlers:
         app.include_router(router)
 
         @router.action("action1")
-        def action1(data, controller):
+        def action1(data, controller):  # noqa: ARG001
             return {"action": 1}
 
         @router.action("action2")
-        def action2(data, controller):
+        def action2(data, controller):  # noqa: ARG001
             return {"action": 2}
 
         @router.action("action3")
-        def action3(data, controller):
+        def action3(data, controller):  # noqa: ARG001
             return {"action": 3}
 
         transport = ASGITransport(app=app)

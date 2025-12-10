@@ -1,8 +1,7 @@
 """Unit tests for Union and Discriminated Union schema parsing."""
 
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal
 
-import pytest
 from pydantic import BaseModel, Field
 
 from pydantic_ui.schema import (
@@ -50,7 +49,7 @@ class TestExtractDiscriminator:
         """Test extraction of string discriminator from Field."""
         field_info = Field(discriminator="pet_type")
         result = extract_discriminator(field_info)
-        
+
         assert result is not None
         assert result["field"] == "pet_type"
         assert result["type"] == "string"
@@ -59,7 +58,7 @@ class TestExtractDiscriminator:
         """Test that None is returned when no discriminator is set."""
         field_info = Field(default=None)
         result = extract_discriminator(field_info)
-        
+
         assert result is None
 
     def test_discriminator_in_metadata(self):
@@ -67,7 +66,7 @@ class TestExtractDiscriminator:
         # This tests the metadata path
         field_info = Field(default=None)
         field_info.metadata = [Field(discriminator="type")]
-        
+
         result = extract_discriminator(field_info)
         assert result is not None
         assert result["field"] == "type"
@@ -127,7 +126,7 @@ class TestParseUnionField:
             max_depth=10,
             current_depth=0,
         )
-        
+
         # Should be parsed as the inner type, not as union
         assert result["type"] == "string"
         assert result["required"] is False
@@ -142,12 +141,12 @@ class TestParseUnionField:
             max_depth=10,
             current_depth=0,
         )
-        
+
         assert result["type"] == "union"
         assert len(result["variants"]) == 3
         assert result["discriminator"] is not None
         assert result["discriminator"]["field"] == "pet_type"
-        
+
         # Check discriminator mapping
         mapping = result["discriminator"]["mapping"]
         assert mapping is not None
@@ -166,7 +165,7 @@ class TestParseUnionField:
             max_depth=10,
             current_depth=0,
         )
-        
+
         assert result["type"] == "union"
         assert len(result["variants"]) == 2
         # No discriminator should be set
@@ -182,10 +181,10 @@ class TestParseUnionField:
             max_depth=10,
             current_depth=0,
         )
-        
+
         assert result["type"] == "union"
         assert len(result["variants"]) == 2
-        
+
         # Check variant types
         variant_types = [v["type"] for v in result["variants"]]
         assert "string" in variant_types
@@ -201,7 +200,7 @@ class TestParseUnionField:
             max_depth=10,
             current_depth=0,
         )
-        
+
         assert result["type"] == "union"
         assert len(result["variants"]) == 2  # None should be excluded
         assert result["required"] is False
@@ -216,26 +215,26 @@ class TestParseField:
         result = parse_field(
             "shape",
             field_info,
-            Union[Circle, Rectangle],
+            Circle | Rectangle,
             max_depth=10,
             current_depth=0,
         )
-        
+
         assert result["type"] == "union"
         assert "variants" in result
 
     def test_annotated_union_with_discriminator(self):
         """Test Annotated Union with discriminator field."""
-        
+
         class TestModel(BaseModel):
             pet: Annotated[
-                Union[Cat, Dog],
+                Cat | Dog,
                 Field(discriminator="pet_type")
             ]
-        
+
         schema = parse_model(TestModel)
         pet_field = schema["fields"]["pet"]
-        
+
         assert pet_field["type"] == "union"
         assert pet_field["discriminator"] is not None
         assert pet_field["discriminator"]["field"] == "pet_type"
@@ -246,45 +245,45 @@ class TestParseModel:
 
     def test_model_with_union_field(self):
         """Test parsing a model that contains a union field."""
-        
+
         class Config(BaseModel):
             name: str = "test"
-            pet: Union[Cat, Dog] = Field(default_factory=Cat)
-        
+            pet: Cat | Dog = Field(default_factory=Cat)
+
         schema = parse_model(Config)
-        
+
         assert "name" in schema["fields"]
         assert "pet" in schema["fields"]
-        
+
         pet_schema = schema["fields"]["pet"]
         assert pet_schema["type"] == "union"
         assert len(pet_schema["variants"]) == 2
 
     def test_model_with_discriminated_union(self):
         """Test parsing a model with discriminated union field."""
-        
+
         class Config(BaseModel):
             pet: Annotated[
-                Union[Cat, Dog, Lizard],
+                Cat | Dog | Lizard,
                 Field(discriminator="pet_type")
             ]
-        
+
         schema = parse_model(Config)
         pet_schema = schema["fields"]["pet"]
-        
+
         assert pet_schema["type"] == "union"
         assert pet_schema["discriminator"]["field"] == "pet_type"
         assert len(pet_schema["discriminator"]["mapping"]) == 4  # cat, dog, reptile, lizard
 
     def test_model_with_array_of_unions(self):
         """Test parsing a model with an array of union items."""
-        
+
         class Config(BaseModel):
-            pets: list[Union[Cat, Dog]] = Field(default_factory=list)
-        
+            pets: list[Cat | Dog] = Field(default_factory=list)
+
         schema = parse_model(Config)
         pets_schema = schema["fields"]["pets"]
-        
+
         assert pets_schema["type"] == "array"
         assert pets_schema["items"]["type"] == "union"
         assert len(pets_schema["items"]["variants"]) == 2
@@ -303,7 +302,7 @@ class TestVariantSchema:
             max_depth=10,
             current_depth=0,
         )
-        
+
         for i, variant in enumerate(result["variants"]):
             assert "variant_index" in variant
             assert variant["variant_index"] == i
@@ -320,7 +319,7 @@ class TestVariantSchema:
             max_depth=10,
             current_depth=0,
         )
-        
+
         # Single type in union is treated as optional, not union
         # Let's use two types
         result = parse_union_field(
@@ -330,7 +329,7 @@ class TestVariantSchema:
             max_depth=10,
             current_depth=0,
         )
-        
+
         cat_variant = result["variants"][0]
         assert cat_variant["type"] == "object"
         assert "fields" in cat_variant
@@ -347,10 +346,10 @@ class TestVariantSchema:
             max_depth=10,
             current_depth=0,
         )
-        
+
         cat_variant = result["variants"][0]
         assert "discriminator_values" in cat_variant
         assert cat_variant["discriminator_values"] == ["cat"]
-        
+
         lizard_variant = result["variants"][2]
         assert set(lizard_variant["discriminator_values"]) == {"reptile", "lizard"}
