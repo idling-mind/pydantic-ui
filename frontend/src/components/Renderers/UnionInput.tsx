@@ -3,7 +3,6 @@ import { AlertCircle, Layers } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -11,6 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,9 +111,8 @@ function getVariantLabel(variant: UnionVariant): string {
  * UnionInput component for rendering union/discriminated union fields.
  * 
  * Features:
- * - Dropdown selector for discriminated unions (uses discriminator field)
- * - Button group for small number of variants (≤4)
- * - Dropdown for larger number of variants
+ * - Tabbed interface for small number of variants (≤4) with smooth animations
+ * - Dropdown selector for larger number of variants (>4) or discriminated unions
  * - Automatic variant detection based on current value
  * - Confirmation dialog when switching variants (data loss warning)
  */
@@ -131,8 +135,8 @@ export function UnionInput({
   const hasDiscriminator = !!schema.discriminator?.field;
   const discriminatorField = schema.discriminator?.field;
   
-  // Use button group for ≤4 variants without discriminator, select for more or with discriminator
-  const useButtonGroup = !hasDiscriminator && variants.length <= 4;
+  // Use tabbed interface for ≤6 variants, select dropdown for more
+  const useTabs = variants.length <= 6;
   
   const label = schema.ui_config?.label || schema.title || name;
   const helpText = schema.ui_config?.help_text || schema.description;
@@ -233,6 +237,8 @@ export function UnionInput({
         };
       }
 
+      // Use depth=0 to render fields directly without collapsible wrapper
+      // The tabs already provide the visual container
       return (
         <ObjectEditor
           name={variant.variant_name || `variant_${variantIndex}`}
@@ -242,7 +248,7 @@ export function UnionInput({
           errors={fieldErrors}
           disabled={disabled}
           onChange={handleVariantDataChange}
-          depth={1}
+          depth={0}
         />
       );
     }
@@ -301,63 +307,87 @@ export function UnionInput({
       {/* Variant selector - choose display mode based on variant count */}
       <Card>
         <CardContent className="pt-4 space-y-4">
-          {/* Type selector */}
-          <div className="space-y-2">
-            <Label>Type</Label>
-            {useButtonGroup ? (
-              // Button group for small number of variants
-              <div className="flex flex-wrap gap-2">
+          {useTabs ? (
+            // Tabbed interface for manageable number of variants
+            <Tabs
+              value={selectedVariantIndex !== null ? String(selectedVariantIndex) : ''}
+              onValueChange={(val: string) => {
+                if (val) {
+                  handleVariantChange(parseInt(val, 10));
+                }
+              }}
+              className="w-full"
+            >
+              <TabsList className="w-full flex-wrap h-auto gap-1">
                 {variants.map((variant, idx) => (
-                  <Button
+                  <TabsTrigger
                     key={idx}
-                    variant={selectedVariantIndex === idx ? 'default' : 'outline'}
-                    size="sm"
+                    value={String(idx)}
                     disabled={disabled}
-                    onClick={() => handleVariantChange(idx)}
                     className={cn(
-                      selectedVariantIndex === idx && hasError && 'border-destructive'
+                      "flex-1 min-w-fit",
+                      hasError && selectedVariantIndex === idx && 'border-destructive'
                     )}
                   >
                     {variant.discriminator_values?.length
                       ? variant.discriminator_values.join(' / ')
                       : getVariantLabel(variant)}
-                  </Button>
+                  </TabsTrigger>
                 ))}
+              </TabsList>
+              
+              {/* Tab content panels - only render when a variant is selected */}
+              {selectedVariantIndex !== null && variants.map((_, idx) => (
+                <TabsContent key={idx} value={String(idx)} className="mt-4">
+                  {selectedVariantIndex === idx && renderVariantContent(idx)}
+                </TabsContent>
+              ))}
+              
+              {/* Show placeholder when no variant selected */}
+              {selectedVariantIndex === null && (
+                <div className="py-4 text-center text-sm text-muted-foreground border border-dashed rounded-md mt-4">
+                  Select a type to configure this field.
+                </div>
+              )}
+            </Tabs>
+          ) : (
+            // Select dropdown for many variants
+            <>
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Select
+                  value={selectedVariantIndex !== null ? String(selectedVariantIndex) : ''}
+                  onValueChange={(val: string) => handleVariantChange(parseInt(val, 10))}
+                  disabled={disabled}
+                >
+                  <SelectTrigger className={cn(hasError && 'border-destructive')}>
+                    <SelectValue placeholder="Select type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {variants.map((variant, idx) => (
+                      <SelectItem key={idx} value={String(idx)}>
+                        {variant.discriminator_values?.length
+                          ? variant.discriminator_values.join(' / ')
+                          : getVariantLabel(variant)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            ) : (
-              // Select dropdown for discriminated unions or many variants
-              <Select
-                value={selectedVariantIndex !== null ? String(selectedVariantIndex) : ''}
-                onValueChange={(val: string) => handleVariantChange(parseInt(val, 10))}
-                disabled={disabled}
-              >
-                <SelectTrigger className={cn(hasError && 'border-destructive')}>
-                  <SelectValue placeholder="Select type..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {variants.map((variant, idx) => (
-                    <SelectItem key={idx} value={String(idx)}>
-                      {variant.discriminator_values?.length
-                        ? variant.discriminator_values.join(' / ')
-                        : getVariantLabel(variant)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
 
-          {/* Variant content */}
-          {selectedVariantIndex !== null && (
-            <div className="pt-2 border-t">
-              {renderVariantContent(selectedVariantIndex)}
-            </div>
-          )}
+              {/* Variant content */}
+              {selectedVariantIndex !== null && (
+                <div className="pt-2 border-t">
+                  {renderVariantContent(selectedVariantIndex)}
+                </div>
+              )}
 
-          {selectedVariantIndex === null && (
-            <div className="py-4 text-center text-sm text-muted-foreground border border-dashed rounded-md">
-              Select a type to configure this field.
-            </div>
+              {selectedVariantIndex === null && (
+                <div className="py-4 text-center text-sm text-muted-foreground border border-dashed rounded-md">
+                  Select a type to configure this field.
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
