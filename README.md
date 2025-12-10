@@ -33,8 +33,8 @@ pip install pydantic-ui
 ```python
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
-from typing import Annotated
-from pydantic_ui import create_pydantic_ui, FieldConfig, Renderer
+from pydantic_ui import create_pydantic_ui, FieldConfig, Renderer, UIConfig
+
 
 # Define your Pydantic model
 class Address(BaseModel):
@@ -42,21 +42,32 @@ class Address(BaseModel):
     city: str
     zipcode: str
 
+
 class Person(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    age: Annotated[int, FieldConfig(
-        renderer=Renderer.SLIDER,
-        props={"min": 0, "max": 120}
-    )]
+    age: int = Field(gt=0, lt=150)
     email: str
-    address: Address
+    address: Address = Field(description="Permanent address")
     tags: list[str] = []
 
+
+# Field-specific configurations (alternative to annotations)
+field_configs = {
+    "age": FieldConfig(
+        label="User Age",
+        renderer=Renderer.SLIDER,
+    )
+}
 # Create FastAPI app and mount pydantic-ui
 app = FastAPI()
 
 app.include_router(
-    create_pydantic_ui(Person, prefix="/editor"),
+    create_pydantic_ui(
+        Person,
+        prefix="/editor",
+        field_configs=field_configs,
+        ui_config=UIConfig(title="Person Editor", show_save_reset=True),
+    ),
 )
 
 if __name__ == "__main__":
