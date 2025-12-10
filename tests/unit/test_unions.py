@@ -227,10 +227,7 @@ class TestParseField:
         """Test Annotated Union with discriminator field."""
 
         class TestModel(BaseModel):
-            pet: Annotated[
-                Cat | Dog,
-                Field(discriminator="pet_type")
-            ]
+            pet: Annotated[Cat | Dog, Field(discriminator="pet_type")]
 
         schema = parse_model(TestModel)
         pet_field = schema["fields"]["pet"]
@@ -263,10 +260,7 @@ class TestParseModel:
         """Test parsing a model with discriminated union field."""
 
         class Config(BaseModel):
-            pet: Annotated[
-                Cat | Dog | Lizard,
-                Field(discriminator="pet_type")
-            ]
+            pet: Annotated[Cat | Dog | Lizard, Field(discriminator="pet_type")]
 
         schema = parse_model(Config)
         pet_schema = schema["fields"]["pet"]

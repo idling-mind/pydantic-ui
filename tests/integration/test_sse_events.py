@@ -248,9 +248,7 @@ class TestConfirmationEndpoint:
                 cookies=cookies,
             )
             events = poll_resp.json()["events"]
-            confirm_event = next(
-                (e for e in events if e["type"] == "confirmation_request"), None
-            )
+            confirm_event = next((e for e in events if e["type"] == "confirmation_request"), None)
 
             if confirm_event:
                 # Respond to confirmation

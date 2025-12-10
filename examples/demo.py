@@ -33,7 +33,7 @@ ui_config = UIConfig(
             label="Validate",
             variant="secondary",
             icon="check-circle",
-            tooltip="Run custom validation"
+            tooltip="Run custom validation",
         ),
         ActionButton(
             id="clear",
@@ -41,16 +41,16 @@ ui_config = UIConfig(
             variant="destructive",
             icon="refresh",
             tooltip="Clear all data",
-            confirm="Are you sure you want to clear all data? This action cannot be undone."
+            confirm="Are you sure you want to clear all data? This action cannot be undone.",
         ),
         ActionButton(
             id="save",
             label="Save",
             icon="save",
             tooltip="Save all data",
-            confirm="Are you sure you want to save all data?"
+            confirm="Are you sure you want to save all data?",
         ),
-    ]
+    ],
 )
 
 # Field-specific configurations (alternative to annotations)
@@ -79,6 +79,7 @@ pydantic_ui_router = create_pydantic_ui(
     prefix="/config",
 )
 
+
 @pydantic_ui_router.action("validate")
 async def handle_validate(data: dict, controller: PydanticUIController):
     """
@@ -99,41 +100,40 @@ async def handle_validate(data: dict, controller: PydanticUIController):
         # Convert Pydantic validation errors to UI format
         for error in e.errors():
             # error['loc'] is a tuple like ('server', 'port') - join with dots
-            path = ".".join(str(loc) for loc in error['loc'])
-            errors.append({
-                "path": path,
-                "message": error['msg']
-            })
+            path = ".".join(str(loc) for loc in error["loc"])
+            errors.append({"path": path, "message": error["msg"]})
     except Exception as e:
         await controller.show_toast(f"Unexpected error: {e}", "error")
         return {"valid": False, "error_count": 1}
     # Custom validation
     try:
         if validated.created_at > datetime.now().date():
-            errors.append({
-                "path": "created_at",
-                "message": "Created date cannot be in the future."
-            })
-        if validated.created_at < datetime.now().date()-timedelta(days=7) and validated.optional_field is None:
+            errors.append(
+                {"path": "created_at", "message": "Created date cannot be in the future."}
+            )
+        if (
+            validated.created_at < datetime.now().date() - timedelta(days=7)
+            and validated.optional_field is None
+        ):
             print(" and and here")
-            errors.append({
-                "path": "optional_field",
-                "message": "Optional field must be set if created date is older than 7 days."
-            })
+            errors.append(
+                {
+                    "path": "optional_field",
+                    "message": "Optional field must be set if created date is older than 7 days.",
+                }
+            )
     except Exception as e:
         await controller.show_toast(f"Unexpected error during custom validation: {e}", "error")
     # Step 3: Show results in the UI
     if errors:
         await controller.show_validation_errors(errors)
-        await controller.show_toast(
-            f"Validation failed with {len(errors)} error(s)",
-            "error"
-        )
+        await controller.show_toast(f"Validation failed with {len(errors)} error(s)", "error")
         return {"valid": False, "error_count": len(errors)}
     else:
         await controller.clear_validation_errors()
         await controller.show_toast("All validations passed!", "success")
         return {"valid": True}
+
 
 @pydantic_ui_router.action("clear")
 async def handle_clear(data: dict, controller: PydanticUIController):  # noqa: ARG001
@@ -144,6 +144,7 @@ async def handle_clear(data: dict, controller: PydanticUIController):  # noqa: A
     await controller.show_toast("Cleared all data", "success")
     return {"cleared": True}
 
+
 @pydantic_ui_router.action("save")
 async def handle_save(data: dict, controller: PydanticUIController):
     """
@@ -152,6 +153,7 @@ async def handle_save(data: dict, controller: PydanticUIController):
     await controller.push_data(data)
     await controller.show_toast("Saved all data", "success")
     return {"saved": True}
+
 
 app.include_router(pydantic_ui_router)
 

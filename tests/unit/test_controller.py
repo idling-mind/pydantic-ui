@@ -53,9 +53,7 @@ class TestPydanticUIController:
             await controller._get_session()
 
     @pytest.mark.asyncio
-    async def test_show_validation_errors(
-        self, controller: PydanticUIController, session: Session
-    ):
+    async def test_show_validation_errors(self, controller: PydanticUIController, session: Session):
         """Test showing validation errors pushes event to session."""
         controller._current_session = session
 
@@ -86,9 +84,7 @@ class TestPydanticUIController:
         assert event["payload"] == {}
 
     @pytest.mark.asyncio
-    async def test_push_data_with_dict(
-        self, controller: PydanticUIController, session: Session
-    ):
+    async def test_push_data_with_dict(self, controller: PydanticUIController, session: Session):
         """Test pushing data as dict."""
         controller._current_session = session
 
@@ -105,9 +101,7 @@ class TestPydanticUIController:
         assert event["payload"]["data"] == new_data
 
     @pytest.mark.asyncio
-    async def test_push_data_with_model(
-        self, controller: PydanticUIController, session: Session
-    ):
+    async def test_push_data_with_model(self, controller: PydanticUIController, session: Session):
         """Test pushing data as Pydantic model."""
         controller._current_session = session
 
@@ -124,9 +118,7 @@ class TestPydanticUIController:
         assert event["payload"]["data"]["name"] == "model_data"
 
     @pytest.mark.asyncio
-    async def test_show_toast(
-        self, controller: PydanticUIController, session: Session
-    ):
+    async def test_show_toast(self, controller: PydanticUIController, session: Session):
         """Test showing toast notification."""
         controller._current_session = session
 
@@ -140,9 +132,7 @@ class TestPydanticUIController:
         assert event["payload"]["duration"] == 3000
 
     @pytest.mark.asyncio
-    async def test_show_toast_defaults(
-        self, controller: PydanticUIController, session: Session
-    ):
+    async def test_show_toast_defaults(self, controller: PydanticUIController, session: Session):
         """Test toast with default values."""
         controller._current_session = session
 
@@ -212,9 +202,7 @@ class TestPydanticUIController:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_refresh(
-        self, controller: PydanticUIController, session: Session
-    ):
+    async def test_refresh(self, controller: PydanticUIController, session: Session):
         """Test refresh event."""
         controller._current_session = session
 
@@ -235,16 +223,12 @@ class TestPydanticUIController:
         data = controller.get_current_data()
         assert data == {"name": "current", "value": 123}
 
-    def test_get_current_data_without_session(
-        self, controller: PydanticUIController
-    ):
+    def test_get_current_data_without_session(self, controller: PydanticUIController):
         """Test getting current data without session returns empty dict."""
         data = controller.get_current_data()
         assert data == {}
 
-    def test_get_model_instance_valid(
-        self, controller: PydanticUIController, session: Session
-    ):
+    def test_get_model_instance_valid(self, controller: PydanticUIController, session: Session):
         """Test getting model instance with valid data."""
         controller._current_session = session
         session.data = {"name": "test", "value": 42}
@@ -255,9 +239,7 @@ class TestPydanticUIController:
         assert instance.name == "test"
         assert instance.value == 42
 
-    def test_get_model_instance_invalid(
-        self, controller: PydanticUIController, session: Session
-    ):
+    def test_get_model_instance_invalid(self, controller: PydanticUIController, session: Session):
         """Test getting model instance with invalid data returns None."""
         controller._current_session = session
         session.data = {"name": 123}  # Invalid type
@@ -297,9 +279,7 @@ class TestPydanticUIController:
         assert session1.events[0]["type"] == "refresh"
         assert session2.events[0]["type"] == "refresh"
 
-    def test_resolve_confirmation(
-        self, controller: PydanticUIController, session: Session
-    ):
+    def test_resolve_confirmation(self, controller: PydanticUIController, session: Session):
         """Test resolving confirmation with deprecated method."""
         controller._current_session = session
 

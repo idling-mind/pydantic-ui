@@ -102,6 +102,7 @@ class TestEventQueue:
     @pytest.mark.asyncio
     async def test_subscriber_cleanup(self, queue: EventQueue):
         """Test subscribers are cleaned up when generator exits."""
+
         async def short_subscriber():
             async for event in queue.subscribe():
                 return event
@@ -212,6 +213,7 @@ class TestEventQueue:
     @pytest.mark.asyncio
     async def test_concurrent_push(self, queue: EventQueue):
         """Test concurrent event pushing."""
+
         async def pusher(prefix: str, count: int):
             for i in range(count):
                 await queue.push(f"{prefix}_{i}", {})
