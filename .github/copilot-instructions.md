@@ -1289,3 +1289,311 @@ module.exports = {
 - [ ] UI is responsive (test at different widths)
 - [ ] Keyboard navigation works
 - [ ] Error states are handled gracefully
+- [ ] **New features have corresponding tests**
+
+---
+
+## 🧪 Testing Requirements for New Features
+
+When implementing new features, **always write tests**. This ensures code quality and prevents regressions.
+
+### Test File Organization
+
+```
+tests/                          # Python backend tests
+├── unit/                       # Unit tests for individual modules
+│   ├── test_schema.py
+│   ├── test_config.py
+│   ├── test_sessions.py
+│   ├── test_controller.py
+│   └── test_events.py
+├── integration/                # Integration tests for API endpoints
+│   ├── test_api_schema.py
+│   ├── test_api_data.py
+│   ├── test_action_handlers.py
+│   └── test_sse_events.py
+├── conftest.py                 # Shared fixtures
+└── fixtures/                   # Test data fixtures
+
+frontend/tests/                 # React frontend tests
+├── setup.ts                    # Test setup with MSW mocks
+├── mocks/                      # Mock data and handlers
+│   ├── data.ts
+│   ├── handlers.ts
+│   └── server.ts
+├── components/                 # Component tests
+│   └── Renderers/
+├── context/                    # Context tests
+│   ├── DataContext.test.tsx
+│   ├── EventContext.test.tsx
+│   └── ClipboardContext.test.tsx
+└── unit/                       # Pure function tests
+
+frontend/e2e/                   # End-to-end tests (Playwright)
+└── app.spec.ts                 # Full application E2E tests
+```
+
+### Python Test Patterns
+
+#### Unit Tests
+
+```python
+# tests/unit/test_new_feature.py
+import pytest
+from pydantic import BaseModel
+
+from pydantic_ui.new_module import NewFeature
+
+
+class TestNewFeature:
+    """Tests for NewFeature class."""
+
+    @pytest.fixture
+    def feature(self) -> NewFeature:
+        """Create a NewFeature instance for tests."""
+        return NewFeature()
+
+    def test_basic_functionality(self, feature: NewFeature):
+        """Test basic feature works."""
+        result = feature.do_something()
+        assert result == expected_value
+
+    @pytest.mark.asyncio
+    async def test_async_functionality(self, feature: NewFeature):
+        """Test async feature works."""
+        result = await feature.do_async_something()
+        assert result is not None
+
+    @pytest.mark.parametrize("input_val,expected", [
+        ("a", 1),
+        ("b", 2),
+        ("c", 3),
+    ])
+    def test_various_inputs(self, feature: NewFeature, input_val, expected):
+        """Test with various inputs."""
+        assert feature.process(input_val) == expected
+```
+
+#### Integration Tests
+
+```python
+# tests/integration/test_new_endpoint.py
+import pytest
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+from pydantic import BaseModel
+
+from pydantic_ui import create_pydantic_ui
+
+
+class TestModel(BaseModel):
+    name: str = "test"
+
+
+class TestNewEndpoint:
+    """Integration tests for new API endpoint."""
+
+    @pytest.fixture
+    def app(self) -> FastAPI:
+        app = FastAPI()
+        router = create_pydantic_ui(TestModel, prefix="/test")
+        app.include_router(router)
+        return app
+
+    @pytest.mark.asyncio
+    async def test_endpoint_returns_200(self, app: FastAPI):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/test/api/new-endpoint")
+            assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_endpoint_returns_correct_data(self, app: FastAPI):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/test/api/new-endpoint",
+                json={"key": "value"},
+            )
+            data = response.json()
+            assert data["success"] is True
+```
+
+### Frontend Test Patterns
+
+#### Component Tests (Vitest + Testing Library)
+
+```tsx
+// tests/components/NewComponent.test.tsx
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { NewComponent } from '@/components/NewComponent';
+
+describe('NewComponent', () => {
+  it('renders correctly', () => {
+    render(<NewComponent label="Test" />);
+    expect(screen.getByText('Test')).toBeInTheDocument();
+  });
+
+  it('calls onClick when clicked', () => {
+    const onClick = vi.fn();
+    render(<NewComponent label="Click me" onClick={onClick} />);
+    
+    fireEvent.click(screen.getByText('Click me'));
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows error state', () => {
+    render(<NewComponent label="Test" error="Something went wrong" />);
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+  });
+});
+```
+
+#### Context Tests
+
+```tsx
+// tests/context/NewContext.test.tsx
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+import { NewProvider, useNew } from '@/context/NewContext';
+
+function TestConsumer() {
+  const { value, setValue } = useNew();
+  return (
+    <div>
+      <span data-testid="value">{value}</span>
+      <button onClick={() => setValue('updated')}>Update</button>
+    </div>
+  );
+}
+
+describe('NewContext', () => {
+  it('provides initial value', () => {
+    render(
+      <NewProvider>
+        <TestConsumer />
+      </NewProvider>
+    );
+    expect(screen.getByTestId('value').textContent).toBe('initial');
+  });
+
+  it('throws when used outside provider', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => render(<TestConsumer />)).toThrow();
+    consoleError.mockRestore();
+  });
+
+  it('updates value correctly', () => {
+    render(
+      <NewProvider>
+        <TestConsumer />
+      </NewProvider>
+    );
+    
+    act(() => {
+      screen.getByText('Update').click();
+    });
+    
+    expect(screen.getByTestId('value').textContent).toBe('updated');
+  });
+});
+```
+
+### E2E Tests (Playwright)
+
+```typescript
+// e2e/new-feature.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('New Feature', () => {
+  test('works end-to-end', async ({ page }) => {
+    await page.goto('/');
+    
+    // Wait for app to load
+    await page.waitForResponse(response => 
+      response.url().includes('/api/schema') && response.status() === 200
+    );
+    
+    // Interact with the feature
+    await page.getByRole('button', { name: 'New Feature' }).click();
+    
+    // Verify result
+    await expect(page.getByText('Feature activated')).toBeVisible();
+  });
+
+  test('handles errors gracefully', async ({ page }) => {
+    await page.goto('/');
+    
+    // Trigger error condition
+    await page.getByRole('button', { name: 'Trigger Error' }).click();
+    
+    // Verify error is shown
+    await expect(page.getByText(/error/i)).toBeVisible();
+    
+    // Page should still be functional
+    await expect(page.locator('body')).toBeVisible();
+  });
+});
+```
+
+### Running Tests
+
+This project uses **uv** as the Python package manager. Always use `uv run` to execute Python commands.
+
+```bash
+# Backend tests (use uv run for all Python/pytest commands)
+uv run pytest                              # Run all tests
+uv run pytest tests/unit/                  # Run only unit tests
+uv run pytest tests/integration/           # Run only integration tests
+uv run pytest -v -k "test_schema"          # Run tests matching pattern
+uv run pytest --cov=pydantic_ui            # Run with coverage
+
+# Frontend tests
+cd frontend
+npm run test                        # Run tests in watch mode
+npm run test:run                    # Run tests once
+npm run test:coverage               # Run with coverage
+
+# E2E tests
+npm run test:e2e                    # Run E2E tests
+npm run test:e2e:ui                 # Run with Playwright UI
+npm run test:e2e:headed             # Run in headed browser
+npm run test:e2e:debug              # Run in debug mode
+```
+
+**Important**: Always use `uv run` prefix for any Python-related commands:
+- `uv run pytest` instead of `pytest`
+- `uv run python script.py` instead of `python script.py`
+- `uv run ruff check` instead of `ruff check`
+
+### Test Coverage Requirements
+
+- **Unit tests**: Required for all new utility functions and classes
+- **Integration tests**: Required for all new API endpoints
+- **Component tests**: Required for all new React components
+- **Context tests**: Required for all new React contexts
+- **E2E tests**: Recommended for user-facing features
+
+### CI/CD Integration
+
+Tests run automatically on:
+- Every push to `main` and `develop` branches
+- Every pull request to `main`
+
+The CI pipeline includes:
+1. **Backend tests** (pytest) - Python 3.10, 3.11, 3.12
+2. **Frontend tests** (vitest) - Node 20
+3. **Build test** - Verify frontend builds and static files exist
+4. **E2E tests** (Playwright) - Chromium and Firefox
+
+### Writing Good Tests
+
+1. **Test behavior, not implementation**: Focus on what the code does, not how it does it
+2. **Use descriptive names**: `test_user_can_save_form_with_valid_data` > `test_save`
+3. **One assertion per test** (when practical): Makes failures easier to diagnose
+4. **Use fixtures for setup**: Keep tests DRY but readable
+5. **Test edge cases**: Empty inputs, null values, boundary conditions
+6. **Mock external dependencies**: Use MSW for API mocks, vi.fn() for callbacks
+7. **Keep tests fast**: Avoid unnecessary waits and complex setup
+
