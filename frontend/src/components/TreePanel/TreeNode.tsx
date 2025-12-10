@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, List, Hash, ToggleLeft, Type, AlertCircle } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, List, Hash, ToggleLeft, Type, AlertCircle, Layers } from 'lucide-react';
 import { cn, isFieldVisible } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ContextMenuTrigger } from '@/components/ui/context-menu';
@@ -149,6 +149,8 @@ function getTypeIcon(type: string, isExpanded: boolean) {
       );
     case 'array':
       return <List className="h-4 w-4 text-green-500" />;
+    case 'union':
+      return <Layers className="h-4 w-4 text-amber-500" />;
     case 'string':
       return <Type className="h-4 w-4 text-orange-500" />;
     case 'integer':

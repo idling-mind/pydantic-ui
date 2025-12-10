@@ -11,6 +11,7 @@ import { ColorInput } from './ColorInput';
 import { JsonInput } from './JsonInput';
 import { FileSelectInput } from './FileSelectInput';
 import { FileUploadInput } from './FileUploadInput';
+import { UnionInput } from './UnionInput';
 import { useData } from '@/context/DataContext';
 import type { RendererProps } from './types';
 import type { SchemaField, FieldError } from '@/types';
@@ -38,6 +39,10 @@ const rendererMap: Record<string, React.ComponentType<RendererProps>> = {
   json: JsonInput,
   file_select: FileSelectInput,
   file_upload: FileUploadInput,
+  // Union renderers
+  union: UnionInput,
+  union_select: UnionInput,
+  union_tabs: UnionInput,
   // Aliases
   input: TextInput,
   switch: ToggleInput,
@@ -49,6 +54,12 @@ function getDefaultRenderer(schema: SchemaField): string {
   // Check for explicit renderer in ui_config
   if (schema.ui_config?.renderer) {
     return schema.ui_config.renderer;
+  }
+
+  // Check for union type
+  if (schema.type === 'union' && schema.variants) {
+    // Use tabs for ≤4 variants, select for more
+    return schema.variants.length <= 4 ? 'union_tabs' : 'union_select';
   }
 
   // Check for enum/literal - use select
@@ -172,6 +183,7 @@ export {
   JsonInput,
   FileSelectInput,
   FileUploadInput,
+  UnionInput,
 };
 
 // Export utility

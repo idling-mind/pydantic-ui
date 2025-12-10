@@ -59,6 +59,9 @@ class Renderer(str, Enum):
     PASSWORD = "password"
     EMAIL = "email"
     URL = "url"
+    # Union renderers
+    UNION_SELECT = "union_select"  # Dropdown to select variant
+    UNION_TABS = "union_tabs"  # Tabs/segmented control for variants
 
 
 @dataclass

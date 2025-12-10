@@ -1,2 +1,0 @@
-# This file ensures the static folder exists in the repository.
-# The actual static content is built from frontend/ during the publish workflow.

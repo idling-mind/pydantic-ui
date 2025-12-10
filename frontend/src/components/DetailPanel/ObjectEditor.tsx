@@ -120,6 +120,7 @@ export function ObjectEditor({
   );
 
   // Separate primitive and nested fields
+  // Union fields are treated as primitive (they have their own editor)
   const primitiveFields: [string, SchemaField][] = [];
   const nestedFields: [string, SchemaField][] = [];
   
@@ -127,6 +128,7 @@ export function ObjectEditor({
     if (field.type === 'object' || field.type === 'array') {
       nestedFields.push([fieldName, field]);
     } else {
+      // Include union types with primitives (they render their own editor)
       primitiveFields.push([fieldName, field]);
     }
   });
@@ -723,10 +725,13 @@ export function ArrayListEditor({
   // Check if items are objects (should be shown as cards or table)
   const itemsAreObjects = itemSchema?.type === 'object';
   
+  // Check if items are union types
+  const itemsAreUnion = itemSchema?.type === 'union' && itemSchema.variants;
+  
   // Check if table view is available (items have nested structure)
   const canShowTableView = itemSchema && 
     (itemSchema.type === 'object' || 
-     (itemSchema.type !== 'array' && !itemsArePrimitive));
+     (itemSchema.type !== 'array' && !itemsArePrimitive && !itemsAreUnion));
 
   const handleRemoveItem = (index: number) => {
     if (!canRemove) return;
@@ -748,6 +753,7 @@ export function ArrayListEditor({
     if (!canAdd) return;
     
     // Create default value from schema (uses schema defaults if defined)
+    // For union types, this creates null initially - the user selects the type in the detail view
     const defaultValue = itemSchema ? createDefaultFromSchema(itemSchema) : null;
     
     const newItems = [...items, defaultValue];
@@ -1130,6 +1136,7 @@ export function ArrayListEditor({
         </div>
       )}
 
+          {/* Add Item button */}
           <Button
             variant="outline"
             onClick={handleAddItem}

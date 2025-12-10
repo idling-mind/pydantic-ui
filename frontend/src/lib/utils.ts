@@ -61,6 +61,10 @@ export function createDefaultFromSchema(schema: SchemaField): unknown {
         return obj;
       }
       return {};
+    case 'union':
+      // For unions, return null - user must select a variant
+      // The UnionInput component will handle variant selection
+      return null;
     default:
       return null;
   }

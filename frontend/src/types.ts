@@ -1,4 +1,19 @@
 // Schema types
+
+// Discriminator configuration for discriminated unions
+export interface DiscriminatorConfig {
+  field: string | null;  // The field name used for discrimination, null for callable discriminators
+  type: 'string' | 'callable';  // Type of discriminator
+  mapping: Record<string, number> | null;  // Maps discriminator values to variant indices
+}
+
+// Union variant schema
+export interface UnionVariant extends SchemaField {
+  variant_index: number;
+  variant_name: string;
+  discriminator_values?: unknown[];  // The discriminator values that map to this variant
+}
+
 export interface SchemaField {
   type: string;
   python_type?: string;
@@ -35,6 +50,9 @@ export interface SchemaField {
   fields?: Record<string, SchemaField>;
   items?: SchemaField;
   additionalProperties?: SchemaField;
+  // Union-specific properties
+  variants?: UnionVariant[];
+  discriminator?: DiscriminatorConfig;
 }
 
 export interface Schema extends SchemaField {
