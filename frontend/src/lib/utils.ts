@@ -65,3 +65,73 @@ export function createDefaultFromSchema(schema: SchemaField): unknown {
       return null;
   }
 }
+
+/**
+ * Evaluate a JavaScript visibility condition for conditional field rendering.
+ * 
+ * The condition is evaluated as JavaScript with access to:
+ * - `data`: the full form data object
+ * - `value`: the current field's value
+ * 
+ * Example conditions:
+ * - "data.status === 'active'"
+ * - "new Date(data.created) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)"
+ * - "value !== null && value.length > 0"
+ * 
+ * @param condition - JavaScript expression that should return a boolean
+ * @param data - The full form data object
+ * @param value - The current field's value
+ * @returns true if the field should be visible, false otherwise
+ */
+export function evaluateVisibility(
+  condition: string | undefined | null,
+  data: Record<string, unknown>,
+  value?: unknown
+): boolean {
+  // If no condition is specified, the field is always visible
+  if (!condition) {
+    return true;
+  }
+
+  try {
+    // Create a function that evaluates the condition
+    // Using Function constructor to create a sandboxed evaluation context
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const evaluator = new Function('data', 'value', `return Boolean(${condition});`);
+    const result = evaluator(data, value);
+    return result === true;
+  } catch (error) {
+    // Log error in development but don't break the UI
+    console.warn(`[pydantic-ui] Error evaluating visibility condition: "${condition}"`, error);
+    // Default to visible if there's an error in the condition
+    return true;
+  }
+}
+
+/**
+ * Check if a field should be visible based on its schema and data context.
+ * Combines the static `hidden` property with dynamic `visible_when` evaluation.
+ * 
+ * @param schema - The field's schema
+ * @param data - The full form data object
+ * @param value - The current field's value
+ * @returns true if the field should be visible
+ */
+export function isFieldVisible(
+  schema: SchemaField,
+  data: Record<string, unknown>,
+  value?: unknown
+): boolean {
+  // If statically hidden, always hide
+  if (schema.ui_config?.hidden) {
+    return false;
+  }
+
+  // If there's a visible_when condition, evaluate it
+  if (schema.ui_config?.visible_when) {
+    return evaluateVisibility(schema.ui_config.visible_when, data, value);
+  }
+
+  // Default: visible
+  return true;
+}

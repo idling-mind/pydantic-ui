@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, List, Hash, ToggleLeft, Type, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isFieldVisible } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Badge } from '@/components/ui/badge';
@@ -246,17 +246,21 @@ export function TreeNode({
       
       return Object.entries(schema.fields).filter(
         ([fieldName, field]) => {
-          // Always filter out hidden fields
-          if (field.ui_config?.hidden) return false;
           // Filter out simple fields if hideSimpleFields is enabled
           if (hideSimpleFields && field.type !== 'object' && field.type !== 'array') {
             return false;
           }
-          // For optional fields, only show if they have a value (not null/undefined)
-          if (field.required === false) {
-            const fieldValue = currentValue && typeof currentValue === 'object' 
-              ? (currentValue as Record<string, unknown>)[fieldName]
-              : undefined;
+          
+          // Check visibility based on hidden and visible_when conditions
+          const fieldValue = currentValue && typeof currentValue === 'object' 
+            ? (currentValue as Record<string, unknown>)[fieldName]
+            : undefined;
+          if (!isFieldVisible(field, data || {}, fieldValue)) {
+            return false;
+          }
+          
+          // For optional fields without visible_when, only show if they have a value
+          if (field.required === false && !field.ui_config?.visible_when) {
             if (fieldValue === null || fieldValue === undefined) {
               return false;
             }

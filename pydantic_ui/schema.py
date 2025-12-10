@@ -281,6 +281,7 @@ def parse_field(
                 "help_text": field_config.help_text,
                 "hidden": field_config.hidden,
                 "read_only": field_config.read_only,
+                "visible_when": field_config.visible_when,
                 "props": field_config.props,
             }
         return result
@@ -303,6 +304,7 @@ def parse_field(
             "help_text": field_config.help_text,
             "hidden": field_config.hidden,
             "read_only": field_config.read_only,
+            "visible_when": field_config.visible_when,
             "props": field_config.props,
         }
 

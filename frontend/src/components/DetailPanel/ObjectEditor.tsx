@@ -13,7 +13,7 @@ import { MoreVertical } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { cn, createDefaultFromSchema } from '@/lib/utils';
+import { cn, createDefaultFromSchema, isFieldVisible } from '@/lib/utils';
 import { FieldRenderer } from '@/components/Renderers';
 import { NestedFieldCard } from './NestedFieldCard';
 import { OrphanedErrors } from './OrphanedErrors';
@@ -89,7 +89,7 @@ export function ObjectEditor({
   onChange,
   depth = 0,
 }: ObjectEditorProps) {
-  const { setSelectedPath, toggleExpanded, expandedPaths, config } = useData();
+  const { setSelectedPath, toggleExpanded, expandedPaths, config, data: rootData } = useData();
   const [isExpanded, setIsExpanded] = React.useState(depth < 2);
   const { style: gridStyle } = useResponsiveColumns(config);
   
@@ -114,9 +114,9 @@ export function ObjectEditor({
     );
   };
 
-  // Filter visible fields
+  // Filter visible fields (respects hidden and visible_when conditions)
   const visibleFields = Object.entries(fields).filter(
-    ([, field]) => !field.ui_config?.hidden
+    ([fieldName, field]) => isFieldVisible(field, rootData, currentValue[fieldName])
   );
 
   // Separate primitive and nested fields

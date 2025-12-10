@@ -75,6 +75,18 @@ class FieldConfig:
                 renderer=Renderer.SLIDER,
                 props={"min": 0, "max": 120}
             )]
+            
+    Use visible_when to conditionally show/hide fields based on JavaScript logic:
+    
+        class MyModel(BaseModel):
+            created: datetime
+            why_late: Annotated[str | None, FieldConfig(
+                visible_when="new Date(data.created) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)"
+            )] = None
+            
+    The visible_when string is evaluated as JavaScript. It has access to:
+    - data: the full form data object
+    - value: the current field's value
     """
 
     renderer: Renderer | str = Renderer.AUTO
@@ -83,6 +95,7 @@ class FieldConfig:
     help_text: str | None = None
     hidden: bool = False
     read_only: bool = False
+    visible_when: str | None = None
     props: dict[str, Any] = field(default_factory=dict)
 
     def model_dump(self) -> dict[str, Any]:
@@ -96,6 +109,7 @@ class FieldConfig:
             "help_text": self.help_text,
             "hidden": self.hidden,
             "read_only": self.read_only,
+            "visible_when": self.visible_when,
             "props": self.props,
         }
 

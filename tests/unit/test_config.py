@@ -57,6 +57,7 @@ class TestFieldConfig:
         assert config.help_text is None
         assert config.hidden is False
         assert config.read_only is False
+        assert config.visible_when is None
         assert config.props == {}
 
     def test_all_options(self):
@@ -68,6 +69,7 @@ class TestFieldConfig:
             help_text="This is help text",
             hidden=True,
             read_only=True,
+            visible_when="data.status === 'active'",
             props={"min": 0, "max": 100, "step": 5},
         )
         assert config.renderer == Renderer.SLIDER
@@ -76,6 +78,7 @@ class TestFieldConfig:
         assert config.help_text == "This is help text"
         assert config.hidden is True
         assert config.read_only is True
+        assert config.visible_when == "data.status === 'active'"
         assert config.props == {"min": 0, "max": 100, "step": 5}
 
     def test_renderer_as_enum(self):
@@ -93,12 +96,30 @@ class TestFieldConfig:
         config = FieldConfig(
             renderer=Renderer.SLIDER,
             label="Test",
+            visible_when="data.enabled === true",
             props={"min": 0},
         )
         data = config.model_dump()
         assert data["renderer"] == "slider"  # enum value
         assert data["label"] == "Test"
+        assert data["visible_when"] == "data.enabled === true"
         assert data["props"] == {"min": 0}
+
+    def test_visible_when_condition(self):
+        """Test FieldConfig with various visible_when conditions."""
+        # Simple condition
+        config1 = FieldConfig(visible_when="data.status === 'active'")
+        assert config1.visible_when == "data.status === 'active'"
+
+        # Date-based condition
+        config2 = FieldConfig(
+            visible_when="new Date(data.created) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)"
+        )
+        assert "Date" in config2.visible_when
+
+        # Value-based condition
+        config3 = FieldConfig(visible_when="value !== null && value.length > 0")
+        assert config3.visible_when == "value !== null && value.length > 0"
 
 
 # =============================================================================

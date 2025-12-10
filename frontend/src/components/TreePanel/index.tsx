@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search, Eye, EyeOff, Filter, FilterX } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isFieldVisible } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -109,9 +109,16 @@ export function TreePanel({ className }: TreePanelProps) {
         return false;
       }
 
+      // Check visibility based on hidden and visible_when conditions
+      const fieldValue = data?.[name];
+      if (!isFieldVisible(field, data || {}, fieldValue)) {
+        return false;
+      }
+
       // Filter out optional fields that are not initialized (null/undefined)
-      if (field.required === false) {
-        const fieldValue = data?.[name];
+      // Note: This is separate from visible_when - optional fields with null values are hidden
+      // unless they have a visible_when that explicitly makes them visible
+      if (field.required === false && !field.ui_config?.visible_when) {
         if (fieldValue === null || fieldValue === undefined) {
           return false;
         }
@@ -153,7 +160,7 @@ export function TreePanel({ className }: TreePanelProps) {
 
   const rootFields = schema.type === 'object' && schema.fields
     ? Object.entries(schema.fields).filter(
-        ([name, field]) => !field.ui_config?.hidden && filterSchema(field, name)
+        ([name, field]) => filterSchema(field, name)
       )
     : [];
 
