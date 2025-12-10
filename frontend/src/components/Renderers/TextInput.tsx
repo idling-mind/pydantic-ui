@@ -1,7 +1,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
 export function TextInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -11,6 +11,10 @@ export function TextInput({ name, path, schema, value, errors, disabled, onChang
   const placeholder = props.placeholder as string | undefined;
   const maxLength = schema.max_length;
   const minLength = schema.min_length;
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
+  
+  // Use default value from schema if value is undefined/null
+  const effectiveValue = getValueWithDefault<string>(value, schema, '');
 
   return (
     <div className="space-y-2">
@@ -21,13 +25,14 @@ export function TextInput({ name, path, schema, value, errors, disabled, onChang
       <Input
         id={path}
         type="text"
-        value={(value as string) || ''}
+        value={(effectiveValue as string) || ''}
         onChange={(e) => onChange(e.target.value || null)}
         placeholder={placeholder || `Enter ${label.toLowerCase()}`}
-        disabled={disabled}
+        disabled={isReadOnly}
+        readOnly={isReadOnly}
         maxLength={maxLength}
         minLength={minLength}
-        className={cn(hasError && 'border-destructive focus-visible:ring-destructive')}
+        className={cn(hasError && 'border-destructive focus-visible:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
       />
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>
@@ -40,7 +45,7 @@ export function TextInput({ name, path, schema, value, errors, disabled, onChang
       )}
       {maxLength && (
         <p className="text-xs text-muted-foreground text-right">
-          {((value as string) || '').length} / {maxLength}
+          {((effectiveValue as string) || '').length} / {maxLength}
         </p>
       )}
     </div>

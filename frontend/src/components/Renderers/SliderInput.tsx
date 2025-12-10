@@ -1,7 +1,7 @@
 
 import { Slider as SliderComponent } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
 export function SliderInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -13,8 +13,11 @@ export function SliderInput({ name, path, schema, value, errors, disabled, onCha
   const max = (props.max as number) ?? schema.maximum ?? 100;
   const step = (props.step as number) ?? (schema.type === 'integer' ? 1 : 0.1);
   const showValue = props.showValue !== false;
-
-  const currentValue = typeof value === 'number' ? value : min;
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
+  
+  // Use default value from schema if value is undefined/null, fallback to min
+  const effectiveValue = getValueWithDefault<number>(value, schema, min);
+  const currentValue = typeof effectiveValue === 'number' ? effectiveValue : min;
 
   return (
     <div className="space-y-4">
@@ -36,8 +39,8 @@ export function SliderInput({ name, path, schema, value, errors, disabled, onCha
         min={min}
         max={max}
         step={step}
-        disabled={disabled}
-        className={cn(hasError && '[&_[role=slider]]:border-destructive')}
+        disabled={isReadOnly}
+        className={cn(hasError && '[&_[role=slider]]:border-destructive', isReadOnly && 'opacity-50 cursor-not-allowed')}
       />
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>{min}</span>

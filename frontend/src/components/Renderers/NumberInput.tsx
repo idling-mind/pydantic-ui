@@ -1,7 +1,7 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
 export function NumberInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -11,6 +11,10 @@ export function NumberInput({ name, path, schema, value, errors, disabled, onCha
   const step = props.step as number | undefined;
   const min = schema.minimum ?? schema.exclusive_minimum;
   const max = schema.maximum ?? schema.exclusive_maximum;
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
+  
+  // Use default value from schema if value is undefined/null
+  const effectiveValue = getValueWithDefault<number | null>(value, schema, null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -33,14 +37,15 @@ export function NumberInput({ name, path, schema, value, errors, disabled, onCha
       <Input
         id={path}
         type="number"
-        value={value !== null && value !== undefined ? String(value) : ''}
+        value={effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : ''}
         onChange={handleChange}
         placeholder={`Enter ${label.toLowerCase()}`}
-        disabled={disabled}
+        disabled={isReadOnly}
+        readOnly={isReadOnly}
         step={step || (schema.type === 'integer' ? 1 : 'any')}
         min={min}
         max={max}
-        className={cn(hasError && 'border-destructive focus-visible:ring-destructive')}
+        className={cn(hasError && 'border-destructive focus-visible:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
       />
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>

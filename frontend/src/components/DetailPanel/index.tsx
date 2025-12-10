@@ -123,6 +123,9 @@ export function DetailPanel({ className }: DetailPanelProps) {
 
   const { selectedSchema, selectedValue, basePath } = getSelectedSchema();
 
+  // Check if editing should be disabled (loading or global read_only)
+  const isDisabled = loading || config?.read_only === true;
+
   // Check if current path is an array item
   const isArrayItemPath = (path: string): boolean => /\[\d+\]$/.test(path);
   
@@ -198,7 +201,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
           schema={selectedSchema}
           value={selectedValue as Record<string, unknown>}
           errors={relevantErrors}
-          disabled={loading}
+          disabled={isDisabled}
           onChange={handleChange}
         />
       );
@@ -213,7 +216,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
           schema={selectedSchema}
           value={selectedValue as unknown[]}
           errors={relevantErrors}
-          disabled={loading}
+          disabled={isDisabled}
           onChange={handleChange}
         />
       );
@@ -227,7 +230,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
         schema={selectedSchema}
         value={selectedValue}
         errors={relevantErrors}
-        disabled={loading}
+        disabled={isDisabled}
         onChange={handleChange}
       />
     );

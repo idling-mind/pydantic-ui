@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
 export function SelectInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -15,6 +15,10 @@ export function SelectInput({ name, path, schema, value, errors, disabled, onCha
   const props = schema.ui_config?.props || {};
   const label = schema.ui_config?.label || schema.title || name;
   const placeholder = (props.placeholder as string) || `Select ${label.toLowerCase()}`;
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
+  
+  // Use default value from schema if value is undefined/null
+  const effectiveValue = getValueWithDefault<string | null>(value, schema, null);
   
   // Get options from enum, literal values, or custom options
   const options: { value: string; label: string }[] = React.useMemo(() => {
@@ -45,13 +49,13 @@ export function SelectInput({ name, path, schema, value, errors, disabled, onCha
         {schema.required !== false && <span className="text-destructive ml-1">*</span>}
       </Label>
       <Select
-        value={value !== null && value !== undefined ? String(value) : undefined}
+        value={effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : undefined}
         onValueChange={(val) => onChange(val)}
-        disabled={disabled}
+        disabled={isReadOnly}
       >
         <SelectTrigger
           id={path}
-          className={cn(hasError && 'border-destructive focus:ring-destructive')}
+          className={cn(hasError && 'border-destructive focus:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>

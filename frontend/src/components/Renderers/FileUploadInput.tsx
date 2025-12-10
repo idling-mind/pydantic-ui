@@ -20,6 +20,7 @@ export function FileUploadInput({ name, path, schema, value, errors, disabled, o
   const accept = props.accept as string || '*';
   const multiple = props.multiple as boolean || false;
   const maxSize = props.maxSize as number || 10 * 1024 * 1024; // 10MB default
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -86,7 +87,7 @@ export function FileUploadInput({ name, path, schema, value, errors, disabled, o
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    if (!disabled) setIsDragging(true);
+    if (!isReadOnly) setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -97,7 +98,7 @@ export function FileUploadInput({ name, path, schema, value, errors, disabled, o
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (!disabled) handleFiles(e.dataTransfer.files);
+    if (!isReadOnly) handleFiles(e.dataTransfer.files);
   };
 
   const handleRemoveFile = (index: number) => {
@@ -130,7 +131,7 @@ export function FileUploadInput({ name, path, schema, value, errors, disabled, o
           'flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors',
           isDragging && 'border-primary bg-primary/5',
           !isDragging && 'border-muted-foreground/25 hover:border-muted-foreground/50',
-          disabled && 'opacity-50 cursor-not-allowed',
+          isReadOnly && 'opacity-50 cursor-not-allowed',
           hasError && 'border-destructive'
         )}
       >
@@ -152,7 +153,7 @@ export function FileUploadInput({ name, path, schema, value, errors, disabled, o
         accept={accept}
         multiple={multiple}
         onChange={handleInputChange}
-        disabled={disabled}
+        disabled={isReadOnly}
         className="hidden"
       />
 
@@ -178,7 +179,7 @@ export function FileUploadInput({ name, path, schema, value, errors, disabled, o
                   e.stopPropagation();
                   handleRemoveFile(index);
                 }}
-                disabled={disabled}
+                disabled={isReadOnly}
               >
                 <X className="h-4 w-4" />
               </Button>

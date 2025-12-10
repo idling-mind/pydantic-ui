@@ -10,7 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
 export function DateInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -19,6 +19,10 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
   const props = schema.ui_config?.props || {};
   const label = schema.ui_config?.label || schema.title || name;
   const includeTime = (props.includeTime as boolean) || schema.format === 'date-time';
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
+  
+  // Use default value from schema if value is undefined/null
+  const effectiveValue = getValueWithDefault<string | null>(value, schema, null);
 
   // Parse date from value
   const parseDate = (val: unknown): Date | undefined => {
@@ -28,7 +32,7 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
     return date;
   };
 
-  const date = parseDate(value);
+  const date = parseDate(effectiveValue);
 
   // Format time for time input
   const formatTime = (d: Date | undefined): string => {
@@ -79,11 +83,12 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
             <Button
               id={path}
               variant="outline"
-              disabled={disabled}
+              disabled={isReadOnly}
               className={cn(
                 'w-full justify-start text-left font-normal',
                 !date && 'text-muted-foreground',
-                hasError && 'border-destructive focus-visible:ring-destructive'
+                hasError && 'border-destructive focus-visible:ring-destructive',
+                isReadOnly && 'bg-muted cursor-not-allowed'
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
@@ -96,7 +101,7 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
               selected={date}
               onSelect={handleDateSelect}
               captionLayout="dropdown"
-              disabled={disabled}
+              disabled={isReadOnly}
             />
           </PopoverContent>
         </Popover>
@@ -105,10 +110,12 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
             type="time"
             value={formatTime(date)}
             onChange={handleTimeChange}
-            disabled={disabled || !date}
+            disabled={isReadOnly || !date}
+            readOnly={isReadOnly}
             className={cn(
               'w-32',
-              hasError && 'border-destructive focus-visible:ring-destructive'
+              hasError && 'border-destructive focus-visible:ring-destructive',
+              isReadOnly && 'bg-muted cursor-not-allowed'
             )}
           />
         )}

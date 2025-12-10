@@ -13,7 +13,7 @@ import { MoreVertical } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, createDefaultFromSchema } from '@/lib/utils';
 import { FieldRenderer } from '@/components/Renderers';
 import { NestedFieldCard } from './NestedFieldCard';
 import { OrphanedErrors } from './OrphanedErrors';
@@ -360,28 +360,8 @@ export function ArrayEditor({
   const handleAddItem = () => {
     if (!canAdd) return;
     
-    // Create default value based on item type
-    let defaultValue: unknown = null;
-    if (itemSchema) {
-      switch (itemSchema.type) {
-        case 'string':
-          defaultValue = '';
-          break;
-        case 'integer':
-        case 'number':
-          defaultValue = 0;
-          break;
-        case 'boolean':
-          defaultValue = false;
-          break;
-        case 'object':
-          defaultValue = {};
-          break;
-        case 'array':
-          defaultValue = [];
-          break;
-      }
-    }
+    // Create default value from schema (uses schema defaults if defined)
+    const defaultValue = itemSchema ? createDefaultFromSchema(itemSchema) : null;
     
     onChange([...items, defaultValue]);
   };
@@ -767,28 +747,8 @@ export function ArrayListEditor({
   const handleAddItem = () => {
     if (!canAdd) return;
     
-    // Create default value based on item type
-    let defaultValue: unknown = null;
-    if (itemSchema) {
-      switch (itemSchema.type) {
-        case 'string':
-          defaultValue = '';
-          break;
-        case 'integer':
-        case 'number':
-          defaultValue = 0;
-          break;
-        case 'boolean':
-          defaultValue = false;
-          break;
-        case 'object':
-          defaultValue = {};
-          break;
-        case 'array':
-          defaultValue = [];
-          break;
-      }
-    }
+    // Create default value from schema (uses schema defaults if defined)
+    const defaultValue = itemSchema ? createDefaultFromSchema(itemSchema) : null;
     
     const newItems = [...items, defaultValue];
     onChange(newItems);

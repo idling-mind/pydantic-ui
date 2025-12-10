@@ -3,7 +3,7 @@ import { FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
 export function FileSelectInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -13,6 +13,10 @@ export function FileSelectInput({ name, path, schema, value, errors, disabled, o
   const placeholder = schema.ui_config?.placeholder || props.placeholder as string || 'Enter file path...';
   const accept = props.accept as string || '*';
   const isDirectory = props.directory as boolean || false;
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
+  
+  // Use default value from schema if value is undefined/null
+  const effectiveValue = getValueWithDefault<string>(value, schema, '');
 
   const inputRef = React.useRef<HTMLInputElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -51,13 +55,15 @@ export function FileSelectInput({ name, path, schema, value, errors, disabled, o
           ref={inputRef}
           id={path}
           type="text"
-          value={(value as string) || ''}
+          value={(effectiveValue as string) || ''}
           onChange={handleInputChange}
           placeholder={placeholder}
-          disabled={disabled}
+          disabled={isReadOnly}
+          readOnly={isReadOnly}
           className={cn(
             'flex-1',
-            hasError && 'border-destructive focus-visible:ring-destructive'
+            hasError && 'border-destructive focus-visible:ring-destructive',
+            isReadOnly && 'bg-muted cursor-not-allowed'
           )}
         />
         <input
@@ -75,7 +81,7 @@ export function FileSelectInput({ name, path, schema, value, errors, disabled, o
           variant="outline"
           size="icon"
           onClick={handleBrowseClick}
-          disabled={disabled}
+          disabled={isReadOnly}
           title={isDirectory ? 'Browse for folder' : 'Browse for file'}
         >
           <FolderOpen className="h-4 w-4" />

@@ -1,12 +1,16 @@
 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
 export function ToggleInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
   const hasError = errors && errors.length > 0;
   const label = schema.ui_config?.label || schema.title || name;
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
+  
+  // Use default value from schema if value is undefined/null
+  const effectiveValue = getValueWithDefault<boolean>(value, schema, false);
 
   return (
     <div className="space-y-2">
@@ -28,10 +32,10 @@ export function ToggleInput({ name, path, schema, value, errors, disabled, onCha
         </div>
         <Switch
           id={path}
-          checked={Boolean(value)}
+          checked={Boolean(effectiveValue)}
           onCheckedChange={(checked) => onChange(checked)}
-          disabled={disabled}
-          className={cn(hasError && 'data-[state=unchecked]:border-destructive')}
+          disabled={isReadOnly}
+          className={cn(hasError && 'data-[state=unchecked]:border-destructive', isReadOnly && 'cursor-not-allowed')}
         />
       </div>
       {hasError && (

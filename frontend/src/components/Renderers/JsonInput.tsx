@@ -1,30 +1,34 @@
 import React from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
 export function JsonInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
   const props = schema.ui_config?.props || {};
   const label = schema.ui_config?.label || schema.title || name;
   const rows = (props.rows as number) || 8;
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
+  
+  // Use default value from schema if value is undefined/null
+  const effectiveValue = getValueWithDefault(value, schema, null);
 
   const [textValue, setTextValue] = React.useState('');
   const [parseError, setParseError] = React.useState<string | null>(null);
 
   // Format JSON for display
   React.useEffect(() => {
-    if (value !== undefined && value !== null) {
+    if (effectiveValue !== undefined && effectiveValue !== null) {
       try {
-        setTextValue(JSON.stringify(value, null, 2));
+        setTextValue(JSON.stringify(effectiveValue, null, 2));
         setParseError(null);
       } catch {
-        setTextValue(String(value));
+        setTextValue(String(effectiveValue));
       }
     } else {
       setTextValue('');
     }
-  }, [value]);
+  }, [effectiveValue]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
@@ -62,11 +66,13 @@ export function JsonInput({ name, path, schema, value, errors, disabled, onChang
         value={textValue}
         onChange={handleChange}
         placeholder='{"key": "value"}'
-        disabled={disabled}
+        disabled={isReadOnly}
+        readOnly={isReadOnly}
         rows={rows}
         className={cn(
           'font-mono text-sm',
-          hasErrors && 'border-destructive focus-visible:ring-destructive'
+          hasErrors && 'border-destructive focus-visible:ring-destructive',
+          isReadOnly && 'bg-muted cursor-not-allowed'
         )}
       />
       {schema.description && (

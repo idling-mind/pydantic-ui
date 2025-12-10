@@ -1,7 +1,7 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
 type ColorFormat = 'hex' | 'rgb' | 'hsl';
@@ -26,6 +26,10 @@ export function ColorInput({ name, path, schema, value, errors, disabled, onChan
   const props = schema.ui_config?.props || {};
   const label = schema.ui_config?.label || schema.title || name;
   const format = (props.format as ColorFormat) || 'hex';
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
+  
+  // Use default value from schema if value is undefined/null
+  const effectiveValue = getValueWithDefault<string>(value, schema, '#000000');
 
   const [displayValue, setDisplayValue] = React.useState<string>('');
 
@@ -71,8 +75,8 @@ export function ColorInput({ name, path, schema, value, errors, disabled, onChan
   };
 
   React.useEffect(() => {
-    setDisplayValue(value ? String(value) : '');
-  }, [value]);
+    setDisplayValue(effectiveValue ? String(effectiveValue) : '');
+  }, [effectiveValue]);
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const hex = e.target.value;
@@ -95,10 +99,10 @@ export function ColorInput({ name, path, schema, value, errors, disabled, onChan
       <div className="flex gap-2">
         <Input
           type="color"
-          value={toHex(value)}
+          value={toHex(effectiveValue)}
           onChange={handleColorChange}
-          disabled={disabled}
-          className="w-12 h-10 p-1 cursor-pointer"
+          disabled={isReadOnly}
+          className={cn('w-12 h-10 p-1 cursor-pointer', isReadOnly && 'cursor-not-allowed')}
         />
         <Input
           id={path}
@@ -106,10 +110,12 @@ export function ColorInput({ name, path, schema, value, errors, disabled, onChan
           value={displayValue}
           onChange={handleTextChange}
           placeholder="#000000"
-          disabled={disabled}
+          disabled={isReadOnly}
+          readOnly={isReadOnly}
           className={cn(
             'flex-1 font-mono',
-            hasError && 'border-destructive focus-visible:ring-destructive'
+            hasError && 'border-destructive focus-visible:ring-destructive',
+            isReadOnly && 'bg-muted cursor-not-allowed'
           )}
         />
       </div>

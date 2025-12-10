@@ -1,7 +1,7 @@
 
 import { Textarea as TextareaComponent } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
 export function TextareaInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -11,6 +11,10 @@ export function TextareaInput({ name, path, schema, value, errors, disabled, onC
   const placeholder = props.placeholder as string | undefined;
   const rows = (props.rows as number) || 4;
   const maxLength = schema.max_length;
+  const isReadOnly = disabled || schema.ui_config?.read_only === true;
+  
+  // Use default value from schema if value is undefined/null
+  const effectiveValue = getValueWithDefault<string>(value, schema, '');
 
   return (
     <div className="space-y-2">
@@ -20,13 +24,14 @@ export function TextareaInput({ name, path, schema, value, errors, disabled, onC
       </Label>
       <TextareaComponent
         id={path}
-        value={(value as string) || ''}
+        value={(effectiveValue as string) || ''}
         onChange={(e) => onChange(e.target.value || null)}
         placeholder={placeholder || `Enter ${label.toLowerCase()}`}
-        disabled={disabled}
+        disabled={isReadOnly}
+        readOnly={isReadOnly}
         rows={rows}
         maxLength={maxLength}
-        className={cn(hasError && 'border-destructive focus-visible:ring-destructive')}
+        className={cn(hasError && 'border-destructive focus-visible:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
       />
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>
@@ -39,7 +44,7 @@ export function TextareaInput({ name, path, schema, value, errors, disabled, onC
       )}
       {maxLength && (
         <p className="text-xs text-muted-foreground text-right">
-          {((value as string) || '').length} / {maxLength}
+          {((effectiveValue as string) || '').length} / {maxLength}
         </p>
       )}
     </div>
