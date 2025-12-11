@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import pytest
 from fastapi import FastAPI
@@ -282,13 +283,12 @@ class TestSSEEndpoint:
         async with AsyncClient(transport=transport, base_url="http://test", timeout=2.0) as client:
             # Note: Full SSE testing requires different approach
             # Here we just verify the endpoint exists and has correct headers
-            try:
-                async with asyncio.timeout(1.0):
-                    async with client.stream("GET", "/test/api/events") as response:
-                        assert response.status_code == 200
-                        assert "text/event-stream" in response.headers.get("content-type", "")
-                        # Read a small chunk then exit - SSE streams indefinitely
-                        await response.aread()
-            except asyncio.TimeoutError:
-                # Expected - SSE endpoint streams forever, timeout is normal
-                pass
+            async def test_stream():
+                async with client.stream("GET", "/test/api/events") as response:
+                    assert response.status_code == 200
+                    assert "text/event-stream" in response.headers.get("content-type", "")
+                    # Read a small chunk then exit - SSE streams indefinitely
+                    await response.aread()
+
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(test_stream(), timeout=1.0)
