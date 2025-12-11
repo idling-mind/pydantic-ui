@@ -120,7 +120,11 @@ export function NestedFieldCard({
               </p>
             )}
           </div>
-          <Badge variant="outline" className="shrink-0 text-muted-foreground">
+          <Badge 
+            variant="outline" 
+            className="shrink-0 text-muted-foreground max-w-[150px] truncate"
+            title={info.badge}
+          >
             {info.badge}
           </Badge>
           <Button
@@ -168,7 +172,11 @@ export function NestedFieldCard({
           {hasError && (
             <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
           )}
-          <Badge variant={info.badgeVariant} className="shrink-0">
+          <Badge 
+            variant={info.badgeVariant} 
+            className="shrink-0 max-w-[150px] truncate"
+            title={info.badge}
+          >
             {info.badge}
           </Badge>
           {isOptional && onChange && (
