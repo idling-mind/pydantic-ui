@@ -19,10 +19,13 @@ from pydantic_ui import UIConfig, create_pydantic_ui
 # Example 1: Discriminated Union with string discriminator
 # ============================================================================
 
+
 class ObjectWithList(BaseModel):
     """object with a list"""
+
     attr1: str
     attr2: list[str]
+
 
 class Cat(BaseModel):
     """A cat pet."""

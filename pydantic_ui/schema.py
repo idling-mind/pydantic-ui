@@ -599,8 +599,9 @@ def model_to_data(model: type[BaseModel], instance: BaseModel | None = None) -> 
                     elif isinstance(factory_val, list):
                         # Handle lists that may contain Pydantic models
                         data[field_name] = [
-                            item.model_dump(mode="json", warnings=False) 
-                            if isinstance(item, BaseModel) else item
+                            item.model_dump(mode="json", warnings=False)
+                            if isinstance(item, BaseModel)
+                            else item
                             for item in factory_val
                         ]
                     else:
