@@ -1,13 +1,20 @@
-# Pydantic UI
+<p align="center">
+<img src="https://raw.githubusercontent.com/idling-mind/pydantic-ui/refs/heads/main/frontend/public/logo.png" height=100>
+<h1 align="center">PydanticUI</h1>
+</p>
 
 A dynamic, modern UI for editing deeply nested Pydantic models with FastAPI integration.
+
+> [!NOTE]
+> This project is not associated with the pydantic project
+> The code was primarily written by AI coding agents.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/fastapi-0.100+-green.svg)
 ![Pydantic](https://img.shields.io/badge/pydantic-v2-green.svg)
 
-![Screenshot](./screenshot.png)
+![Screenshot](https://raw.githubusercontent.com/idling-mind/pydantic-ui/refs/heads/main/screenshot.png)
 
 ## Features
 
