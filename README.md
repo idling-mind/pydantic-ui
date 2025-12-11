@@ -6,7 +6,7 @@
 A dynamic, modern UI for editing deeply nested Pydantic models with FastAPI integration.
 
 > [!NOTE]
-> This project is not associated with the pydantic project
+> This project is not associated with the pydantic project.
 > The code was primarily written by AI coding agents.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
