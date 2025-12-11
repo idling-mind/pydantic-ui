@@ -7,15 +7,17 @@ This example shows how to create a simple data editing UI for a configuration mo
 # Import pydantic_ui components
 import sys
 from datetime import date, datetime
-from typing import Annotated, Literal, Optional
+from typing import Annotated
 
 # StrEnum is available in Python 3.11+, define it for older versions
 try:
     from enum import StrEnum
 except ImportError:
     from enum import Enum
+
     class StrEnum(str, Enum):
         pass
+
 
 import uvicorn
 from fastapi import FastAPI
@@ -33,26 +35,32 @@ class Currency(StrEnum):
     JPY = "JPY"
     SEK = "SEK"
 
+
 class Compensation(BaseModel):
-    amount: Annotated[float, FieldConfig(renderer=Renderer.SLIDER, props={"min": 0, "max": 1000000, "step": 1000})]
+    amount: Annotated[
+        float, FieldConfig(renderer=Renderer.SLIDER, props={"min": 0, "max": 1000000, "step": 1000})
+    ]
     currency: Currency
+
 
 class Person(BaseModel):
     name: str
     age: int
     birthday: date
     compensation: Compensation = Field(
-        description="Compensation details for the person",
-        title="Salary"
+        description="Compensation details for the person", title="Salary"
     )
     fields: dict[str, str] | None = None
 
+
 class MyModel(BaseModel):
     """My model configuration"""
+
     name: str
     description: str
     created: datetime
     users: list[Person]
+
 
 # Create FastAPI app
 app = FastAPI(title="Pydantic UI Example")
@@ -109,5 +117,5 @@ if __name__ == "__main__":
     print("  - PUT  /config/api/data    - Update data")
     print("  - POST /config/api/validate - Validate data")
     print("=" * 60 + "\n")
-    
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

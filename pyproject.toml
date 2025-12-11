@@ -45,6 +45,7 @@ dev = [
     # Code quality
     "ruff>=0.1.0",
     "mypy>=1.8.0",
+    "pre-commit>=3.0.0",
     
     # Coverage
     "coverage>=7.4.0",
@@ -59,14 +60,28 @@ Documentation = "https://github.com/idling-mind/pydantic-ui#readme"
 Repository = "https://github.com/idling-mind/pydantic-ui"
 Issues = "https://github.com/idling-mind/pydantic-ui/issues"
 
+[[tool.uv.index]]
+url = "https://tfsprod.gaes.aeroes.internal/DefaultCollection/ETT/_packaging/ett_packages/pypi/simple/"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.0",
+]
+
 
 [tool.hatch.build]
 artifacts = [
   "pydantic_ui/static/*"
 ]
 
+[[tool.uv.index]]
+url = "https://tfsprod.gaes.aeroes.internal/AeroCollection/SoliDocs/_packaging/solidocs_packages/pypi/simple/"
+
 [tool.hatch.build.targets.wheel]
 packages = ["pydantic_ui"]
+
+[[tool.uv.index]]
+url = "https://tfsprod.gaes.aeroes.internal/AeroCollection/Aerocodes/_packaging/aerocodes_packages/pypi/simple/"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -74,6 +89,10 @@ include = [
     "/README.md",
     "/LICENSE",
 ]
+
+[[tool.uv.index]]
+url = "https://tfsprod.gaes.aeroes.internal/DefaultCollection/_packaging/pypackages/pypi/simple/"
+default = true
 
 [tool.ruff]
 target-version = "py310"
