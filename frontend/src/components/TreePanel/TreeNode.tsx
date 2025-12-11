@@ -179,6 +179,64 @@ function isArrayItemPath(path: string): boolean {
 }
 
 /**
+ * Get the depth of array nesting for a schema.
+ * e.g., list[int] -> 1, list[list[int]] -> 2
+ */
+function getSchemaArrayDepth(schema: SchemaField): number {
+  if (schema.type !== 'array') return 0;
+  if (!schema.items) return 1;
+  return 1 + getSchemaArrayDepth(schema.items);
+}
+
+/**
+ * Get the innermost (leaf) item type for an array schema.
+ * e.g., list[str] -> 'string', list[list[int]] -> 'integer'
+ */
+function getSchemaLeafItemType(schema: SchemaField): string | null {
+  if (schema.type !== 'array') return null;
+  if (!schema.items) return null;
+  if (schema.items.type === 'array') {
+    return getSchemaLeafItemType(schema.items);
+  }
+  return schema.items.type;
+}
+
+/**
+ * Get the depth of array nesting for a value.
+ * e.g., [] -> 1, [[]] -> 2, [[[]]] -> 3
+ */
+function getArrayDepth(value: unknown): number {
+  if (!Array.isArray(value)) return 0;
+  if (value.length === 0) return 1; // Empty array, at least depth 1
+  return 1 + getArrayDepth(value[0]);
+}
+
+/**
+ * Get the innermost (leaf) item type from actual array values.
+ * e.g., ["a", "b"] -> 'string', [[1, 2]] -> 'integer', [] -> null
+ */
+function getValueLeafItemType(value: unknown[]): string | null {
+  if (value.length === 0) return null;
+  
+  // Get the first non-null/undefined item
+  const firstItem = value.find(item => item !== null && item !== undefined);
+  if (firstItem === undefined) return null;
+  
+  // If it's a nested array, recurse
+  if (Array.isArray(firstItem)) {
+    return getValueLeafItemType(firstItem);
+  }
+  
+  // Return the type of the leaf value
+  const jsType = typeof firstItem;
+  if (jsType === 'string') return 'string';
+  if (jsType === 'number') return Number.isInteger(firstItem) ? 'integer' : 'number';
+  if (jsType === 'boolean') return 'boolean';
+  if (jsType === 'object') return 'object';
+  return null;
+}
+
+/**
  * Detect which union variant the current value matches.
  * Uses discriminator if available, otherwise tries to match by structure.
  * Returns the variant schema and index, or null if no match.
@@ -229,6 +287,57 @@ function detectCurrentVariant(
     }
   }
 
+  // For arrays, match by depth AND item type to distinguish list[int] from list[str]
+  if (Array.isArray(value)) {
+    const valueDepth = getArrayDepth(value);
+    const valueLeafType = getValueLeafItemType(value);
+    
+    // Find all array variants and their depths/item types
+    const arrayVariants = variants
+      .map((v, idx) => ({ 
+        variant: v, 
+        index: idx, 
+        depth: getSchemaArrayDepth(v),
+        leafType: getSchemaLeafItemType(v)
+      }))
+      .filter(v => v.variant.type === 'array');
+    
+    // If we have items in the array, try to match both depth and item type
+    if (valueLeafType !== null) {
+      // First try exact match on both depth and item type
+      const exactMatch = arrayVariants.find(v => 
+        v.depth === valueDepth && v.leafType === valueLeafType
+      );
+      if (exactMatch) {
+        return { variant: exactMatch.variant, index: exactMatch.index };
+      }
+      
+      // Try matching item type with compatible depth (integer matches number)
+      const typeMatch = arrayVariants.find(v => {
+        if (v.depth !== valueDepth) return false;
+        if (v.leafType === valueLeafType) return true;
+        // integer values can match number schema
+        if (valueLeafType === 'integer' && v.leafType === 'number') return true;
+        return false;
+      });
+      if (typeMatch) {
+        return { variant: typeMatch.variant, index: typeMatch.index };
+      }
+    }
+    
+    // For empty arrays or when no type match, try depth match first
+    const depthMatch = arrayVariants.find(v => v.depth === valueDepth);
+    if (depthMatch) {
+      return { variant: depthMatch.variant, index: depthMatch.index };
+    }
+    
+    // If no exact match (e.g., empty array), prefer the shallowest array variant
+    if (arrayVariants.length > 0) {
+      arrayVariants.sort((a, b) => a.depth - b.depth);
+      return { variant: arrayVariants[0].variant, index: arrayVariants[0].index };
+    }
+  }
+
   // For primitive values, match by type
   const valueType = typeof value;
   for (let i = 0; i < variants.length; i++) {
@@ -236,8 +345,7 @@ function detectCurrentVariant(
     if (
       (valueType === 'string' && variant.type === 'string') ||
       (valueType === 'number' && (variant.type === 'integer' || variant.type === 'number')) ||
-      (valueType === 'boolean' && variant.type === 'boolean') ||
-      (Array.isArray(value) && variant.type === 'array')
+      (valueType === 'boolean' && variant.type === 'boolean')
     ) {
       return { variant: variants[i], index: i };
     }
@@ -248,12 +356,18 @@ function detectCurrentVariant(
 
 /**
  * Get the variant label for display in the tree.
- * Shows the discriminator value or variant name.
+ * Shows the discriminator value, python_type for arrays/primitives, or variant name.
  */
 function getVariantLabel(variant: UnionVariant): string {
   // Prefer discriminator values (e.g., "cat", "dog")
   if (variant.discriminator_values && variant.discriminator_values.length > 0) {
     return String(variant.discriminator_values[0]);
+  }
+  // For arrays and primitives, python_type provides more useful info (e.g., 'list[str]' vs 'list')
+  if (variant.type === 'array' || ['string', 'integer', 'number', 'boolean'].includes(variant.type)) {
+    if (variant.python_type) {
+      return variant.python_type;
+    }
   }
   // Fall back to variant name (e.g., "Cat", "Dog")
   return variant.variant_name || variant.title || `Variant ${variant.variant_index + 1}`;

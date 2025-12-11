@@ -725,6 +725,9 @@ export function ArrayListEditor({
   // Check if items are objects (should be shown as cards or table)
   const itemsAreObjects = itemSchema?.type === 'object';
   
+  // Check if items are arrays (nested arrays like list[list[int]])
+  const itemsAreArrays = itemSchema?.type === 'array';
+  
   // Check if items are union types
   const itemsAreUnion = itemSchema?.type === 'union' && itemSchema.variants;
   
@@ -1052,8 +1055,115 @@ export function ArrayListEditor({
             );
           })}
         </div>
+      ) : itemsAreArrays ? (
+        // Render nested arrays as cards (like objects, to make them easily navigable)
+        <div className="grid gap-3">
+          {items.map((item, index) => {
+            const itemErrors = getItemErrors(index);
+            const hasError = itemErrors.length > 0;
+            const itemArray = Array.isArray(item) ? item : [];
+            
+            return (
+              <div key={index} className="space-y-1">
+                <div className="flex gap-2">
+                  <Card
+                    className={cn(
+                      'flex-1 cursor-pointer transition-all',
+                      'hover:border-primary hover:shadow-md',
+                      'group',
+                      hasError && 'border-destructive'
+                    )}
+                    onClick={() => handleNavigateToItem(index)}
+                  >
+                    <CardContent className="flex items-center gap-3 p-4">
+                      <div className="flex-shrink-0">
+                        <List className={cn('h-5 w-5', hasError ? 'text-destructive' : 'text-purple-500')} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className={cn('font-medium truncate text-sm', hasError && 'text-destructive')}>
+                          List {index + 1}
+                        </h3>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {itemArray.length} item{itemArray.length !== 1 ? 's' : ''}
+                          {itemSchema?.items?.python_type && ` · ${itemSchema.items.python_type}`}
+                        </p>
+                      </div>
+                      {hasError && (
+                        <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                      )}
+                      <Badge variant="secondary" className="shrink-0">
+                        {itemSchema?.python_type || 'list'}
+                      </Badge>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                    </CardContent>
+                  </Card>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-auto px-2"
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveItem(index, index - 1);
+                        }}
+                        disabled={disabled || index === 0}
+                      >
+                        <ChevronUp className="h-4 w-4 mr-2" />
+                        Move Up
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveItem(index, index + 1);
+                        }}
+                        disabled={disabled || index === items.length - 1}
+                      >
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                        Move Down
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDuplicateItem(index);
+                        }}
+                        disabled={disabled || !canAdd}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Duplicate
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveItem(index);
+                        }}
+                        disabled={disabled || !canRemove}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                {hasError && (
+                  <p className="text-xs text-destructive px-1">{itemErrors[0].message}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
-        // Render other non-primitive items (like nested arrays) as a simple list with navigation
+        // Render other non-primitive items (like unions) as a simple list with navigation
         <div className="space-y-2">
           {items.map((item, index) => (
             <div

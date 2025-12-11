@@ -33,6 +33,65 @@ import { ObjectEditor, ArrayListEditor } from '@/components/DetailPanel/ObjectEd
 import { FieldRenderer } from '@/components/Renderers';
 
 /**
+ * Get the depth of array nesting for a value.
+ * e.g., [] -> 1, [[]] -> 2, [[[]]] -> 3
+ */
+function getArrayDepth(value: unknown): number {
+  if (!Array.isArray(value)) return 0;
+  if (value.length === 0) return 1; // Empty array, at least depth 1
+  // Check the first element to determine nested depth
+  return 1 + getArrayDepth(value[0]);
+}
+
+/**
+ * Get the depth of array nesting for a schema.
+ * e.g., list[int] -> 1, list[list[int]] -> 2
+ */
+function getSchemaArrayDepth(schema: SchemaField): number {
+  if (schema.type !== 'array') return 0;
+  if (!schema.items) return 1;
+  return 1 + getSchemaArrayDepth(schema.items);
+}
+
+/**
+ * Get the innermost (leaf) item type for an array schema.
+ * e.g., list[str] -> 'string', list[list[int]] -> 'integer'
+ */
+function getSchemaLeafItemType(schema: SchemaField): string | null {
+  if (schema.type !== 'array') return null;
+  if (!schema.items) return null;
+  if (schema.items.type === 'array') {
+    return getSchemaLeafItemType(schema.items);
+  }
+  return schema.items.type;
+}
+
+/**
+ * Get the innermost (leaf) item type from actual array values.
+ * e.g., ["a", "b"] -> 'string', [[1, 2]] -> 'integer', [] -> null
+ */
+function getValueLeafItemType(value: unknown[]): string | null {
+  if (value.length === 0) return null;
+  
+  // Get the first non-null/undefined item
+  const firstItem = value.find(item => item !== null && item !== undefined);
+  if (firstItem === undefined) return null;
+  
+  // If it's a nested array, recurse
+  if (Array.isArray(firstItem)) {
+    return getValueLeafItemType(firstItem);
+  }
+  
+  // Return the type of the leaf value
+  const jsType = typeof firstItem;
+  if (jsType === 'string') return 'string';
+  if (jsType === 'number') return Number.isInteger(firstItem) ? 'integer' : 'number';
+  if (jsType === 'boolean') return 'boolean';
+  if (jsType === 'object') return 'object';
+  return null;
+}
+
+/**
  * Detect which variant the current value matches.
  * Uses discriminator if available, otherwise tries to match by structure.
  */
@@ -82,6 +141,58 @@ function detectCurrentVariant(
     }
   }
 
+  // For arrays, match by depth AND item type to distinguish list[int] from list[str]
+  if (Array.isArray(value)) {
+    const valueDepth = getArrayDepth(value);
+    const valueLeafType = getValueLeafItemType(value);
+    
+    // Find all array variants and their depths/item types
+    const arrayVariants = variants
+      .map((v, idx) => ({ 
+        variant: v, 
+        index: idx, 
+        depth: getSchemaArrayDepth(v),
+        leafType: getSchemaLeafItemType(v)
+      }))
+      .filter(v => v.variant.type === 'array');
+    
+    // If we have items in the array, try to match both depth and item type
+    if (valueLeafType !== null) {
+      // First try exact match on both depth and item type
+      const exactMatch = arrayVariants.find(v => 
+        v.depth === valueDepth && v.leafType === valueLeafType
+      );
+      if (exactMatch) {
+        return exactMatch.index;
+      }
+      
+      // Try matching item type with compatible depth (integer matches number)
+      const typeMatch = arrayVariants.find(v => {
+        if (v.depth !== valueDepth) return false;
+        if (v.leafType === valueLeafType) return true;
+        // integer values can match number schema
+        if (valueLeafType === 'integer' && v.leafType === 'number') return true;
+        return false;
+      });
+      if (typeMatch) {
+        return typeMatch.index;
+      }
+    }
+    
+    // For empty arrays or when no type match, try depth match first
+    const depthMatch = arrayVariants.find(v => v.depth === valueDepth);
+    if (depthMatch) {
+      return depthMatch.index;
+    }
+    
+    // If no exact match (e.g., empty array), prefer the shallowest array variant
+    // since empty arrays are ambiguous
+    if (arrayVariants.length > 0) {
+      arrayVariants.sort((a, b) => a.depth - b.depth);
+      return arrayVariants[0].index;
+    }
+  }
+
   // For primitive values, match by type
   const valueType = typeof value;
   for (let i = 0; i < variants.length; i++) {
@@ -89,8 +200,7 @@ function detectCurrentVariant(
     if (
       (valueType === 'string' && variant.type === 'string') ||
       (valueType === 'number' && (variant.type === 'integer' || variant.type === 'number')) ||
-      (valueType === 'boolean' && variant.type === 'boolean') ||
-      (Array.isArray(value) && variant.type === 'array')
+      (valueType === 'boolean' && variant.type === 'boolean')
     ) {
       return i;
     }
@@ -101,9 +211,17 @@ function detectCurrentVariant(
 
 /**
  * Get the display label for a variant.
- * Prioritizes: variant_name (class name) > title > generic fallback
+ * For arrays/primitives: uses python_type (e.g., 'list[str]', 'list[int]') for clarity
+ * For objects: uses variant_name (class name) > title > generic fallback
  */
 function getVariantLabel(variant: UnionVariant): string {
+  // For arrays and primitives, python_type provides more useful info (e.g., 'list[str]' vs 'list')
+  if (variant.type === 'array' || ['string', 'integer', 'number', 'boolean'].includes(variant.type)) {
+    if (variant.python_type) {
+      return variant.python_type;
+    }
+  }
+  // For objects (Pydantic models), prefer the class name
   return variant.variant_name || variant.title || `Type ${variant.variant_index + 1}`;
 }
 
@@ -149,29 +267,38 @@ export function UnionInput({
 
   const hasError = fieldErrors.length > 0;
 
-  // Track previous value to detect external resets
+  // Track previous path and value to detect navigation and resets
+  const prevPathRef = React.useRef(path);
   const prevValueRef = React.useRef(value);
   
   React.useEffect(() => {
+    const prevPath = prevPathRef.current;
     const prevValue = prevValueRef.current;
+    prevPathRef.current = path;
     prevValueRef.current = value;
     
-    // Only re-detect variant if value was reset to null/undefined from a non-null value
-    // This handles the "reset" case while preserving user selection during edits
+    // If the path changed, we navigated to a different field - re-detect variant
+    if (prevPath !== path) {
+      const detected = detectCurrentVariant(value, schema);
+      setSelectedVariantIndex(detected);
+      return;
+    }
+    
+    // If value was reset to null/undefined from a non-null value, clear selection
     if ((value === null || value === undefined) && prevValue !== null && prevValue !== undefined) {
       setSelectedVariantIndex(null);
       return;
     }
     
-    // On initial mount (when prevValue equals current value from initialization),
-    // detect the variant from the initial value
-    if (prevValue === value && selectedVariantIndex === null && value !== null && value !== undefined) {
+    // If we have a value but no selected variant, try to detect it
+    // This handles cases where value changes externally (e.g., from parent component)
+    if (selectedVariantIndex === null && value !== null && value !== undefined) {
       const detected = detectCurrentVariant(value, schema);
       if (detected !== null) {
         setSelectedVariantIndex(detected);
       }
     }
-  }, [value, schema, selectedVariantIndex]);
+  }, [path, value, schema, selectedVariantIndex]);
 
   /**
    * Handle variant change - may require confirmation if data will be lost.

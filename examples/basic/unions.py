@@ -25,6 +25,7 @@ class ObjectWithList(BaseModel):
 
     attr1: str
     attr2: list[str]
+    nested_lists: list[int] | list[str]
 
 
 class Cat(BaseModel):

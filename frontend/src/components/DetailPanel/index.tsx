@@ -82,6 +82,46 @@ export function DetailPanel({ className }: DetailPanelProps) {
     let arrayPath = '';
     let arrayIndex = -1;
 
+    // Helper to get the depth of array nesting for a schema
+    const getSchemaArrayDepth = (s: SchemaField): number => {
+      if (s.type !== 'array') return 0;
+      if (!s.items) return 1;
+      return 1 + getSchemaArrayDepth(s.items);
+    };
+
+    // Helper to get the innermost item type for an array schema
+    const getSchemaLeafItemType = (s: SchemaField): string | null => {
+      if (s.type !== 'array') return null;
+      if (!s.items) return null;
+      if (s.items.type === 'array') {
+        return getSchemaLeafItemType(s.items);
+      }
+      return s.items.type;
+    };
+
+    // Helper to get array depth from value
+    const getArrayDepth = (v: unknown): number => {
+      if (!Array.isArray(v)) return 0;
+      if (v.length === 0) return 1;
+      return 1 + getArrayDepth(v[0]);
+    };
+
+    // Helper to get leaf item type from array values
+    const getValueLeafItemType = (v: unknown[]): string | null => {
+      if (v.length === 0) return null;
+      const firstItem = v.find(item => item !== null && item !== undefined);
+      if (firstItem === undefined) return null;
+      if (Array.isArray(firstItem)) {
+        return getValueLeafItemType(firstItem);
+      }
+      const jsType = typeof firstItem;
+      if (jsType === 'string') return 'string';
+      if (jsType === 'number') return Number.isInteger(firstItem) ? 'integer' : 'number';
+      if (jsType === 'boolean') return 'boolean';
+      if (jsType === 'object') return 'object';
+      return null;
+    };
+
     // Helper to detect current variant for union schemas
     // This handles discriminated unions, object structure matching, and primitive type matching
     const detectVariant = (unionSchema: SchemaField, value: unknown): SchemaField | null => {
@@ -115,12 +155,51 @@ export function DetailPanel({ className }: DetailPanelProps) {
         }
       }
       
-      // For arrays, find an array variant
+      // For arrays, match by depth AND item type to distinguish list[int] from list[str]
       if (Array.isArray(value)) {
-        for (const variant of unionSchema.variants) {
-          if (variant.type === 'array') {
-            return variant;
+        const valueDepth = getArrayDepth(value);
+        const valueLeafType = getValueLeafItemType(value);
+        
+        const arrayVariants = unionSchema.variants
+          .map((v, idx) => ({ 
+            variant: v, 
+            index: idx, 
+            depth: getSchemaArrayDepth(v),
+            leafType: getSchemaLeafItemType(v)
+          }))
+          .filter(v => v.variant.type === 'array');
+        
+        // If we have items in the array, try to match both depth and item type
+        if (valueLeafType !== null) {
+          const exactMatch = arrayVariants.find(v => 
+            v.depth === valueDepth && v.leafType === valueLeafType
+          );
+          if (exactMatch) {
+            return exactMatch.variant;
           }
+          
+          // Try matching with compatible types (integer matches number)
+          const typeMatch = arrayVariants.find(v => {
+            if (v.depth !== valueDepth) return false;
+            if (v.leafType === valueLeafType) return true;
+            if (valueLeafType === 'integer' && v.leafType === 'number') return true;
+            return false;
+          });
+          if (typeMatch) {
+            return typeMatch.variant;
+          }
+        }
+        
+        // For empty arrays or when no type match, try depth match first
+        const depthMatch = arrayVariants.find(v => v.depth === valueDepth);
+        if (depthMatch) {
+          return depthMatch.variant;
+        }
+        
+        // Fall back to first array variant
+        if (arrayVariants.length > 0) {
+          arrayVariants.sort((a, b) => a.depth - b.depth);
+          return arrayVariants[0].variant;
         }
       }
       
