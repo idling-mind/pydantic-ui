@@ -13,8 +13,11 @@ export function TextInput({ name, path, schema, value, errors, disabled, onChang
   const minLength = schema.min_length;
   const isReadOnly = disabled || schema.ui_config?.read_only === true;
   
-  // Use default value from schema if value is undefined/null
-  const effectiveValue = getValueWithDefault<string>(value, schema, '');
+  // Use default value from schema only if value is undefined/null
+  // Important: empty string "" is a valid value and should NOT fall back to default
+  const effectiveValue = (value !== undefined && value !== null) 
+    ? value 
+    : getValueWithDefault<string>(value, schema, '');
 
   return (
     <div className="space-y-2">
@@ -25,8 +28,8 @@ export function TextInput({ name, path, schema, value, errors, disabled, onChang
       <Input
         id={path}
         type="text"
-        value={(effectiveValue as string) || ''}
-        onChange={(e) => onChange(e.target.value || null)}
+        value={(effectiveValue as string) ?? ''}
+        onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder || `Enter ${label.toLowerCase()}`}
         disabled={isReadOnly}
         readOnly={isReadOnly}

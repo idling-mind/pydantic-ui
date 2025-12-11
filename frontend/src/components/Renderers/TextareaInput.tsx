@@ -13,8 +13,11 @@ export function TextareaInput({ name, path, schema, value, errors, disabled, onC
   const maxLength = schema.max_length;
   const isReadOnly = disabled || schema.ui_config?.read_only === true;
   
-  // Use default value from schema if value is undefined/null
-  const effectiveValue = getValueWithDefault<string>(value, schema, '');
+  // Use default value from schema only if value is undefined/null
+  // Important: empty string "" is a valid value and should NOT fall back to default
+  const effectiveValue = (value !== undefined && value !== null) 
+    ? value 
+    : getValueWithDefault<string>(value, schema, '');
 
   return (
     <div className="space-y-2">
@@ -24,8 +27,8 @@ export function TextareaInput({ name, path, schema, value, errors, disabled, onC
       </Label>
       <TextareaComponent
         id={path}
-        value={(effectiveValue as string) || ''}
-        onChange={(e) => onChange(e.target.value || null)}
+        value={(effectiveValue as string) ?? ''}
+        onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder || `Enter ${label.toLowerCase()}`}
         disabled={isReadOnly}
         readOnly={isReadOnly}
