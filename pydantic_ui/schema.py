@@ -584,10 +584,27 @@ def model_to_data(model: type[BaseModel], instance: BaseModel | None = None) -> 
         data = {}
         for field_name, field_info in model.model_fields.items():
             if field_info.default is not PydanticUndefined:
-                data[field_name] = field_info.default
+                default_val = field_info.default
+                # Serialize Pydantic models to dict
+                if isinstance(default_val, BaseModel):
+                    data[field_name] = default_val.model_dump(mode="json", warnings=False)
+                else:
+                    data[field_name] = default_val
             elif field_info.default_factory is not None:
                 try:
-                    data[field_name] = field_info.default_factory()  # type: ignore
+                    factory_val = field_info.default_factory()  # type: ignore
+                    # Serialize Pydantic models to dict
+                    if isinstance(factory_val, BaseModel):
+                        data[field_name] = factory_val.model_dump(mode="json", warnings=False)
+                    elif isinstance(factory_val, list):
+                        # Handle lists that may contain Pydantic models
+                        data[field_name] = [
+                            item.model_dump(mode="json", warnings=False) 
+                            if isinstance(item, BaseModel) else item
+                            for item in factory_val
+                        ]
+                    else:
+                        data[field_name] = factory_val
                 except Exception:
                     data[field_name] = _get_type_default(field_info.annotation)
             else:

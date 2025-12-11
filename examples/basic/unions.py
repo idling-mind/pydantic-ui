@@ -19,6 +19,10 @@ from pydantic_ui import UIConfig, create_pydantic_ui
 # Example 1: Discriminated Union with string discriminator
 # ============================================================================
 
+class ObjectWithList(BaseModel):
+    """object with a list"""
+    attr1: str
+    attr2: list[str]
 
 class Cat(BaseModel):
     """A cat pet."""
@@ -27,6 +31,8 @@ class Cat(BaseModel):
     name: str = Field(default="Whiskers", description="The cat's name")
     meows: int = Field(default=5, ge=0, le=100, description="How many times it meows per hour")
     indoor: bool = Field(default=True, description="Is it an indoor cat?")
+    toys: list[str]
+    another_union_object: int | list[int] | ObjectWithList
 
 
 class Dog(BaseModel):
@@ -36,6 +42,7 @@ class Dog(BaseModel):
     name: str = Field(default="Buddy", description="The dog's name")
     barks: float = Field(default=3.5, ge=0, description="Average barks per minute")
     breed: str = Field(default="Labrador", description="Dog breed")
+    toys: list[str]
 
 
 class Lizard(BaseModel):

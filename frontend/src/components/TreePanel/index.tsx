@@ -93,9 +93,13 @@ export function TreePanel({ className }: TreePanelProps) {
 
   // Check if a field is a simple (primitive) field
   const isSimpleField = React.useCallback((field: SchemaField): boolean => {
-    // Objects and arrays are complex
+    // Objects, arrays, and unions with expandable variants are complex
     if (field.type === 'object' || field.type === 'array') {
       return false;
+    }
+    // Unions are complex if they have variants that are objects or arrays
+    if (field.type === 'union' && field.variants) {
+      return !field.variants.some(v => v.type === 'object' || v.type === 'array');
     }
     // Everything else (string, number, boolean, etc.) is simple
     return true;
@@ -143,6 +147,19 @@ export function TreePanel({ className }: TreePanelProps) {
         return Object.entries(field.items.fields).some(([childName, childField]) =>
           filterSchema(childField, childName)
         );
+      }
+      // Check union variants for matches
+      if (field.type === 'union' && field.variants) {
+        return field.variants.some(variant => {
+          if (variant.variant_name?.toLowerCase().includes(query)) return true;
+          if (variant.title?.toLowerCase().includes(query)) return true;
+          if (variant.type === 'object' && variant.fields) {
+            return Object.entries(variant.fields).some(([childName, childField]) =>
+              filterSchema(childField, childName)
+            );
+          }
+          return false;
+        });
       }
       
       return false;

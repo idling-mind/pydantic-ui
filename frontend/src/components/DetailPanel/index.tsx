@@ -10,6 +10,7 @@ import { ObjectEditor, ArrayEditor, ArrayListEditor } from './ObjectEditor';
 import { FieldRenderer } from '@/components/Renderers';
 import { ActionButtons } from '@/components/ActionButtons';
 import { OrphanedErrors } from './OrphanedErrors';
+import type { SchemaField } from '@/types';
 
 interface DetailPanelProps {
   className?: string;
@@ -81,6 +82,63 @@ export function DetailPanel({ className }: DetailPanelProps) {
     let arrayPath = '';
     let arrayIndex = -1;
 
+    // Helper to detect current variant for union schemas
+    // This handles discriminated unions, object structure matching, and primitive type matching
+    const detectVariant = (unionSchema: SchemaField, value: unknown): SchemaField | null => {
+      if (!unionSchema.variants || value === null || value === undefined) {
+        return null;
+      }
+      
+      // Check discriminator first (for discriminated unions)
+      const discriminator = unionSchema.discriminator;
+      if (discriminator?.field && discriminator.mapping && typeof value === 'object' && !Array.isArray(value)) {
+        const discValue = (value as Record<string, unknown>)[discriminator.field];
+        if (discValue !== undefined) {
+          const variantIndex = discriminator.mapping[String(discValue)];
+          if (variantIndex !== undefined && unionSchema.variants[variantIndex]) {
+            return unionSchema.variants[variantIndex];
+          }
+        }
+      }
+      
+      // Try to detect by structure matching for objects
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        const valueKeys = Object.keys(value as Record<string, unknown>);
+        for (const variant of unionSchema.variants) {
+          if (variant.type === 'object' && variant.fields) {
+            const variantKeys = Object.keys(variant.fields);
+            const requiredKeys = variantKeys.filter(k => variant.fields![k].required !== false);
+            if (requiredKeys.every(k => valueKeys.includes(k))) {
+              return variant;
+            }
+          }
+        }
+      }
+      
+      // For arrays, find an array variant
+      if (Array.isArray(value)) {
+        for (const variant of unionSchema.variants) {
+          if (variant.type === 'array') {
+            return variant;
+          }
+        }
+      }
+      
+      // For primitive values, match by type
+      const valueType = typeof value;
+      for (const variant of unionSchema.variants) {
+        if (
+          (valueType === 'string' && variant.type === 'string') ||
+          (valueType === 'number' && (variant.type === 'integer' || variant.type === 'number')) ||
+          (valueType === 'boolean' && variant.type === 'boolean')
+        ) {
+          return variant;
+        }
+      }
+      
+      return null;
+    };
+
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       if (!currentSchema) break;
@@ -95,6 +153,19 @@ export function DetailPanel({ className }: DetailPanelProps) {
           currentSchema = currentSchema.items;
           currentValue = (currentValue as unknown[])?.[index];
           basePath = basePath ? `${basePath}[${index}]` : `[${index}]`;
+        } else if (currentSchema.type === 'union') {
+          // Union that is actually an array (detected variant is array type)
+          const detectedVariant = detectVariant(currentSchema, currentValue);
+          if (detectedVariant?.type === 'array' && detectedVariant.items) {
+            arrayPath = basePath;
+            arrayIndex = index;
+            isArrayItem = true;
+            currentSchema = detectedVariant.items;
+            currentValue = (currentValue as unknown[])?.[index];
+            basePath = basePath ? `${basePath}[${index}]` : `[${index}]`;
+          } else {
+            break;
+          }
         } else {
           break;
         }
@@ -109,6 +180,27 @@ export function DetailPanel({ className }: DetailPanelProps) {
             isArrayItem = false;
             arrayPath = '';
             arrayIndex = -1;
+          }
+        } else {
+          break;
+        }
+      } else if (currentSchema.type === 'union') {
+        // For unions, detect the variant and look up the field in the variant's schema
+        const detectedVariant = detectVariant(currentSchema, currentValue);
+        if (detectedVariant?.type === 'object' && detectedVariant.fields) {
+          const fieldSchema = detectedVariant.fields[part.key];
+          if (fieldSchema) {
+            currentSchema = fieldSchema;
+            currentValue = (currentValue as Record<string, unknown>)?.[part.key];
+            basePath = basePath ? `${basePath}.${part.key}` : part.key;
+            // Reset array item tracking when we enter a new object
+            if (!parts[i + 1]?.isIndex) {
+              isArrayItem = false;
+              arrayPath = '';
+              arrayIndex = -1;
+            }
+          } else {
+            break;
           }
         } else {
           break;

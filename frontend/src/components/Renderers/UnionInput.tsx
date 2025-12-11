@@ -29,7 +29,7 @@ import {
 import { cn, createDefaultFromSchema } from '@/lib/utils';
 import type { RendererProps } from './types';
 import type { SchemaField, UnionVariant } from '@/types';
-import { ObjectEditor } from '@/components/DetailPanel/ObjectEditor';
+import { ObjectEditor, ArrayListEditor } from '@/components/DetailPanel/ObjectEditor';
 import { FieldRenderer } from '@/components/Renderers';
 
 /**
@@ -249,6 +249,21 @@ export function UnionInput({
           disabled={disabled}
           onChange={handleVariantDataChange}
           depth={0}
+        />
+      );
+    }
+
+    // Handle array variants
+    if (variant.type === 'array' && variant.items) {
+      return (
+        <ArrayListEditor
+          name={variant.variant_name || `variant_${variantIndex}`}
+          path={path}
+          schema={variant}
+          value={Array.isArray(value) ? value : []}
+          errors={fieldErrors}
+          disabled={disabled}
+          onChange={handleVariantDataChange}
         />
       );
     }

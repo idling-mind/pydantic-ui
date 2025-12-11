@@ -6,7 +6,7 @@ import { ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Badge } from '@/components/ui/badge';
 import { useData } from '@/context/DataContext';
 import { TreeNodeContextMenu } from './TreeNodeContextMenu';
-import type { SchemaField } from '@/types';
+import type { SchemaField, UnionVariant } from '@/types';
 
 interface TreeNodeProps {
   name: string;
@@ -178,6 +178,98 @@ function isArrayItemPath(path: string): boolean {
   return /\[\d+\]$/.test(path);
 }
 
+/**
+ * Detect which union variant the current value matches.
+ * Uses discriminator if available, otherwise tries to match by structure.
+ * Returns the variant schema and index, or null if no match.
+ */
+function detectCurrentVariant(
+  value: unknown,
+  schema: SchemaField
+): { variant: UnionVariant; index: number } | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const variants = schema.variants;
+  if (!variants || variants.length === 0) {
+    return null;
+  }
+
+  // If there's a discriminator, use it to determine the variant
+  const discriminator = schema.discriminator;
+  if (discriminator?.field && discriminator.mapping) {
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const discValue = (value as Record<string, unknown>)[discriminator.field];
+      if (discValue !== undefined) {
+        const variantIndex = discriminator.mapping[String(discValue)];
+        if (variantIndex !== undefined && variants[variantIndex]) {
+          return { variant: variants[variantIndex], index: variantIndex };
+        }
+      }
+    }
+  }
+
+  // Try to detect by type matching
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    // For objects, try to find a variant that matches the structure
+    const valueKeys = Object.keys(value as Record<string, unknown>);
+    
+    for (let i = 0; i < variants.length; i++) {
+      const variant = variants[i];
+      if (variant.type === 'object' && variant.fields) {
+        const variantKeys = Object.keys(variant.fields);
+        // Check if all required variant fields exist in the value
+        const requiredKeys = variantKeys.filter(k => variant.fields![k].required !== false);
+        const matchesRequired = requiredKeys.every(k => valueKeys.includes(k));
+        if (matchesRequired) {
+          return { variant: variants[i], index: i };
+        }
+      }
+    }
+  }
+
+  // For primitive values, match by type
+  const valueType = typeof value;
+  for (let i = 0; i < variants.length; i++) {
+    const variant = variants[i];
+    if (
+      (valueType === 'string' && variant.type === 'string') ||
+      (valueType === 'number' && (variant.type === 'integer' || variant.type === 'number')) ||
+      (valueType === 'boolean' && variant.type === 'boolean') ||
+      (Array.isArray(value) && variant.type === 'array')
+    ) {
+      return { variant: variants[i], index: i };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get the variant label for display in the tree.
+ * Shows the discriminator value or variant name.
+ */
+function getVariantLabel(variant: UnionVariant): string {
+  // Prefer discriminator values (e.g., "cat", "dog")
+  if (variant.discriminator_values && variant.discriminator_values.length > 0) {
+    return String(variant.discriminator_values[0]);
+  }
+  // Fall back to variant name (e.g., "Cat", "Dog")
+  return variant.variant_name || variant.title || `Variant ${variant.variant_index + 1}`;
+}
+
+/**
+ * Check if a union has any expandable variants (objects or arrays).
+ */
+function unionHasExpandableVariants(schema: SchemaField): boolean {
+  if (!schema.variants) return false;
+  return schema.variants.some(v => 
+    v.type === 'object' && v.fields && Object.keys(v.fields).length > 0 ||
+    v.type === 'array'
+  );
+}
+
 // Get the display label for a node
 // For array items, prefer the computed name from data (e.g., "Weld A")
 // For regular fields, use the schema-based fallback chain
@@ -214,8 +306,41 @@ export function TreeNode({
   arrayIndex,
 }: TreeNodeProps) {
   const { data } = useData();
-  const isExpandable = schema.type === 'object' || schema.type === 'array';
   const isArray = schema.type === 'array';
+  const isUnion = schema.type === 'union' && schema.variants;
+  
+  // Get the current value at this path for union variant detection
+  const currentNodeValue = React.useMemo(() => {
+    return getValueAtPath(data, path);
+  }, [data, path]);
+  
+  // Detect the active union variant if this is a union
+  const detectedVariant = React.useMemo(() => {
+    if (!isUnion) return null;
+    return detectCurrentVariant(currentNodeValue, schema);
+  }, [isUnion, currentNodeValue, schema]);
+  
+  // Determine if this node is expandable
+  // - Objects with fields are expandable
+  // - Arrays are expandable
+  // - Unions with a detected object/array variant are expandable
+  const isExpandable = React.useMemo(() => {
+    if (schema.type === 'object' || schema.type === 'array') {
+      return true;
+    }
+    if (isUnion && detectedVariant) {
+      // Union is expandable if the detected variant is an object with fields or an array
+      const v = detectedVariant.variant;
+      return (v.type === 'object' && v.fields && Object.keys(v.fields).length > 0) ||
+             v.type === 'array';
+    }
+    // Union without data but has expandable variants - show as expandable to indicate potential
+    if (isUnion && unionHasExpandableVariants(schema)) {
+      return true;
+    }
+    return false;
+  }, [schema, isUnion, detectedVariant]);
+  
   const isMultiSelected = multiSelectedPaths.has(path);
 
   // Get array data for this path if it's an array
@@ -249,7 +374,7 @@ export function TreeNode({
       return Object.entries(schema.fields).filter(
         ([fieldName, field]) => {
           // Filter out simple fields if hideSimpleFields is enabled
-          if (hideSimpleFields && field.type !== 'object' && field.type !== 'array') {
+          if (hideSimpleFields && field.type !== 'object' && field.type !== 'array' && field.type !== 'union') {
             return false;
           }
           
@@ -271,13 +396,52 @@ export function TreeNode({
         }
       );
     }
+    
+    // For unions with a detected variant, return the variant's fields
+    if (isUnion && detectedVariant) {
+      const variant = detectedVariant.variant;
+      if (variant.type === 'object' && variant.fields) {
+        return Object.entries(variant.fields).filter(
+          ([fieldName, field]) => {
+            // Filter out simple fields if hideSimpleFields is enabled
+            if (hideSimpleFields && field.type !== 'object' && field.type !== 'array' && field.type !== 'union') {
+              return false;
+            }
+            
+            // Check visibility based on hidden and visible_when conditions
+            const fieldValue = currentNodeValue && typeof currentNodeValue === 'object' 
+              ? (currentNodeValue as Record<string, unknown>)[fieldName]
+              : undefined;
+            if (!isFieldVisible(field, data || {}, fieldValue)) {
+              return false;
+            }
+            
+            return true;
+          }
+        );
+      }
+    }
+    
     // For arrays, we don't return schema children here anymore
     // Array items will be rendered separately
     return [];
   };
 
   const children = getChildren();
-  const hasChildren = children.length > 0 || (isArray && Array.isArray(arrayData) && arrayData.length > 0);
+  
+  // For unions with a detected array variant, get the array data
+  const unionArrayData = React.useMemo(() => {
+    if (!isUnion || !detectedVariant) return undefined;
+    if (detectedVariant.variant.type === 'array') {
+      return currentNodeValue;
+    }
+    return undefined;
+  }, [isUnion, detectedVariant, currentNodeValue]);
+  
+  const hasChildren = children.length > 0 || 
+    (isArray && Array.isArray(arrayData) && arrayData.length > 0) ||
+    (isUnion && detectedVariant !== null) ||
+    (isUnion && Array.isArray(unionArrayData) && unionArrayData.length > 0);
 
   // Get list of selected paths for context menu (multi-select or single)
   const selectedPathsForMenu = React.useMemo(() => {
@@ -316,6 +480,15 @@ export function TreeNode({
       )}
       <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
       <span className="truncate flex-1">{getNodeLabel(name, schema, path)}</span>
+      {/* Show detected variant badge for unions */}
+      {isUnion && detectedVariant && (
+        <Badge 
+          variant="default" 
+          className="text-[10px] px-1.5 py-0 h-5 shrink-0 bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30"
+        >
+          {getVariantLabel(detectedVariant.variant)}
+        </Badge>
+      )}
       {errorCount > 0 && (
         <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 shrink-0 flex items-center gap-0.5">
           <AlertCircle className="h-3 w-3" />
@@ -385,6 +558,15 @@ export function TreeNode({
         </button>
         <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
         <span className="truncate flex-1">{getNodeLabel(name, schema, path)}</span>
+        {/* Show detected variant badge for unions */}
+        {isUnion && detectedVariant && (
+          <Badge 
+            variant="default" 
+            className="text-[10px] px-1.5 py-0 h-5 shrink-0 bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30"
+          >
+            {getVariantLabel(detectedVariant.variant)}
+          </Badge>
+        )}
         {errorCount > 0 && (
           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 shrink-0 flex items-center gap-0.5">
             <AlertCircle className="h-3 w-3" />
@@ -429,7 +611,7 @@ export function TreeNode({
             className="absolute top-0 bottom-0 w-px bg-border"
             style={{ left: `${depth * 16 + 18}px` }}
           />
-          {/* Render object children */}
+          {/* Render object children (including union variant fields) */}
           {children.map(([childName, childSchema]) => {
             const childPath = `${path}.${childName}`;
             const childErrorCount = getErrorCountForPath(childPath);
@@ -463,8 +645,10 @@ export function TreeNode({
             const itemLabel = getArrayItemLabel(item, index, itemSchema);
             const itemErrorCount = getErrorCountForPath(itemPath);
             
-            // Check if this array item has nested content (object or array)
-            const itemIsExpandable = itemSchema.type === 'object' || itemSchema.type === 'array';
+            // Check if this array item has nested content (object, array, or union)
+            const itemIsExpandable = itemSchema.type === 'object' || 
+                                     itemSchema.type === 'array' ||
+                                     (itemSchema.type === 'union' && itemSchema.variants);
             
             if (itemIsExpandable && itemSchema.type === 'object' && itemSchema.fields) {
               // Render as expandable node for objects
@@ -474,6 +658,42 @@ export function TreeNode({
                   name={itemLabel}
                   path={itemPath}
                   schema={itemSchema}
+                  depth={depth + 1}
+                  isSelected={selectedPath === itemPath}
+                  isExpanded={expandedPaths.has(itemPath)}
+                  showTypes={showTypes}
+                  hideSimpleFields={hideSimpleFields}
+                  onSelect={onSelect}
+                  onToggle={onToggle}
+                  selectedPath={selectedPath}
+                  expandedPaths={expandedPaths}
+                  errorCount={itemErrorCount}
+                  getErrorCountForPath={getErrorCountForPath}
+                  multiSelectedPaths={multiSelectedPaths}
+                  onMultiSelect={onMultiSelect}
+                  onMultiPaste={onMultiPaste}
+                  parentArrayPath={path}
+                  arrayIndex={index}
+                />
+              );
+            }
+            
+            // Render union items - they can be expanded to show their variant's content
+            if (itemSchema.type === 'union' && itemSchema.variants) {
+              // Detect the variant for this specific item
+              const itemVariant = detectCurrentVariant(item, itemSchema);
+              // Get a better label from the detected variant
+              const unionItemLabel = itemVariant 
+                ? getArrayItemLabel(item, index, itemVariant.variant)
+                : getArrayItemLabel(item, index, itemSchema);
+              
+              return (
+                <UnionArrayItemNode
+                  key={itemPath}
+                  name={unionItemLabel}
+                  path={itemPath}
+                  schema={itemSchema}
+                  item={item}
                   depth={depth + 1}
                   isSelected={selectedPath === itemPath}
                   isExpanded={expandedPaths.has(itemPath)}
@@ -511,6 +731,73 @@ export function TreeNode({
                 isMultiSelected={multiSelectedPaths.has(itemPath)}
                 showTypes={showTypes}
                 itemType={itemSchema.type}
+                onSelect={onSelect}
+                onMultiSelect={onMultiSelect}
+                errorCount={itemErrorCount}
+                multiSelectedPaths={multiSelectedPaths}
+                onMultiPaste={onMultiPaste}
+                parentArrayPath={path}
+                arrayIndex={index}
+              />
+            );
+          })}
+          {/* Render union array variant items (when this union's detected variant is an array) */}
+          {isUnion && detectedVariant && detectedVariant.variant.type === 'array' && 
+           Array.isArray(unionArrayData) && unionArrayData.map((item, index) => {
+            const itemPath = `${path}[${index}]`;
+            const variantItemSchema = detectedVariant.variant.items || { type: 'object' };
+            const itemLabel = getArrayItemLabel(item, index, variantItemSchema);
+            const itemErrorCount = getErrorCountForPath(itemPath);
+            
+            // Check if this array item has nested content
+            const itemIsExpandable = variantItemSchema.type === 'object' || 
+                                     variantItemSchema.type === 'array' ||
+                                     (variantItemSchema.type === 'union' && variantItemSchema.variants);
+            
+            if (itemIsExpandable) {
+              return (
+                <TreeNode
+                  key={itemPath}
+                  name={itemLabel}
+                  path={itemPath}
+                  schema={variantItemSchema}
+                  depth={depth + 1}
+                  isSelected={selectedPath === itemPath}
+                  isExpanded={expandedPaths.has(itemPath)}
+                  showTypes={showTypes}
+                  hideSimpleFields={hideSimpleFields}
+                  onSelect={onSelect}
+                  onToggle={onToggle}
+                  selectedPath={selectedPath}
+                  expandedPaths={expandedPaths}
+                  errorCount={itemErrorCount}
+                  getErrorCountForPath={getErrorCountForPath}
+                  multiSelectedPaths={multiSelectedPaths}
+                  onMultiSelect={onMultiSelect}
+                  onMultiPaste={onMultiPaste}
+                  parentArrayPath={path}
+                  arrayIndex={index}
+                />
+              );
+            }
+            
+            // Skip primitive array items when hideSimpleFields is enabled
+            if (hideSimpleFields) {
+              return null;
+            }
+            
+            // Render as leaf node for primitives
+            return (
+              <ArrayItemNode
+                key={itemPath}
+                label={itemLabel}
+                path={itemPath}
+                schema={variantItemSchema}
+                depth={depth + 1}
+                isSelected={selectedPath === itemPath}
+                isMultiSelected={multiSelectedPaths.has(itemPath)}
+                showTypes={showTypes}
+                itemType={variantItemSchema.type}
                 onSelect={onSelect}
                 onMultiSelect={onMultiSelect}
                 errorCount={itemErrorCount}
@@ -630,6 +917,316 @@ function ArrayItemNode({
         {nodeContent}
       </ContextMenuTrigger>
     </TreeNodeContextMenu>
+  );
+}
+
+/**
+ * Union array item node - renders a union item within an array.
+ * This node is expandable if the detected variant is an object or array.
+ */
+interface UnionArrayItemNodeProps {
+  name: string;
+  path: string;
+  schema: SchemaField;  // The union schema
+  item: unknown;        // The actual item data
+  depth: number;
+  isSelected: boolean;
+  isExpanded: boolean;
+  showTypes: boolean;
+  hideSimpleFields?: boolean;
+  onSelect: (path: string) => void;
+  onToggle: (path: string) => void;
+  selectedPath: string | null;
+  expandedPaths: Set<string>;
+  errorCount?: number;
+  getErrorCountForPath: (path: string) => number;
+  multiSelectedPaths?: Set<string>;
+  onMultiSelect?: (path: string, additive: boolean) => void;
+  onMultiPaste?: (paths: string[], data: unknown) => void;
+  parentArrayPath?: string;
+  arrayIndex?: number;
+}
+
+function UnionArrayItemNode({
+  name,
+  path,
+  schema,
+  item,
+  depth,
+  isSelected,
+  isExpanded,
+  showTypes,
+  hideSimpleFields = false,
+  onSelect,
+  onToggle,
+  selectedPath,
+  expandedPaths,
+  errorCount = 0,
+  getErrorCountForPath,
+  multiSelectedPaths = new Set(),
+  onMultiSelect,
+  onMultiPaste,
+  parentArrayPath,
+  arrayIndex,
+}: UnionArrayItemNodeProps) {
+  const { data } = useData();
+  const isMultiSelected = multiSelectedPaths.has(path);
+  
+  // Detect the variant for this union item
+  const detectedVariant = React.useMemo(() => {
+    return detectCurrentVariant(item, schema);
+  }, [item, schema]);
+  
+  // Is this union item expandable?
+  const isExpandable = React.useMemo(() => {
+    if (!detectedVariant) return false;
+    const v = detectedVariant.variant;
+    return (v.type === 'object' && v.fields && Object.keys(v.fields).length > 0) ||
+           v.type === 'array';
+  }, [detectedVariant]);
+  
+  // Get children based on the detected variant
+  const getChildren = (): [string, SchemaField][] => {
+    if (!detectedVariant) return [];
+    const variant = detectedVariant.variant;
+    if (variant.type === 'object' && variant.fields) {
+      return Object.entries(variant.fields).filter(
+        ([fieldName, field]) => {
+          // Filter out simple fields if hideSimpleFields is enabled
+          if (hideSimpleFields && field.type !== 'object' && field.type !== 'array' && field.type !== 'union') {
+            return false;
+          }
+          
+          // Check visibility
+          const fieldValue = item && typeof item === 'object' 
+            ? (item as Record<string, unknown>)[fieldName]
+            : undefined;
+          if (!isFieldVisible(field, data || {}, fieldValue)) {
+            return false;
+          }
+          
+          return true;
+        }
+      );
+    }
+    return [];
+  };
+  
+  const children = getChildren();
+  
+  // For union items with array variants, get the array data
+  const variantArrayData = React.useMemo(() => {
+    if (!detectedVariant || detectedVariant.variant.type !== 'array') return undefined;
+    return item;  // The item itself is the array
+  }, [detectedVariant, item]);
+  
+  const hasChildren = children.length > 0 || 
+    (detectedVariant?.variant.type === 'array' && Array.isArray(variantArrayData) && (variantArrayData as unknown[]).length > 0);
+  
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if ((e.ctrlKey || e.metaKey) && onMultiSelect) {
+      onMultiSelect(path, true);
+    } else {
+      onSelect(path);
+    }
+  };
+  
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isExpandable && hasChildren) {
+      onToggle(path);
+    }
+  };
+  
+  const selectedPathsForMenu = React.useMemo(() => {
+    if (multiSelectedPaths.size > 0) {
+      return Array.from(multiSelectedPaths);
+    }
+    return [path];
+  }, [multiSelectedPaths, path]);
+  
+  const nodeContentInner = (
+    <div
+      className={cn(
+        'flex items-center gap-1.5 px-2 py-1.5 cursor-pointer rounded-md text-sm',
+        'hover:bg-accent hover:text-accent-foreground',
+        'transition-colors duration-150',
+        isSelected && 'bg-accent text-accent-foreground font-medium',
+        isMultiSelected && 'ring-2 ring-primary ring-inset',
+        errorCount > 0 && 'text-destructive'
+      )}
+      style={{ paddingLeft: `${depth * 16 + 8}px` }}
+      onClick={handleClick}
+    >
+      {isExpandable && hasChildren ? (
+        <button
+          onClick={handleToggle}
+          className="p-0.5 hover:bg-muted rounded shrink-0"
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </button>
+      ) : (
+        <span className="w-5 shrink-0" />
+      )}
+      <span className="shrink-0">{getTypeIcon('union', isExpanded)}</span>
+      <span className="truncate flex-1">{name}</span>
+      {/* Show detected variant badge */}
+      {detectedVariant && (
+        <Badge 
+          variant="default" 
+          className="text-[10px] px-1.5 py-0 h-5 shrink-0 bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30"
+        >
+          {getVariantLabel(detectedVariant.variant)}
+        </Badge>
+      )}
+      {errorCount > 0 && (
+        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 shrink-0 flex items-center gap-0.5">
+          <AlertCircle className="h-3 w-3" />
+          {errorCount}
+        </Badge>
+      )}
+      {showTypes && (
+        <Badge 
+          variant="outline" 
+          className="text-[10px] px-1.5 py-0 h-5 shrink-0 max-w-[120px] truncate"
+          title={schema.python_type || 'union'}
+        >
+          {schema.python_type || 'union'}
+        </Badge>
+      )}
+    </div>
+  );
+  
+  const nodeContent = (
+    <TreeNodeContextMenu
+      path={path}
+      schema={schema}
+      nodeName={name}
+      selectedPaths={selectedPathsForMenu}
+      onMultiPaste={onMultiPaste}
+      parentArrayPath={parentArrayPath}
+      arrayIndex={arrayIndex}
+    >
+      <ContextMenuTrigger asChild>
+        {nodeContentInner}
+      </ContextMenuTrigger>
+    </TreeNodeContextMenu>
+  );
+  
+  // If not expandable or no children, return just the node
+  if (!isExpandable || !hasChildren) {
+    return nodeContent;
+  }
+  
+  return (
+    <Collapsible open={isExpanded} onOpenChange={() => onToggle(path)}>
+      <CollapsibleTrigger asChild>{nodeContent}</CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="relative">
+          <div
+            className="absolute top-0 bottom-0 w-px bg-border"
+            style={{ left: `${depth * 16 + 18}px` }}
+          />
+          {/* Render union variant's object children */}
+          {children.map(([childName, childSchema]) => {
+            const childPath = `${path}.${childName}`;
+            const childErrorCount = getErrorCountForPath(childPath);
+            return (
+              <TreeNode
+                key={childPath}
+                name={childName}
+                path={childPath}
+                schema={childSchema}
+                depth={depth + 1}
+                isSelected={selectedPath === childPath}
+                isExpanded={expandedPaths.has(childPath)}
+                showTypes={showTypes}
+                hideSimpleFields={hideSimpleFields}
+                onSelect={onSelect}
+                onToggle={onToggle}
+                selectedPath={selectedPath}
+                expandedPaths={expandedPaths}
+                errorCount={childErrorCount}
+                getErrorCountForPath={getErrorCountForPath}
+                multiSelectedPaths={multiSelectedPaths}
+                onMultiSelect={onMultiSelect}
+                onMultiPaste={onMultiPaste}
+              />
+            );
+          })}
+          {/* Render union variant's array items */}
+          {detectedVariant?.variant.type === 'array' && 
+           Array.isArray(variantArrayData) && (variantArrayData as unknown[]).map((arrayItem, index) => {
+            const itemPath = `${path}[${index}]`;
+            const variantItemSchema = detectedVariant.variant.items || { type: 'object' };
+            const itemLabel = getArrayItemLabel(arrayItem, index, variantItemSchema);
+            const itemErrorCount = getErrorCountForPath(itemPath);
+            
+            const itemIsExpandable = variantItemSchema.type === 'object' || 
+                                     variantItemSchema.type === 'array' ||
+                                     (variantItemSchema.type === 'union' && variantItemSchema.variants);
+            
+            if (itemIsExpandable) {
+              return (
+                <TreeNode
+                  key={itemPath}
+                  name={itemLabel}
+                  path={itemPath}
+                  schema={variantItemSchema}
+                  depth={depth + 1}
+                  isSelected={selectedPath === itemPath}
+                  isExpanded={expandedPaths.has(itemPath)}
+                  showTypes={showTypes}
+                  hideSimpleFields={hideSimpleFields}
+                  onSelect={onSelect}
+                  onToggle={onToggle}
+                  selectedPath={selectedPath}
+                  expandedPaths={expandedPaths}
+                  errorCount={itemErrorCount}
+                  getErrorCountForPath={getErrorCountForPath}
+                  multiSelectedPaths={multiSelectedPaths}
+                  onMultiSelect={onMultiSelect}
+                  onMultiPaste={onMultiPaste}
+                  parentArrayPath={path}
+                  arrayIndex={index}
+                />
+              );
+            }
+            
+            // Skip primitives if hideSimpleFields is enabled
+            if (hideSimpleFields) {
+              return null;
+            }
+            
+            return (
+              <ArrayItemNode
+                key={itemPath}
+                label={itemLabel}
+                path={itemPath}
+                schema={variantItemSchema}
+                depth={depth + 1}
+                isSelected={selectedPath === itemPath}
+                isMultiSelected={multiSelectedPaths.has(itemPath)}
+                showTypes={showTypes}
+                itemType={variantItemSchema.type}
+                onSelect={onSelect}
+                onMultiSelect={onMultiSelect}
+                errorCount={itemErrorCount}
+                multiSelectedPaths={multiSelectedPaths}
+                onMultiPaste={onMultiPaste}
+                parentArrayPath={path}
+                arrayIndex={index}
+              />
+            );
+          })}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
