@@ -240,17 +240,24 @@ function getValueLeafItemType(value: unknown[]): string | null {
  * Detect which union variant the current value matches.
  * Uses discriminator if available, otherwise tries to match by structure.
  * Returns the variant schema and index, or null if no match.
+ * @param storedVariantIndex - Optional stored variant index from user selection
  */
 function detectCurrentVariant(
   value: unknown,
-  schema: SchemaField
+  schema: SchemaField,
+  storedVariantIndex?: number
 ): { variant: UnionVariant; index: number } | null {
-  if (value === null || value === undefined) {
+  const variants = schema.variants;
+  if (!variants || variants.length === 0) {
     return null;
   }
 
-  const variants = schema.variants;
-  if (!variants || variants.length === 0) {
+  // If we have a stored variant index from user selection, use it
+  if (storedVariantIndex !== undefined && storedVariantIndex >= 0 && storedVariantIndex < variants.length) {
+    return { variant: variants[storedVariantIndex], index: storedVariantIndex };
+  }
+
+  if (value === null || value === undefined) {
     return null;
   }
 
@@ -270,20 +277,43 @@ function detectCurrentVariant(
 
   // Try to detect by type matching
   if (typeof value === 'object' && !Array.isArray(value)) {
-    // For objects, try to find a variant that matches the structure
+    // For objects, find the best match by field overlap
     const valueKeys = Object.keys(value as Record<string, unknown>);
-    
-    for (let i = 0; i < variants.length; i++) {
-      const variant = variants[i];
-      if (variant.type === 'object' && variant.fields) {
-        const variantKeys = Object.keys(variant.fields);
-        // Check if all required variant fields exist in the value
-        const requiredKeys = variantKeys.filter(k => variant.fields![k].required !== false);
-        const matchesRequired = requiredKeys.every(k => valueKeys.includes(k));
-        if (matchesRequired) {
-          return { variant: variants[i], index: i };
-        }
+    const objectVariants = variants
+      .map((v, i) => ({ variant: v, index: i }))
+      .filter(({ variant }) => variant.type === 'object' && variant.fields);
+
+    if (objectVariants.length === 1) {
+      return objectVariants[0];
+    }
+
+    // Score each variant by how well its fields match the value's keys
+    let bestMatch: { variant: UnionVariant; index: number } | null = null;
+    let bestScore = -Infinity;
+
+    for (const { variant, index } of objectVariants) {
+      const variantKeys = Object.keys(variant.fields!);
+      
+      // Count matching keys (keys that exist in both)
+      const matchingKeys = valueKeys.filter(k => variantKeys.includes(k)).length;
+      
+      // Count extra keys in value that don't exist in variant (penalty)
+      const extraKeys = valueKeys.filter(k => !variantKeys.includes(k)).length;
+      
+      // Count missing keys from variant that should be in value
+      const missingKeys = variantKeys.filter(k => !valueKeys.includes(k)).length;
+      
+      // Score: matching keys minus penalties for extra/missing keys
+      const score = matchingKeys * 2 - extraKeys - missingKeys;
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = { variant, index };
       }
+    }
+
+    if (bestMatch) {
+      return bestMatch;
     }
   }
 
@@ -419,7 +449,7 @@ export function TreeNode({
   parentArrayPath,
   arrayIndex,
 }: TreeNodeProps) {
-  const { data } = useData();
+  const { data, variantSelections } = useData();
   const isArray = schema.type === 'array';
   const isUnion = schema.type === 'union' && schema.variants;
   
@@ -428,11 +458,14 @@ export function TreeNode({
     return getValueAtPath(data, path);
   }, [data, path]);
   
+  // Get stored variant index for this path if any
+  const storedVariantIndex = variantSelections.get(path);
+  
   // Detect the active union variant if this is a union
   const detectedVariant = React.useMemo(() => {
     if (!isUnion) return null;
-    return detectCurrentVariant(currentNodeValue, schema);
-  }, [isUnion, currentNodeValue, schema]);
+    return detectCurrentVariant(currentNodeValue, schema, storedVariantIndex);
+  }, [isUnion, currentNodeValue, schema, storedVariantIndex]);
   
   // Determine if this node is expandable
   // - Objects with fields are expandable
@@ -794,8 +827,10 @@ export function TreeNode({
             
             // Render union items - they can be expanded to show their variant's content
             if (itemSchema.type === 'union' && itemSchema.variants) {
-              // Detect the variant for this specific item
-              const itemVariant = detectCurrentVariant(item, itemSchema);
+              // Detect the variant for this specific item, using stored variant if available
+              const itemPath = `${path}[${index}]`;
+              const itemStoredVariant = variantSelections.get(itemPath);
+              const itemVariant = detectCurrentVariant(item, itemSchema, itemStoredVariant);
               // Get a better label from the detected variant
               const unionItemLabel = itemVariant 
                 ? getArrayItemLabel(item, index, itemVariant.variant)
@@ -1083,13 +1118,16 @@ function UnionArrayItemNode({
   parentArrayPath,
   arrayIndex,
 }: UnionArrayItemNodeProps) {
-  const { data } = useData();
+  const { data, variantSelections } = useData();
   const isMultiSelected = multiSelectedPaths.has(path);
+  
+  // Get stored variant index for this path if any
+  const storedVariantIndex = variantSelections.get(path);
   
   // Detect the variant for this union item
   const detectedVariant = React.useMemo(() => {
-    return detectCurrentVariant(item, schema);
-  }, [item, schema]);
+    return detectCurrentVariant(item, schema, storedVariantIndex);
+  }, [item, schema, storedVariantIndex]);
   
   // Is this union item expandable?
   const isExpandable = React.useMemo(() => {

@@ -1,21 +1,8 @@
 import React from 'react';
-import { AlertCircle, Layers } from 'lucide-react';
+import { AlertCircle, Layers, Check, ChevronRight, Folder, List, Hash, Type, ToggleLeft, Braces } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +16,8 @@ import {
 import { cn, createDefaultFromSchema } from '@/lib/utils';
 import type { RendererProps } from './types';
 import type { SchemaField, UnionVariant } from '@/types';
-import { ObjectEditor, ArrayListEditor } from '@/components/DetailPanel/ObjectEditor';
 import { FieldRenderer } from '@/components/Renderers';
+import { useData } from '@/context/DataContext';
 
 /**
  * Get the depth of array nesting for a value.
@@ -122,22 +109,47 @@ function detectCurrentVariant(
     }
   }
 
-  // Try to detect by type matching
+  // Try to detect by type matching using field key overlap scoring
   if (typeof value === 'object' && !Array.isArray(value)) {
-    // For objects, try to find a variant that matches the structure
-    const valueKeys = Object.keys(value as Record<string, unknown>);
+    const valueKeys = new Set(Object.keys(value as Record<string, unknown>));
     
-    for (let i = 0; i < variants.length; i++) {
-      const variant = variants[i];
-      if (variant.type === 'object' && variant.fields) {
-        const variantKeys = Object.keys(variant.fields);
-        // Check if all required variant fields exist in the value
-        const requiredKeys = variantKeys.filter(k => variant.fields![k].required !== false);
-        const matchesRequired = requiredKeys.every(k => valueKeys.includes(k));
-        if (matchesRequired) {
-          return i;
+    // Score each object variant based on key overlap
+    const objectVariants = variants
+      .map((v, idx) => ({ variant: v, index: idx }))
+      .filter(({ variant }) => variant.type === 'object' && variant.fields)
+      .map(({ variant, index }) => {
+        const variantKeys = new Set(Object.keys(variant.fields!));
+        
+        // Count keys that exist in both
+        const matchingKeys = [...variantKeys].filter(k => valueKeys.has(k)).length;
+        // Count value keys that are NOT in variant (extra keys)
+        const extraKeys = [...valueKeys].filter(k => !variantKeys.has(k)).length;
+        // Count variant keys that are NOT in value (missing keys)
+        const missingKeys = [...variantKeys].filter(k => !valueKeys.has(k)).length;
+        
+        // Score: higher is better
+        const score = matchingKeys * 2 - extraKeys - missingKeys;
+        
+        // Check if ALL value keys exist in variant (perfect subset)
+        const isPerfectSubset = [...valueKeys].every(k => variantKeys.has(k));
+        
+        return { variant, index, score, matchingKeys, isPerfectSubset, variantKeys: variantKeys.size };
+      })
+      .filter(v => v.matchingKeys > 0); // Must have at least some overlap
+    
+    if (objectVariants.length > 0) {
+      // Sort by: perfect subset first, then by score, then by fewer total keys (more specific)
+      objectVariants.sort((a, b) => {
+        if (a.isPerfectSubset !== b.isPerfectSubset) {
+          return a.isPerfectSubset ? -1 : 1;
         }
-      }
+        if (a.score !== b.score) {
+          return b.score - a.score;
+        }
+        return a.variantKeys - b.variantKeys;
+      });
+      
+      return objectVariants[0].index;
     }
   }
 
@@ -179,18 +191,25 @@ function detectCurrentVariant(
       }
     }
     
-    // For empty arrays or when no type match, try depth match first
+    // For empty arrays, we CANNOT reliably distinguish between array variants
+    // (e.g., list[int] vs list[str]) - return null so user must select
+    if ((value as unknown[]).length === 0 && arrayVariants.length > 1) {
+      return null;
+    }
+    
+    // For non-empty arrays without type match, try depth match
     const depthMatch = arrayVariants.find(v => v.depth === valueDepth);
     if (depthMatch) {
       return depthMatch.index;
     }
     
-    // If no exact match (e.g., empty array), prefer the shallowest array variant
-    // since empty arrays are ambiguous
-    if (arrayVariants.length > 0) {
-      arrayVariants.sort((a, b) => a.depth - b.depth);
+    // Fall back to first array variant only if there's just one
+    if (arrayVariants.length === 1) {
       return arrayVariants[0].index;
     }
+    
+    // Multiple array variants but can't determine which - return null
+    return null;
   }
 
   // For primitive values, match by type
@@ -226,11 +245,75 @@ function getVariantLabel(variant: UnionVariant): string {
 }
 
 /**
+ * Get icon for a variant based on its type.
+ */
+function getVariantIcon(variant: UnionVariant, isSelected: boolean): React.ReactNode {
+  const colorClass = isSelected ? 'text-primary' : 'text-muted-foreground';
+  
+  switch (variant.type) {
+    case 'object':
+      return <Folder className={cn('h-5 w-5', colorClass)} />;
+    case 'array':
+      return <List className={cn('h-5 w-5', colorClass)} />;
+    case 'string':
+      return <Type className={cn('h-5 w-5', colorClass)} />;
+    case 'integer':
+    case 'number':
+      return <Hash className={cn('h-5 w-5', colorClass)} />;
+    case 'boolean':
+      return <ToggleLeft className={cn('h-5 w-5', colorClass)} />;
+    case 'union':
+      return <Layers className={cn('h-5 w-5', colorClass)} />;
+    default:
+      return <Braces className={cn('h-5 w-5', colorClass)} />;
+  }
+}
+
+/**
+ * Check if a variant is a complex type that should navigate instead of inline edit.
+ */
+function isComplexVariant(variant: UnionVariant): boolean {
+  return variant.type === 'object' || variant.type === 'array' || variant.type === 'union';
+}
+
+/**
+ * Get a description for a variant.
+ */
+function getVariantDescription(variant: UnionVariant): string {
+  if (variant.description) {
+    return variant.description;
+  }
+  
+  switch (variant.type) {
+    case 'object':
+      const fieldCount = variant.fields ? Object.keys(variant.fields).length : 0;
+      return `Object with ${fieldCount} field${fieldCount !== 1 ? 's' : ''}`;
+    case 'array':
+      const itemType = variant.items?.python_type || variant.items?.type || 'items';
+      return `List of ${itemType}`;
+    case 'string':
+      return 'Text value';
+    case 'integer':
+      return 'Integer number';
+    case 'number':
+      return 'Decimal number';
+    case 'boolean':
+      return 'True/False';
+    case 'union':
+      const variantCount = variant.variants?.length || 0;
+      return `Union with ${variantCount} option${variantCount !== 1 ? 's' : ''}`;
+    default:
+      return variant.python_type || variant.type;
+  }
+}
+
+/**
  * UnionInput component for rendering union/discriminated union fields.
  * 
  * Features:
- * - Tabbed interface for small number of variants (≤4) with smooth animations
- * - Dropdown selector for larger number of variants (>4) or discriminated unions
+ * - Card-based interface showing all variant options
+ * - Navigation to complex types (objects, arrays, nested unions)
+ * - Inline editing for primitive types
  * - Automatic variant detection based on current value
  * - Confirmation dialog when switching variants (data loss warning)
  */
@@ -243,18 +326,25 @@ export function UnionInput({
   disabled,
   onChange,
 }: RendererProps) {
-  const [selectedVariantIndex, setSelectedVariantIndex] = React.useState<number | null>(() => 
-    detectCurrentVariant(value, schema)
-  );
+  const { setSelectedPath, expandPath, variantSelections, setVariantSelection } = useData();
+  
+  // Get stored variant selection if any (for ambiguous cases like empty arrays)
+  const storedVariantIndex = variantSelections.get(path);
+  
+  const [selectedVariantIndex, setSelectedVariantIndex] = React.useState<number | null>(() => {
+    // First check if we have a stored selection (from previous user choice)
+    if (storedVariantIndex !== undefined) {
+      return storedVariantIndex;
+    }
+    // Otherwise try to detect from value
+    return detectCurrentVariant(value, schema);
+  });
   const [pendingVariantIndex, setPendingVariantIndex] = React.useState<number | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
 
   const variants = schema.variants || [];
   const hasDiscriminator = !!schema.discriminator?.field;
   const discriminatorField = schema.discriminator?.field;
-  
-  // Use tabbed interface for ≤6 variants, select dropdown for more
-  const useTabs = variants.length <= 6;
   
   const label = schema.ui_config?.label || schema.title || name;
   const helpText = schema.ui_config?.help_text || schema.description;
@@ -301,23 +391,37 @@ export function UnionInput({
   }, [path, value, schema, selectedVariantIndex]);
 
   /**
-   * Handle variant change - may require confirmation if data will be lost.
+   * Handle variant selection from card click.
    */
-  const handleVariantChange = (newVariantIndex: number) => {
+  const handleVariantSelect = (variantIndex: number, variant: UnionVariant) => {
+    const isCurrentlySelected = selectedVariantIndex === variantIndex;
+    
+    if (isCurrentlySelected) {
+      // Already selected - if complex type, navigate to its detail view
+      if (isComplexVariant(variant)) {
+        // For objects and arrays, we navigate TO this path so the detail panel 
+        // shows the object's fields or array's items
+        expandPath(path);
+        setSelectedPath(path);
+      }
+      return;
+    }
+    
+    // New variant selected
     // If there's existing data and it's different from the new variant, confirm
-    if (value !== null && value !== undefined && selectedVariantIndex !== null && selectedVariantIndex !== newVariantIndex) {
-      setPendingVariantIndex(newVariantIndex);
+    if (value !== null && value !== undefined && selectedVariantIndex !== null) {
+      setPendingVariantIndex(variantIndex);
       setShowConfirmDialog(true);
     } else {
-      applyVariantChange(newVariantIndex);
+      applyVariantChange(variantIndex, variant);
     }
   };
 
   /**
    * Apply the variant change, creating default data for the new variant.
    */
-  const applyVariantChange = (newVariantIndex: number) => {
-    const newVariant = variants[newVariantIndex];
+  const applyVariantChange = (newVariantIndex: number, variant?: UnionVariant) => {
+    const newVariant = variant || variants[newVariantIndex];
     if (!newVariant) return;
 
     // Create default value for the new variant
@@ -331,81 +435,49 @@ export function UnionInput({
     }
     
     setSelectedVariantIndex(newVariantIndex);
+    // Store the selection in context for ambiguous cases (e.g., empty arrays)
+    setVariantSelection(path, newVariantIndex);
     onChange(newValue);
     setShowConfirmDialog(false);
     setPendingVariantIndex(null);
+    
+    // For OBJECT variants, navigate to the detail view after a short delay
+    // to allow the data to be set first.
+    // For ARRAY variants with empty arrays, DON'T auto-navigate because
+    // the DetailPanel can't distinguish between different array types (e.g., list[int] vs list[str])
+    // when the array is empty. User needs to click again to navigate.
+    // For NESTED UNION variants, also don't auto-navigate - let user click again.
+    if (newVariant.type === 'object') {
+      setTimeout(() => {
+        expandPath(path);
+        setSelectedPath(path);
+      }, 50);
+    }
   };
 
   /**
-   * Handle change within the current variant.
+   * Handle change within the current variant (for primitive types).
    */
   const handleVariantDataChange = (newData: unknown) => {
     onChange(newData);
   };
 
   /**
-   * Render the content editor for a variant.
+   * Render inline editor for primitive variants.
    */
-  const renderVariantContent = (variantIndex: number) => {
-    const variant = variants[variantIndex];
-    if (!variant) return null;
-
-    if (variant.type === 'object' && variant.fields) {
-      // Filter out the discriminator field from rendering (it's auto-managed)
-      const fieldsToRender = { ...variant.fields };
-      if (discriminatorField && fieldsToRender[discriminatorField]) {
-        // Keep it but mark as read-only
-        fieldsToRender[discriminatorField] = {
-          ...fieldsToRender[discriminatorField],
-          ui_config: {
-            ...fieldsToRender[discriminatorField].ui_config,
-            read_only: true,
-          },
-        };
-      }
-
-      // Use depth=0 to render fields directly without collapsible wrapper
-      // The tabs already provide the visual container
-      return (
-        <ObjectEditor
-          name={variant.variant_name || `variant_${variantIndex}`}
-          path={path}
-          schema={{ ...variant, fields: fieldsToRender }}
-          value={value as Record<string, unknown>}
-          errors={fieldErrors}
-          disabled={disabled}
-          onChange={handleVariantDataChange}
-          depth={0}
-        />
-      );
-    }
-
-    // Handle array variants
-    if (variant.type === 'array' && variant.items) {
-      return (
-        <ArrayListEditor
-          name={variant.variant_name || `variant_${variantIndex}`}
+  const renderPrimitiveEditor = (variant: UnionVariant) => {
+    return (
+      <div className="pt-4 border-t">
+        <FieldRenderer
+          name={variant.variant_name || name}
           path={path}
           schema={variant}
-          value={Array.isArray(value) ? value : []}
+          value={value}
           errors={fieldErrors}
           disabled={disabled}
           onChange={handleVariantDataChange}
         />
-      );
-    }
-
-    // For primitive variants
-    return (
-      <FieldRenderer
-        name={variant.variant_name || `variant_${variantIndex}`}
-        path={path}
-        schema={variant}
-        value={value}
-        errors={fieldErrors}
-        disabled={disabled}
-        onChange={handleVariantDataChange}
-      />
+      </div>
     );
   };
 
@@ -420,6 +492,10 @@ export function UnionInput({
       </div>
     );
   }
+
+  // Get the currently selected variant
+  const selectedVariant = selectedVariantIndex !== null ? variants[selectedVariantIndex] : null;
+  const showPrimitiveEditor = selectedVariant && !isComplexVariant(selectedVariant);
 
   return (
     <div className="space-y-3">
@@ -446,93 +522,79 @@ export function UnionInput({
         </div>
       )}
 
-      {/* Variant selector - choose display mode based on variant count */}
-      <Card>
-        <CardContent className="pt-4 space-y-4">
-          {useTabs ? (
-            // Tabbed interface for manageable number of variants
-            <Tabs
-              value={selectedVariantIndex !== null ? String(selectedVariantIndex) : ''}
-              onValueChange={(val: string) => {
-                if (val) {
-                  handleVariantChange(parseInt(val, 10));
-                }
-              }}
-              className="w-full"
+      {/* Variant cards */}
+      <div className="grid gap-2">
+        {variants.map((variant, idx) => {
+          const isSelected = selectedVariantIndex === idx;
+          const variantLabel = variant.discriminator_values?.length
+            ? variant.discriminator_values.join(' / ')
+            : getVariantLabel(variant);
+          const isComplex = isComplexVariant(variant);
+          
+          return (
+            <Card
+              key={idx}
+              className={cn(
+                'cursor-pointer transition-all',
+                'hover:border-primary/50',
+                isSelected && 'border-primary bg-primary/5 shadow-sm',
+                disabled && 'opacity-50 cursor-not-allowed'
+              )}
+              onClick={() => !disabled && handleVariantSelect(idx, variant)}
             >
-              <TabsList className="w-full flex-wrap h-auto gap-1">
-                {variants.map((variant, idx) => (
-                  <TabsTrigger
-                    key={idx}
-                    value={String(idx)}
-                    disabled={disabled}
-                    className={cn(
-                      "flex-1 min-w-fit",
-                      hasError && selectedVariantIndex === idx && 'border-destructive'
+              <CardContent className="flex items-center gap-3 p-3">
+                {/* Selection indicator */}
+                <div className={cn(
+                  'flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
+                  isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                )}>
+                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                </div>
+                
+                {/* Icon */}
+                <div className="flex-shrink-0">
+                  {getVariantIcon(variant, isSelected)}
+                </div>
+                
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className={cn(
+                      'font-medium text-sm truncate',
+                      isSelected && 'text-primary'
+                    )}>
+                      {variantLabel}
+                    </h4>
+                    {isSelected && isComplex && (
+                      <Badge variant="secondary" className="text-xs shrink-0">
+                        Selected
+                      </Badge>
                     )}
-                  >
-                    {variant.discriminator_values?.length
-                      ? variant.discriminator_values.join(' / ')
-                      : getVariantLabel(variant)}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              
-              {/* Tab content panels - only render when a variant is selected */}
-              {selectedVariantIndex !== null && variants.map((_, idx) => (
-                <TabsContent key={idx} value={String(idx)} className="mt-4">
-                  {selectedVariantIndex === idx && renderVariantContent(idx)}
-                </TabsContent>
-              ))}
-              
-              {/* Show placeholder when no variant selected */}
-              {selectedVariantIndex === null && (
-                <div className="py-4 text-center text-sm text-muted-foreground border border-dashed rounded-md mt-4">
-                  Select a type to configure this field.
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {getVariantDescription(variant)}
+                  </p>
                 </div>
-              )}
-            </Tabs>
-          ) : (
-            // Select dropdown for many variants
-            <>
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select
-                  value={selectedVariantIndex !== null ? String(selectedVariantIndex) : ''}
-                  onValueChange={(val: string) => handleVariantChange(parseInt(val, 10))}
-                  disabled={disabled}
-                >
-                  <SelectTrigger className={cn(hasError && 'border-destructive')}>
-                    <SelectValue placeholder="Select type..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {variants.map((variant, idx) => (
-                      <SelectItem key={idx} value={String(idx)}>
-                        {variant.discriminator_values?.length
-                          ? variant.discriminator_values.join(' / ')
-                          : getVariantLabel(variant)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                
+                {/* Navigate arrow for complex types when selected */}
+                {isSelected && isComplex && (
+                  <ChevronRight className="h-5 w-5 text-primary shrink-0" />
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
-              {/* Variant content */}
-              {selectedVariantIndex !== null && (
-                <div className="pt-2 border-t">
-                  {renderVariantContent(selectedVariantIndex)}
-                </div>
-              )}
+      {/* Primitive editor (shown inline for simple types) */}
+      {showPrimitiveEditor && selectedVariant && renderPrimitiveEditor(selectedVariant)}
 
-              {selectedVariantIndex === null && (
-                <div className="py-4 text-center text-sm text-muted-foreground border border-dashed rounded-md">
-                  Select a type to configure this field.
-                </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {/* Hint for unselected state */}
+      {selectedVariantIndex === null && (
+        <p className="text-xs text-muted-foreground text-center py-2">
+          Click a type above to select it
+        </p>
+      )}
 
       {/* Confirmation dialog for variant switch */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
@@ -556,7 +618,11 @@ export function UnionInput({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => pendingVariantIndex !== null && applyVariantChange(pendingVariantIndex)}
+              onClick={() => {
+                if (pendingVariantIndex !== null) {
+                  applyVariantChange(pendingVariantIndex, variants[pendingVariantIndex]);
+                }
+              }}
             >
               Change Type
             </AlertDialogAction>

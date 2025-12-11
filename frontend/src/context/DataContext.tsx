@@ -25,6 +25,10 @@ interface DataContextValue {
   clearErrors: () => void;
   setExternalData: (data: Record<string, unknown>) => void;
   apiBase: string;
+  // Variant selection tracking for unions with ambiguous values
+  variantSelections: Map<string, number>;
+  setVariantSelection: (path: string, variantIndex: number) => void;
+  clearVariantSelection: (path: string) => void;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -84,6 +88,7 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
   const [dirty, setDirty] = useState(false);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set([''])); // Root path is empty string
+  const [variantSelections, setVariantSelections] = useState<Map<string, number>>(new Map());
 
   // Helper to normalize a path from backend format (users.0.name) to frontend format (users[0].name)
   const normalizePathToFrontend = useCallback((path: string): string => {
@@ -277,7 +282,26 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
     setDirty(false);
     // Clear localStorage when new data is pushed from server (this is now the source of truth)
     clearLocalStorage(schema?.name);
+    // Clear variant selections when data changes from server
+    setVariantSelections(new Map());
   }, [schema?.name]);
+
+  // Variant selection tracking for unions with ambiguous values (e.g., empty arrays)
+  const setVariantSelection = useCallback((path: string, variantIndex: number) => {
+    setVariantSelections(prev => {
+      const next = new Map(prev);
+      next.set(path, variantIndex);
+      return next;
+    });
+  }, []);
+
+  const clearVariantSelection = useCallback((path: string) => {
+    setVariantSelections(prev => {
+      const next = new Map(prev);
+      next.delete(path);
+      return next;
+    });
+  }, []);
 
   // Compute error counts per path (including parent paths)
   // Note: errors are already normalized to frontend format (users[0].name)
@@ -350,6 +374,9 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
         clearErrors,
         setExternalData,
         apiBase,
+        variantSelections,
+        setVariantSelection,
+        clearVariantSelection,
       }}
     >
       {children}
