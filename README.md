@@ -196,6 +196,47 @@ class Settings(BaseModel):
     created_at: Annotated[str, FieldConfig(read_only=True)]
 ```
 
+### Class-Based Configuration
+
+You can configure specific classes globally using `class_configs` in `UIConfig`. This is useful when you want to apply the same configuration to a type wherever it appears in your model hierarchy.
+
+```python
+from typing import NewType
+from enum import Enum
+from pydantic_ui import UIConfig, FieldConfig, Renderer
+
+# Define custom types
+Email = NewType('Email', str)
+
+class Color(str, Enum):
+    RED = "red"
+    BLUE = "blue"
+
+# Configure them globally
+ui_config = UIConfig(
+    class_configs={
+        "Email": FieldConfig(
+            renderer=Renderer.EMAIL,
+            placeholder="user@example.com",
+            help_text="Enter a valid email address"
+        ),
+        "Color": FieldConfig(
+            renderer=Renderer.SELECT,
+            label="Pick a color"
+        )
+    }
+)
+
+# Now any field of type Email or Color will use these configs automatically
+class User(BaseModel):
+    primary_email: Email  # Uses global Email config
+    backup_email: Email   # Uses global Email config
+    favorite_color: Color # Uses global Color config
+    
+    # You can still override specific instances using Annotated
+    admin_email: Annotated[Email, FieldConfig(label="Admin Contact")]
+```
+
 ### Field Configs via Path (Alternative Method)
 
 You can also configure fields by path without using `Annotated`:

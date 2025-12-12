@@ -7,23 +7,24 @@ This example shows:
 4. Arrays of Unions - lists containing union items
 """
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NewType
 
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from pydantic_ui import UIConfig, create_pydantic_ui
+from pydantic_ui import UIConfig, create_pydantic_ui, Renderer
 
 # ============================================================================
 # Example 1: Discriminated Union with string discriminator
 # ============================================================================
 
+Email = NewType("Email", str)
 
 class ObjectWithList(BaseModel):
     """object with a list"""
 
-    attr1: str
+    mail: Email = Field(..., description="An email address")
     attr2: list[str]
     nested_lists: list[int] | list[str]
 
@@ -126,6 +127,7 @@ class UnionExampleConfig(BaseModel):
 
     # Basic info
     config_name: str = Field(default="My Union Example", description="Name for this configuration")
+    some_email: Email = Field(..., description="An email address for contact")
 
     # Discriminated Union - single pet
     favorite_pet: Annotated[
@@ -174,6 +176,12 @@ ui_config = UIConfig(
     description="Explore how Pydantic UI handles Union and Discriminated Union types",
     show_save_reset=True,
     show_types=True,
+    class_configs={
+        "Email": {
+            "renderer": Renderer.EMAIL,
+            "help_text": "Please enter a valid email address.",
+        }
+    }
 )
 
 router = create_pydantic_ui(
