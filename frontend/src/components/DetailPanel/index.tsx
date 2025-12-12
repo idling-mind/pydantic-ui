@@ -528,11 +528,13 @@ export function DetailPanel({ className }: DetailPanelProps) {
             )}
           </div>
         </div>
-        {selectedSchema?.description && !basePath && (
-          <p className="text-sm text-muted-foreground">{selectedSchema.description}</p>
+        {(selectedSchema?.ui_config?.help_text || selectedSchema?.description) && (
+          <p className="text-sm text-muted-foreground">
+            {selectedSchema.ui_config?.help_text || selectedSchema.description}
+          </p>
         )}
         {basePath && (
-          <p className="text-xs text-muted-foreground font-mono">{basePath}</p>
+          <p className="text-xs text-muted-foreground font-mono mt-1">{basePath}</p>
         )}
         {/* Show orphaned errors (errors for paths not found in schema) */}
         {selectedSchema && relevantErrors && relevantErrors.length > 0 && (

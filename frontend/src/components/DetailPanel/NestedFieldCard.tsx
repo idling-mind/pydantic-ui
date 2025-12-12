@@ -114,9 +114,9 @@ export function NestedFieldCard({
             <p className="text-xs text-muted-foreground/70">
               Not configured (optional)
             </p>
-            {schema.description && (
+            {(schema.ui_config?.help_text || schema.description) && (
               <p className="text-xs text-muted-foreground/50 truncate mt-0.5">
-                {schema.description}
+                {schema.ui_config?.help_text || schema.description}
               </p>
             )}
           </div>
@@ -163,9 +163,9 @@ export function NestedFieldCard({
                 <span className="ml-1 text-muted-foreground/70">{info.subtitle}</span>
               )}
             </p>
-            {schema.description && (
+            {(schema.ui_config?.help_text || schema.description) && (
               <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
-                {schema.description}
+                {schema.ui_config?.help_text || schema.description}
               </p>
             )}
           </div>
