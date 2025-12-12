@@ -112,6 +112,10 @@ class AppConfig(BaseModel):
     """
 
     server: ServerConfig = Field(default_factory=ServerConfig, description="Server settings")
+    description: Annotated[str, FieldConfig(renderer=Renderer.MARKDOWN)] = Field(
+        default="## Welcome to the App Configuration Editor\n\nUse this UI to edit your application settings.",
+        description="Application description (supports Markdown)",
+    )
     database: DatabaseConfig = Field(
         default_factory=DatabaseConfig, description="Database settings"
     )

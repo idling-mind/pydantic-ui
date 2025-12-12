@@ -12,6 +12,10 @@ import { JsonInput } from './JsonInput';
 import { FileSelectInput } from './FileSelectInput';
 import { FileUploadInput } from './FileUploadInput';
 import { UnionInput } from './UnionInput';
+import { RadioGroupInput } from './RadioGroupInput';
+import { ChecklistInput } from './ChecklistInput';
+import { MarkdownInput } from './MarkdownInput';
+import { SegmentedControlInput } from './SegmentedControlInput';
 import { useData } from '@/context/DataContext';
 import type { RendererProps } from './types';
 import type { SchemaField, FieldError } from '@/types';
@@ -39,6 +43,11 @@ const rendererMap: Record<string, React.ComponentType<RendererProps>> = {
   json: JsonInput,
   file_select: FileSelectInput,
   file_upload: FileUploadInput,
+  radio_group: RadioGroupInput,
+  checklist: ChecklistInput,
+  markdown: MarkdownInput,
+  segmented_control: SegmentedControlInput,
+  multi_select: ChecklistInput,
   // Union renderers
   union: UnionInput,
   union_select: UnionInput,

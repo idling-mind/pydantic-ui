@@ -125,6 +125,13 @@ export function ObjectEditor({
   const nestedFields: [string, SchemaField][] = [];
   
   visibleFields.forEach(([fieldName, field]) => {
+    // If a specific renderer is configured (and not 'auto'), treat as primitive (rendered inline)
+    // This allows arrays to be rendered as checklists, tags, etc.
+    if (field.ui_config?.renderer && field.ui_config.renderer !== 'auto') {
+      primitiveFields.push([fieldName, field]);
+      return;
+    }
+
     if (field.type === 'object' || field.type === 'array') {
       nestedFields.push([fieldName, field]);
     } else {

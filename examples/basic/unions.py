@@ -21,6 +21,7 @@ from pydantic_ui import UIConfig, create_pydantic_ui, Renderer
 
 Email = NewType("Email", str)
 
+
 class ObjectWithList(BaseModel):
     """object with a list"""
 
@@ -37,7 +38,10 @@ class Cat(BaseModel):
     meows: int = Field(default=5, ge=0, le=100, description="How many times it meows per hour")
     indoor: bool = Field(default=True, description="Is it an indoor cat?")
     toys: list[str]
-    another_union_object: int | list[int] | ObjectWithList
+    another_union_object: int | list[int] | ObjectWithList = Field(
+        title="Another Union Object",
+        description="An object that can be an int, list of ints, or ObjectWithList",
+    )
 
 
 class Dog(BaseModel):
@@ -181,7 +185,7 @@ ui_config = UIConfig(
             "renderer": Renderer.EMAIL,
             "help_text": "Please enter a valid email address.",
         }
-    }
+    },
 )
 
 router = create_pydantic_ui(

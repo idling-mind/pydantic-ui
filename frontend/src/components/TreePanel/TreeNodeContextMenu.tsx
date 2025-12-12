@@ -288,20 +288,28 @@ export function TreeNodeContextMenu({
 
   // Helper to create a cleared value based on schema type
   const createClearedValue = useCallback((fieldSchema: SchemaField): unknown => {
+    // If schema has a default value, use it (deep clone for objects/arrays)
+    if (fieldSchema.default !== undefined) {
+      if (fieldSchema.default === null) {
+        // If default is null, check if it's because it's required (no default) or optional (default None)
+        // If required is true, default=null means "no default" (PydanticUndefined)
+        // If required is false, default=null means "None"
+        if (fieldSchema.required !== true) {
+          return null;
+        }
+        // If required is true, fall through to type-based clearing
+      } else {
+        return JSON.parse(JSON.stringify(fieldSchema.default));
+      }
+    }
+
     switch (fieldSchema.type) {
       case 'object':
-        // For objects, create structure with null values for optional fields
-        // This ensures optional fields are explicitly cleared to null
+        // For objects, recursively clear fields
         if (fieldSchema.fields) {
           const cleared: Record<string, unknown> = {};
           for (const [key, subSchema] of Object.entries(fieldSchema.fields)) {
-            if (subSchema.required === false) {
-              // Optional fields get set to null
-              cleared[key] = null;
-            } else {
-              // Required fields get recursively cleared
-              cleared[key] = createClearedValue(subSchema);
-            }
+            cleared[key] = createClearedValue(subSchema);
           }
           return cleared;
         }
@@ -325,13 +333,7 @@ export function TreeNodeContextMenu({
       // Clearing root - update each top-level field based on schema
       if (schema.fields) {
         for (const [key, fieldSchema] of Object.entries(schema.fields)) {
-          if (fieldSchema.required === false) {
-            // Optional fields get set to null
-            updateValue(key, null);
-          } else {
-            // Required fields get recursively cleared
-            updateValue(key, createClearedValue(fieldSchema));
-          }
+          updateValue(key, createClearedValue(fieldSchema));
         }
       }
     } else {
