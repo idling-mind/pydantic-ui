@@ -184,3 +184,7 @@ class UIConfig(BaseModel):
         default="https://github.com/idling-mind/pydantic-ui",
         description="URL that the footer links to",
     )
+    class_configs: dict[str, FieldConfig] = Field(
+        default_factory=dict,
+        description="Configuration for specific Pydantic model classes, keyed by class name.",
+    )

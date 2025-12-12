@@ -117,6 +117,7 @@ def parse_union_field(
     union_args: tuple[type, ...],
     max_depth: int,
     current_depth: int,
+    class_configs: dict[str, FieldConfig] | None = None,
 ) -> dict[str, Any]:
     """Parse a Union type field, handling discriminated unions.
 
@@ -127,7 +128,7 @@ def parse_union_field(
 
     # Single type + None = Optional, handle normally
     if len(non_none) == 1:
-        result = parse_field(name, field_info, non_none[0], max_depth, current_depth)
+        result = parse_field(name, field_info, non_none[0], max_depth, current_depth, class_configs)
         result["required"] = not has_none
         return result
 
@@ -153,6 +154,7 @@ def parse_union_field(
             variant_type,
             max_depth,
             current_depth + 1,
+            class_configs,
         )
 
         # Add variant metadata
@@ -193,7 +195,7 @@ def parse_union_field(
         }
 
     # Extract field config
-    field_config = extract_field_config(field_info, type(None))
+    field_config = extract_field_config(field_info, type(None), class_configs)
     if field_config:
         result["ui_config"] = {
             "renderer": (
@@ -293,23 +295,80 @@ def get_enum_values(python_type: type) -> list[Any] | None:
     return None
 
 
-def extract_field_config(field_info: FieldInfo, field_type: type) -> FieldConfig | None:
-    """Extract FieldConfig from Annotated metadata."""
-    # Check field_info metadata
+def extract_field_config(
+    field_info: FieldInfo,
+    field_type: type,
+    class_configs: dict[str, FieldConfig] | None = None,
+) -> FieldConfig | None:
+    """Extract FieldConfig from Annotated metadata or class configs."""
+    # Check class configs first (lower priority)
+    config = None
+    if class_configs:
+        # Handle Annotated types - unwrap to get the actual type
+        actual_type = field_type
+        origin = get_origin(field_type)
+        if origin is Annotated:
+            actual_type = get_args(field_type)[0]
+
+        if hasattr(actual_type, "__name__") and actual_type.__name__ in class_configs:
+            config = class_configs[actual_type.__name__]
+
+    # Check field_info metadata (higher priority)
+    annotated_config = None
     if field_info.metadata:
         for meta in field_info.metadata:
             if isinstance(meta, FieldConfig):
-                return meta
+                annotated_config = meta
+                break
 
     # Check Annotated args
-    origin = get_origin(field_type)
-    if origin is not None:
-        args = get_args(field_type)
-        for arg in args:
-            if isinstance(arg, FieldConfig):
-                return arg
+    if annotated_config is None:
+        origin = get_origin(field_type)
+        if origin is not None:
+            args = get_args(field_type)
+            for arg in args:
+                if isinstance(arg, FieldConfig):
+                    annotated_config = arg
+                    break
 
-    return None
+    if annotated_config:
+        if config:
+            # Merge: annotated_config overrides config
+            # Start with a copy of class config
+            new_config = FieldConfig(
+                renderer=config.renderer,
+                label=config.label,
+                placeholder=config.placeholder,
+                help_text=config.help_text,
+                hidden=config.hidden,
+                read_only=config.read_only,
+                visible_when=config.visible_when,
+                props=config.props.copy(),
+            )
+
+            # Apply annotated config properties that are NOT their defaults
+            if annotated_config.renderer != Renderer.AUTO:
+                new_config.renderer = annotated_config.renderer
+            if annotated_config.label is not None:
+                new_config.label = annotated_config.label
+            if annotated_config.placeholder is not None:
+                new_config.placeholder = annotated_config.placeholder
+            if annotated_config.help_text is not None:
+                new_config.help_text = annotated_config.help_text
+            if annotated_config.hidden is True:
+                new_config.hidden = True
+            if annotated_config.read_only is True:
+                new_config.read_only = True
+            if annotated_config.visible_when is not None:
+                new_config.visible_when = annotated_config.visible_when
+            if annotated_config.props:
+                new_config.props.update(annotated_config.props)
+
+            return new_config
+
+        return annotated_config
+
+    return config
 
 
 def get_constraints(field_info: FieldInfo, field_type: type) -> dict[str, Any]:
@@ -350,6 +409,7 @@ def parse_field(
     field_type: type,
     max_depth: int = 10,
     current_depth: int = 0,
+    class_configs: dict[str, FieldConfig] | None = None,
 ) -> dict[str, Any]:
     """Parse a single field to schema format."""
     if current_depth >= max_depth:
@@ -361,11 +421,11 @@ def parse_field(
     # Handle Annotated types - unwrap to get the actual type
     if origin is Annotated:
         actual_type = args[0]
-        return parse_field(name, field_info, actual_type, max_depth, current_depth)
+        return parse_field(name, field_info, actual_type, max_depth, current_depth, class_configs)
 
     # Handle Union types - supports both typing.Union and types.UnionType (X | Y syntax)
     if origin is Union or origin is types.UnionType:
-        return parse_union_field(name, field_info, args, max_depth, current_depth)
+        return parse_union_field(name, field_info, args, max_depth, current_depth, class_configs)
 
     # Handle Literal types
     if origin is Literal:
@@ -385,6 +445,25 @@ def parse_field(
         literal_repr = ", ".join(repr(v) for v in literal_values)
         python_type_str = f"Literal[{literal_repr}]"
 
+        # Extract field config
+        field_config = extract_field_config(field_info, field_type, class_configs)
+        ui_config = None
+        if field_config:
+            ui_config = {
+                "renderer": (
+                    field_config.renderer.value
+                    if isinstance(field_config.renderer, Renderer)
+                    else field_config.renderer
+                ),
+                "label": field_config.label,
+                "placeholder": field_config.placeholder,
+                "help_text": field_config.help_text,
+                "hidden": field_config.hidden,
+                "read_only": field_config.read_only,
+                "visible_when": field_config.visible_when,
+                "props": field_config.props,
+            }
+
         return {
             "type": json_type,
             "python_type": python_type_str,
@@ -393,7 +472,7 @@ def parse_field(
             "required": field_info.is_required(),
             "default": field_info.default if field_info.default is not PydanticUndefined else None,
             "literal_values": literal_values,
-            "ui_config": None,
+            "ui_config": ui_config,
         }
 
     # Handle Enum types (including StrEnum)
@@ -407,6 +486,25 @@ def parse_field(
                 else field_info.default
             )
 
+        # Extract field config
+        field_config = extract_field_config(field_info, field_type, class_configs)
+        ui_config = None
+        if field_config:
+            ui_config = {
+                "renderer": (
+                    field_config.renderer.value
+                    if isinstance(field_config.renderer, Renderer)
+                    else field_config.renderer
+                ),
+                "label": field_config.label,
+                "placeholder": field_config.placeholder,
+                "help_text": field_config.help_text,
+                "hidden": field_config.hidden,
+                "read_only": field_config.read_only,
+                "visible_when": field_config.visible_when,
+                "props": field_config.props,
+            }
+
         return {
             "type": get_json_type(field_type),
             "python_type": field_type.__name__,
@@ -415,24 +513,67 @@ def parse_field(
             "required": field_info.is_required(),
             "default": default_value,
             "enum": enum_values,
-            "ui_config": None,
+            "ui_config": ui_config,
         }
 
     # Handle List/Set/Tuple
     if origin in (list, set, tuple):
         item_type = args[0] if args else str
+
+        # Extract field config
+        field_config = extract_field_config(field_info, field_type, class_configs)
+        ui_config = None
+        if field_config:
+            ui_config = {
+                "renderer": (
+                    field_config.renderer.value
+                    if isinstance(field_config.renderer, Renderer)
+                    else field_config.renderer
+                ),
+                "label": field_config.label,
+                "placeholder": field_config.placeholder,
+                "help_text": field_config.help_text,
+                "hidden": field_config.hidden,
+                "read_only": field_config.read_only,
+                "visible_when": field_config.visible_when,
+                "props": field_config.props,
+            }
+
         return {
             "type": "array",
             "python_type": get_python_type_name(field_type),
             "title": field_info.title or name.replace("_", " ").title(),
             "description": field_info.description,
             "required": True,
-            "items": parse_field("item", FieldInfo(), item_type, max_depth, current_depth + 1),
+            "items": parse_field(
+                "item", FieldInfo(), item_type, max_depth, current_depth + 1, class_configs
+            ),
+            "ui_config": ui_config,
         }
 
     # Handle Dict
     if origin is dict:
         value_type = args[1] if len(args) > 1 else Any  # type: ignore
+
+        # Extract field config
+        field_config = extract_field_config(field_info, field_type, class_configs)
+        ui_config = None
+        if field_config:
+            ui_config = {
+                "renderer": (
+                    field_config.renderer.value
+                    if isinstance(field_config.renderer, Renderer)
+                    else field_config.renderer
+                ),
+                "label": field_config.label,
+                "placeholder": field_config.placeholder,
+                "help_text": field_config.help_text,
+                "hidden": field_config.hidden,
+                "read_only": field_config.read_only,
+                "visible_when": field_config.visible_when,
+                "props": field_config.props,
+            }
+
         return {
             "type": "object",
             "python_type": get_python_type_name(field_type),
@@ -445,12 +586,14 @@ def parse_field(
                 value_type,
                 max_depth,
                 current_depth + 1,  # type: ignore
+                class_configs,
             ),
+            "ui_config": ui_config,
         }
 
     # Handle nested Pydantic models
     if isinstance(field_type, type) and issubclass(field_type, BaseModel):
-        result = parse_model(field_type, max_depth, current_depth + 1)
+        result = parse_model(field_type, max_depth, current_depth + 1, class_configs)
         # Add title from field_info if available, otherwise use field name (not model name)
         result["title"] = field_info.title or name.replace("_", " ").title()
         # Nested models are required by default unless wrapped in Optional
@@ -460,7 +603,7 @@ def parse_field(
         if field_info.description:
             result["description"] = field_info.description
         # Extract and add ui_config for nested models
-        field_config = extract_field_config(field_info, field_type)
+        field_config = extract_field_config(field_info, field_type, class_configs)
         if field_config:
             result["ui_config"] = {
                 "renderer": (
@@ -482,7 +625,7 @@ def parse_field(
     format_hint = get_format_for_type(field_type)
 
     # Extract field config
-    field_config = extract_field_config(field_info, field_type)
+    field_config = extract_field_config(field_info, field_type, class_configs)
     ui_config = None
     if field_config:
         ui_config = {
@@ -538,6 +681,7 @@ def parse_model(
     model: type[BaseModel],
     max_depth: int = 10,
     current_depth: int = 0,
+    class_configs: dict[str, FieldConfig] | None = None,
 ) -> dict[str, Any]:
     """Convert Pydantic model to UI schema format."""
     if current_depth >= max_depth:
@@ -560,6 +704,7 @@ def parse_model(
             field_type,
             max_depth,
             current_depth,
+            class_configs,
         )
 
     return {

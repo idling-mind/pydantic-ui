@@ -44,7 +44,7 @@ class DataHandler:
 
     async def get_schema(self) -> dict[str, Any]:
         """Get the parsed schema for the model."""
-        schema = parse_model(self.model)
+        schema = parse_model(self.model, class_configs=self.ui_config.class_configs)
 
         # Apply field configs
         self._apply_field_configs(schema.get("fields", {}))

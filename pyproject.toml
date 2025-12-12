@@ -45,7 +45,6 @@ dev = [
     # Code quality
     "ruff>=0.1.0",
     "mypy>=1.8.0",
-    "pre-commit>=3.0.0",
     
     # Coverage
     "coverage>=7.4.0",
@@ -64,9 +63,7 @@ Issues = "https://github.com/idling-mind/pydantic-ui/issues"
 url = "https://tfsprod.gaes.aeroes.internal/DefaultCollection/ETT/_packaging/ett_packages/pypi/simple/"
 
 [dependency-groups]
-dev = [
-    "pre-commit>=4.5.0",
-]
+dev = []
 
 
 [tool.hatch.build]
