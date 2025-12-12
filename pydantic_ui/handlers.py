@@ -221,6 +221,7 @@ class DataHandler:
                 disabled=action.disabled,
                 tooltip=action.tooltip,
                 confirm=action.confirm,
+                upload_file=action.upload_file,
             )
             for action in self.ui_config.actions
         ]

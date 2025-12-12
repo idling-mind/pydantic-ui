@@ -49,6 +49,17 @@ class PydanticUIController:
         self._model = model
         self._data_handler: DataHandler | None = None
         self._current_session: Session | None = None
+        self._uploaded_file: dict[str, Any] | None = None
+
+    @property
+    def uploaded_file(self) -> dict[str, Any] | None:
+        """Get the file uploaded with the current action, if any.
+
+        Returns:
+            Dict with keys: name, size, type, data (base64 string)
+            or None if no file was uploaded.
+        """
+        return self._uploaded_file
 
     async def _get_session(self) -> Session:
         """Get the current session, raising an error if none is set."""
@@ -236,6 +247,19 @@ class PydanticUIController:
         """
         session = await self._get_session()
         await session.push_event("navigate", {"url": url, "new_tab": new_tab})
+
+    async def download_file(self, filename: str, data: str) -> None:
+        """Trigger a file download in the browser.
+
+        Args:
+            filename: The name of the file to download
+            data: The file content as a base64 data URL (e.g. "data:text/plain;base64,...")
+
+        Example:
+            await controller.download_file("report.pdf", "data:application/pdf;base64,JVBERi0xL...")
+        """
+        session = await self._get_session()
+        await session.push_event("download_file", {"filename": filename, "data": data})
 
     async def broadcast_toast(self, message: str, type: str = "info", duration: int = 5000) -> None:
         """Broadcast a toast notification to all sessions.

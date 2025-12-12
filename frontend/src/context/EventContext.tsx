@@ -98,14 +98,15 @@ export function EventProvider({
           variant: (event.payload.variant as 'default' | 'destructive') || 'default',
         });
         break;
-      case 'navigate':
+      case 'download_file':
         {
-          const { url, new_tab } = event.payload;
-          if (new_tab) {
-            window.open(url as string, '_blank');
-          } else {
-            window.location.href = url as string;
-          }
+          const { filename, data } = event.payload as { filename: string; data: string };
+          const link = document.createElement('a');
+          link.href = data;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         }
         break;
       case 'refresh':

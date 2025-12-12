@@ -37,6 +37,10 @@ class ActionButton(BaseModel):
         default=None,
         description="If set, show confirmation dialog with this message before triggering",
     )
+    upload_file: bool = Field(
+        default=False,
+        description="If True, prompt for file upload before triggering action",
+    )
 
 
 class Renderer(str, Enum):

@@ -75,6 +75,7 @@ export interface ActionButton {
   disabled?: boolean;
   tooltip?: string;
   confirm?: string;
+  upload_file?: boolean;
 }
 
 // UI Config types
@@ -106,7 +107,8 @@ export interface UIEvent {
     | 'toast'
     | 'confirmation_request'
     | 'refresh'
-    | 'navigate';
+    | 'navigate'
+    | 'download_file';
   payload: Record<string, unknown>;
   timestamp: number;
 }

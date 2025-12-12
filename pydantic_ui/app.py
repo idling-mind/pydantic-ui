@@ -306,6 +306,7 @@ def create_pydantic_ui(
         session = await get_session_from_request(request)
         body = await request.json()
         current_data = body.get("data", {})
+        uploaded_file = body.get("file")
 
         # Set the current session context
         token = current_session.set(session)
@@ -315,6 +316,7 @@ def create_pydantic_ui(
             session_controller = PydanticUIController(session_manager, model)
             session_controller._data_handler = handler
             session_controller._current_session = session
+            session_controller._uploaded_file = uploaded_file
 
             handler_func = action_handlers.get(action_id)
             if handler_func:

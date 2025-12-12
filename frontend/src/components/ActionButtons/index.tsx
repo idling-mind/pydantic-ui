@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,8 @@ export function ActionButtons({ actions }: ActionButtonsProps) {
   const { data, apiBase } = useData();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFileAction, setPendingFileAction] = useState<ActionButton | null>(null);
 
   // Determine the full API base URL
   const getFullApiBase = () => {
@@ -56,14 +58,19 @@ export function ActionButtons({ actions }: ActionButtonsProps) {
     return `${protocol}//${host}${base}`;
   };
 
-  const executeAction = async (action: ActionButton) => {
+  const executeAction = async (action: ActionButton, fileData?: unknown) => {
     setLoadingAction(action.id);
     try {
       const fullBase = getFullApiBase();
+      const body: Record<string, unknown> = { data };
+      if (fileData) {
+        body.file = fileData;
+      }
+
       const response = await fetch(`${fullBase}/api/actions/${action.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify(body),
       });
       const result = await response.json();
       if (!result.success) {
@@ -83,13 +90,54 @@ export function ActionButtons({ actions }: ActionButtonsProps) {
       return;
     }
 
+    if (action.upload_file) {
+      setPendingFileAction(action);
+      // Reset file input value to allow selecting the same file again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+        fileInputRef.current.click();
+      }
+      return;
+    }
+
     await executeAction(action);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !pendingFileAction) return;
+
+    const action = pendingFileAction;
+    setPendingFileAction(null);
+
+    // Read file
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const fileData = {
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        data: reader.result,
+      };
+      await executeAction(action, fileData);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleConfirm = async () => {
     if (pendingConfirmation) {
-      await executeAction(pendingConfirmation.action);
+      const action = pendingConfirmation.action;
       setPendingConfirmation(null);
+      
+      if (action.upload_file) {
+        setPendingFileAction(action);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+          fileInputRef.current.click();
+        }
+      } else {
+        await executeAction(action);
+      }
     }
   };
 
@@ -103,6 +151,12 @@ export function ActionButtons({ actions }: ActionButtonsProps) {
 
   return (
     <>
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={handleFileChange}
+      />
       <div className="flex items-center gap-2">
         {actions.map((action) => {
           const IconComponent = getIconComponent(action.icon);

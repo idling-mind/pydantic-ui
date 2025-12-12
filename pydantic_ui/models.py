@@ -15,6 +15,7 @@ class ActionButtonResponse(BaseModel):
     disabled: bool = False
     tooltip: str | None = None
     confirm: str | None = None
+    upload_file: bool = False
 
 
 class SchemaField(BaseModel):
