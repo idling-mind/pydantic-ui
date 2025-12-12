@@ -6,8 +6,12 @@ import time
 import uuid
 from collections import deque
 from collections.abc import AsyncGenerator
+from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
+
+# Context variable to store the current session
+current_session: ContextVar[Optional["Session"]] = ContextVar("current_session", default=None)
 
 
 @dataclass

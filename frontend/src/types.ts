@@ -105,7 +105,8 @@ export interface UIEvent {
     | 'push_data'
     | 'toast'
     | 'confirmation_request'
-    | 'refresh';
+    | 'refresh'
+    | 'navigate';
   payload: Record<string, unknown>;
   timestamp: number;
 }

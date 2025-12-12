@@ -14,7 +14,7 @@ from pydantic_ui.config import FieldConfig, UIConfig
 from pydantic_ui.controller import PydanticUIController
 from pydantic_ui.handlers import DataHandler
 from pydantic_ui.schema import model_to_data
-from pydantic_ui.sessions import Session, SessionManager
+from pydantic_ui.sessions import Session, SessionManager, current_session
 
 
 def create_pydantic_ui(
@@ -307,23 +307,31 @@ def create_pydantic_ui(
         body = await request.json()
         current_data = body.get("data", {})
 
-        # Create a session-specific controller for this action
-        session_controller = PydanticUIController(session_manager, model)
-        session_controller._data_handler = handler
-        session_controller._current_session = session
+        # Set the current session context
+        token = current_session.set(session)
 
-        handler_func = action_handlers.get(action_id)
-        if handler_func:
-            try:
-                result = handler_func(current_data, session_controller)
-                if asyncio.iscoroutine(result):
-                    result = await result
-                return JSONResponse(content={"success": True, "result": result})
-            except Exception as e:
-                return JSONResponse(content={"success": False, "error": str(e)}, status_code=400)
-        return JSONResponse(
-            content={"success": False, "error": f"Unknown action: {action_id}"}, status_code=404
-        )
+        try:
+            # Create a session-specific controller for this action
+            session_controller = PydanticUIController(session_manager, model)
+            session_controller._data_handler = handler
+            session_controller._current_session = session
+
+            handler_func = action_handlers.get(action_id)
+            if handler_func:
+                try:
+                    result = handler_func(current_data, session_controller)
+                    if asyncio.iscoroutine(result):
+                        result = await result
+                    return JSONResponse(content={"success": True, "result": result})
+                except Exception as e:
+                    return JSONResponse(
+                        content={"success": False, "error": str(e)}, status_code=400
+                    )
+            return JSONResponse(
+                content={"success": False, "error": f"Unknown action: {action_id}"}, status_code=404
+            )
+        finally:
+            current_session.reset(token)
 
     # Confirmation response endpoint
     @router.post("/api/confirmation/{confirmation_id}")

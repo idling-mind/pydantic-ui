@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from pydantic_ui.sessions import Session, SessionManager
+from pydantic_ui.sessions import Session, SessionManager, current_session
 
 if TYPE_CHECKING:
     from pydantic_ui.handlers import DataHandler
@@ -52,12 +52,19 @@ class PydanticUIController:
 
     async def _get_session(self) -> Session:
         """Get the current session, raising an error if none is set."""
-        if self._current_session is None:
-            raise RuntimeError(
-                "No session is set. This controller must be used within a request context "
-                "or have a session explicitly set via _current_session."
-            )
-        return self._current_session
+        # Try to get from context var first
+        session = current_session.get()
+        if session is not None:
+            return session
+
+        # Fallback to instance variable (deprecated but kept for compatibility)
+        if self._current_session is not None:
+            return self._current_session
+
+        raise RuntimeError(
+            "No session is set. This controller must be used within a request context "
+            "or have a session explicitly set."
+        )
 
     async def show_validation_errors(self, errors: list[dict[str, str]]) -> None:
         """Display validation errors in the UI.
@@ -215,6 +222,20 @@ class PydanticUIController:
             except Exception:
                 return None
         return None
+
+    async def navigate_to(self, url: str, new_tab: bool = False) -> None:
+        """Navigate the UI to a new URL.
+
+        Args:
+            url: The URL to navigate to
+            new_tab: Whether to open in a new tab
+
+        Example:
+            await controller.navigate_to("https://example.com")
+            await controller.navigate_to("/other-page", new_tab=True)
+        """
+        session = await self._get_session()
+        await session.push_event("navigate", {"url": url, "new_tab": new_tab})
 
     async def broadcast_toast(self, message: str, type: str = "info", duration: int = 5000) -> None:
         """Broadcast a toast notification to all sessions.

@@ -252,6 +252,54 @@ class TestActionHandlers:
                 result = response.json()
                 assert result["result"]["action"] == i
 
+    @pytest.mark.asyncio
+    async def test_background_task_toast(self):
+        """Test sending toast from a background task."""
+        import asyncio
+
+        app = FastAPI()
+        router = create_pydantic_ui(SampleModel, prefix="/test")
+        app.include_router(router)
+
+        # Event to signal background task completion
+        task_done = asyncio.Event()
+
+        @router.action("background_toast")
+        async def background_handler(data, controller):  # noqa: ARG001
+            async def delayed_toast():
+                await asyncio.sleep(0.1)
+                await controller.show_toast("Background Toast", "success")
+                task_done.set()
+
+            asyncio.create_task(delayed_toast())
+            return {"started": True}
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # 1. Establish session
+            resp = await client.get("/test/api/session")
+            session_id = resp.json()["session_id"]
+            client.cookies.set("pydantic_ui_session", session_id)
+
+            # 2. Trigger action
+            response = await client.post(
+                "/test/api/actions/background_toast",
+                json={"data": {}},
+            )
+            assert response.status_code == 200
+            assert response.json()["result"]["started"] is True
+
+            # 3. Wait for background task
+            await asyncio.wait_for(task_done.wait(), timeout=1.0)
+
+            # 4. Check events via polling
+            events_resp = await client.get("/test/api/events/poll?since=0")
+            events = events_resp.json()["events"]
+
+            toast_events = [e for e in events if e["type"] == "toast"]
+            assert len(toast_events) >= 1
+            assert toast_events[0]["payload"]["message"] == "Background Toast"
+
 
 class TestActionButtonConfig:
     """Tests for ActionButton configuration."""

@@ -98,6 +98,16 @@ export function EventProvider({
           variant: (event.payload.variant as 'default' | 'destructive') || 'default',
         });
         break;
+      case 'navigate':
+        {
+          const { url, new_tab } = event.payload;
+          if (new_tab) {
+            window.open(url as string, '_blank');
+          } else {
+            window.location.href = url as string;
+          }
+        }
+        break;
       case 'refresh':
         if (onRefresh) {
           onRefresh();

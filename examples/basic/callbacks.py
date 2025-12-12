@@ -273,6 +273,25 @@ async def save_all_settings(data: dict, controller: PydanticUIController):
 
     await controller.push_data(validated_data)
     await controller.show_toast("Settings saved successfully", "success")
+
+    # Run long-running tasks in the background to avoid blocking the response
+    # and preventing timeouts
+    async def background_tasks():
+        import asyncio
+
+        # You can send toasts from background tasks
+        await asyncio.sleep(2)
+
+        for i in range(0, 60, 10):
+            await controller.show_toast(f"Redirecting in {60 - i} seconds...", "info")
+            await asyncio.sleep(10)
+
+        # And navigate
+        await controller.navigate_to("api/data", new_tab=True)
+
+    import asyncio
+
+    asyncio.create_task(background_tasks())
     return {"saved": True}
 
 

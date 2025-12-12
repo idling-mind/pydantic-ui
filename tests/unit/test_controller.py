@@ -248,6 +248,26 @@ class TestPydanticUIController:
         assert instance is None
 
     @pytest.mark.asyncio
+    async def test_navigate_to(self, controller: PydanticUIController, session: Session):
+        """Test navigating to a URL."""
+        controller._current_session = session
+
+        await controller.navigate_to("https://example.com")
+
+        assert len(session.events) == 1
+        event = session.events[0]
+        assert event["type"] == "navigate"
+        assert event["payload"]["url"] == "https://example.com"
+        assert event["payload"]["new_tab"] is False
+
+        await controller.navigate_to("/local", new_tab=True)
+        assert len(session.events) == 2
+        event = session.events[1]
+        assert event["type"] == "navigate"
+        assert event["payload"]["url"] == "/local"
+        assert event["payload"]["new_tab"] is True
+
+    @pytest.mark.asyncio
     async def test_broadcast_toast(
         self, controller: PydanticUIController, session_manager: SessionManager
     ):
@@ -294,3 +314,19 @@ class TestPydanticUIController:
         assert future.done()
         assert future.result() is True
         loop.close()
+
+    @pytest.mark.asyncio
+    async def test_get_session_from_context(
+        self, controller: PydanticUIController, session: Session
+    ):
+        """Test _get_session retrieves from context var."""
+        from pydantic_ui.sessions import current_session
+
+        token = current_session.set(session)
+        try:
+            # Ensure instance var is None to prove we're using context
+            controller._current_session = None
+            retrieved = await controller._get_session()
+            assert retrieved is session
+        finally:
+            current_session.reset(token)
