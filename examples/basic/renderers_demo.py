@@ -79,7 +79,7 @@ def main():
             "tags": FieldConfig(
                 renderer=Renderer.MULTI_SELECT,
             )
-        }
+        },
     )
 
     app.include_router(ui_router)
