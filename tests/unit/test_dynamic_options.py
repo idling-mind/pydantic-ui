@@ -1,6 +1,5 @@
 """Tests for dynamic options configuration."""
 
-
 import pytest
 from pydantic import BaseModel
 
