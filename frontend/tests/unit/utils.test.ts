@@ -3,7 +3,73 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { cn } from '@/lib/utils';
+import { cn, resolveOptionsFromData } from '@/lib/utils';
+
+describe('resolveOptionsFromData', () => {
+  const testData = {
+    users: [
+      { name: 'Alice', id: 1 },
+      { name: 'Bob', id: 2 },
+    ],
+    department: {
+      name: 'Engineering',
+      staff: [
+        { name: 'Charlie', role: 'Dev' },
+        { name: 'Dave', role: 'QA' },
+      ]
+    },
+    simpleList: ['Item 1', 'Item 2'],
+    nested: {
+      deep: {
+        list: [
+          { value: 'v1' },
+          { value: 'v2' }
+        ]
+      }
+    }
+  };
+
+  it('resolves simple array path', () => {
+    const options = resolveOptionsFromData('simpleList', testData);
+    expect(options).toEqual([
+      { value: 'Item 1', label: 'Item 1' },
+      { value: 'Item 2', label: 'Item 2' }
+    ]);
+  });
+
+  it('resolves array of objects with wildcard', () => {
+    const options = resolveOptionsFromData('users.[].name', testData);
+    expect(options).toEqual([
+      { value: 'Alice', label: 'Alice' },
+      { value: 'Bob', label: 'Bob' }
+    ]);
+  });
+
+  it('resolves nested array of objects', () => {
+    const options = resolveOptionsFromData('department.staff.[].name', testData);
+    expect(options).toEqual([
+      { value: 'Charlie', label: 'Charlie' },
+      { value: 'Dave', label: 'Dave' }
+    ]);
+  });
+
+  it('resolves deeply nested array', () => {
+    const options = resolveOptionsFromData('nested.deep.list.[].value', testData);
+    expect(options).toEqual([
+      { value: 'v1', label: 'v1' },
+      { value: 'v2', label: 'v2' }
+    ]);
+  });
+
+  it('returns empty array for invalid path', () => {
+    expect(resolveOptionsFromData('invalid.path', testData)).toEqual([]);
+    expect(resolveOptionsFromData('users.invalid', testData)).toEqual([]);
+  });
+
+  it('returns empty array for non-array target', () => {
+    expect(resolveOptionsFromData('department.name', testData)).toEqual([]);
+  });
+});
 
 describe('cn utility', () => {
   it('merges class names', () => {

@@ -100,14 +100,14 @@ async def process_upload(data: dict, controller: PydanticUIController):
     file_info = controller.uploaded_file
     name = file_info["name"]
     size = file_info["size"]
-    
+
     # Update the notes field with file info
     new_notes = f"Processed file: {name} ({size} bytes)\nTimestamp: {12345}"
-    
+
     # Update the model data
     current_data = data.copy()
     current_data["notes"] = new_notes
-    
+
     await controller.push_data(current_data)
     await controller.show_toast(f"Processed {name}", "success")
 
@@ -120,7 +120,7 @@ async def download_sample(data: dict, controller: PydanticUIController):
     b64_content = base64.b64encode(content.encode("utf-8")).decode("utf-8")
     # Create data URL
     data_url = f"data:text/plain;base64,{b64_content}"
-    
+
     await controller.show_toast("Downloading sample file...", "info")
     await controller.download_file("sample_generated.txt", data_url)
 
@@ -129,20 +129,20 @@ async def download_sample(data: dict, controller: PydanticUIController):
 async def echo_file(data: dict, controller: PydanticUIController):
     """Read the uploaded file from data and send it back as a download."""
     model = FileTransferModel.model_validate(data)
-    
+
     if not model.uploaded_file:
         await controller.show_toast("No file uploaded!", "error")
         return
 
     file_data = model.uploaded_file
-    
+
     # In a real app, you might process the file here
     # For this demo, we just send it back with a prefix in the name
-    
+
     new_filename = f"echo_{file_data.name}"
-    
+
     await controller.show_toast(f"Downloading {new_filename}...", "success")
-    
+
     # file_data.data is already a data URL (e.g. "data:text/plain;base64,...")
     if file_data.data:
         await controller.download_file(new_filename, file_data.data)
