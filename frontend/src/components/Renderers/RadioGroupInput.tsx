@@ -1,10 +1,12 @@
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { cn, getValueWithDefault } from '@/lib/utils';
+import { cn, getValueWithDefault, resolveOptionsFromData } from '@/lib/utils';
+import { useData } from '@/context/DataContext';
 import type { RendererProps } from './types';
 
 export function RadioGroupInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
+  const { data } = useData();
   const hasError = errors && errors.length > 0;
   const props = schema.ui_config?.props || {};
   const label = schema.ui_config?.label || schema.title || name;
@@ -13,8 +15,11 @@ export function RadioGroupInput({ name, path, schema, value, errors, disabled, o
   // Use default value from schema if value is undefined/null
   const effectiveValue = getValueWithDefault<string | null>(value, schema, null);
   
-  // Get options from enum, literal values, or custom options
+  // Get options from enum, literal values, custom options, or data source
   const options: { value: string; label: string }[] = React.useMemo(() => {
+    if (schema.ui_config?.options_from) {
+      return resolveOptionsFromData(schema.ui_config.options_from, data);
+    }
     if (props.options && Array.isArray(props.options)) {
       return (props.options as Array<string | { value: string; label: string }>).map((opt) =>
         typeof opt === 'string' ? { value: opt, label: opt } : opt
@@ -33,7 +38,7 @@ export function RadioGroupInput({ name, path, schema, value, errors, disabled, o
       }));
     }
     return [];
-  }, [schema.enum, schema.literal_values, props.options]);
+  }, [schema.enum, schema.literal_values, props.options, schema.ui_config?.options_from, data]);
 
   return (
     <div className="space-y-3">

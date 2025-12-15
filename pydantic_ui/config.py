@@ -107,6 +107,7 @@ class FieldConfig:
     hidden: bool = False
     read_only: bool = False
     visible_when: str | None = None
+    options_from: str | None = None
     props: dict[str, Any] = field(default_factory=dict)
 
     def model_dump(self) -> dict[str, Any]:
@@ -121,6 +122,7 @@ class FieldConfig:
             "hidden": self.hidden,
             "read_only": self.read_only,
             "visible_when": self.visible_when,
+            "options_from": self.options_from,
             "props": self.props,
         }
 

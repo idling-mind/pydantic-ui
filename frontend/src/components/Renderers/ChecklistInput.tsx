@@ -1,10 +1,12 @@
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn, getValueWithDefault } from '@/lib/utils';
+import { cn, getValueWithDefault, resolveOptionsFromData } from '@/lib/utils';
+import { useData } from '@/context/DataContext';
 import type { RendererProps } from './types';
 
 export function ChecklistInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
+  const { data } = useData();
   const hasError = errors && errors.length > 0;
   const props = schema.ui_config?.props || {};
   const label = schema.ui_config?.label || schema.title || name;
@@ -13,10 +15,14 @@ export function ChecklistInput({ name, path, schema, value, errors, disabled, on
   // Use default value from schema if value is undefined/null
   const effectiveValue = getValueWithDefault<any[]>(value, schema, []);
   
-  // Get options from enum, literal values, or custom options
+  // Get options from enum, literal values, custom options, or data source
   // For array fields, the options usually come from the items schema (if it's an enum)
   // or from the field itself if it has options defined
   const options: { value: string; label: string }[] = React.useMemo(() => {
+    if (schema.ui_config?.options_from) {
+      return resolveOptionsFromData(schema.ui_config.options_from, data);
+    }
+    
     if (props.options && Array.isArray(props.options)) {
       return (props.options as Array<string | { value: string; label: string }>).map((opt) =>
         typeof opt === 'string' ? { value: opt, label: opt } : opt
@@ -41,7 +47,7 @@ export function ChecklistInput({ name, path, schema, value, errors, disabled, on
     }
 
     return [];
-  }, [schema.items, props.options]);
+  }, [schema.items, props.options, schema.ui_config?.options_from, data]);
 
   const handleCheckedChange = (checked: boolean, optionValue: string) => {
     const currentValues = Array.isArray(effectiveValue) ? [...effectiveValue] : [];

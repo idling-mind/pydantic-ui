@@ -43,6 +43,7 @@ export interface SchemaField {
     hidden?: boolean;
     read_only?: boolean;
     visible_when?: string;
+    options_from?: string;
     group?: string;
     props?: Record<string, unknown>;
   };

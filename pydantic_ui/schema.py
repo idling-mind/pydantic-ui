@@ -209,6 +209,7 @@ def parse_union_field(
             "hidden": field_config.hidden,
             "read_only": field_config.read_only,
             "visible_when": field_config.visible_when,
+            "options_from": field_config.options_from,
             "props": field_config.props,
         }
     else:
@@ -343,6 +344,7 @@ def extract_field_config(
                 hidden=config.hidden,
                 read_only=config.read_only,
                 visible_when=config.visible_when,
+                options_from=config.options_from,
                 props=config.props.copy(),
             )
 
@@ -361,6 +363,8 @@ def extract_field_config(
                 new_config.read_only = True
             if annotated_config.visible_when is not None:
                 new_config.visible_when = annotated_config.visible_when
+            if annotated_config.options_from is not None:
+                new_config.options_from = annotated_config.options_from
             if annotated_config.props:
                 new_config.props.update(annotated_config.props)
 
@@ -461,6 +465,7 @@ def parse_field(
                 "hidden": field_config.hidden,
                 "read_only": field_config.read_only,
                 "visible_when": field_config.visible_when,
+                "options_from": field_config.options_from,
                 "props": field_config.props,
             }
 
@@ -502,6 +507,7 @@ def parse_field(
                 "hidden": field_config.hidden,
                 "read_only": field_config.read_only,
                 "visible_when": field_config.visible_when,
+                "options_from": field_config.options_from,
                 "props": field_config.props,
             }
 
@@ -536,6 +542,7 @@ def parse_field(
                 "hidden": field_config.hidden,
                 "read_only": field_config.read_only,
                 "visible_when": field_config.visible_when,
+                "options_from": field_config.options_from,
                 "props": field_config.props,
             }
 
@@ -571,6 +578,7 @@ def parse_field(
                 "hidden": field_config.hidden,
                 "read_only": field_config.read_only,
                 "visible_when": field_config.visible_when,
+                "options_from": field_config.options_from,
                 "props": field_config.props,
             }
 
@@ -617,6 +625,7 @@ def parse_field(
                 "hidden": field_config.hidden,
                 "read_only": field_config.read_only,
                 "visible_when": field_config.visible_when,
+                "options_from": field_config.options_from,
                 "props": field_config.props,
             }
         return result
@@ -640,6 +649,7 @@ def parse_field(
             "hidden": field_config.hidden,
             "read_only": field_config.read_only,
             "visible_when": field_config.visible_when,
+            "options_from": field_config.options_from,
             "props": field_config.props,
         }
 

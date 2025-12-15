@@ -104,11 +104,9 @@ export function evaluateVisibility(
     const evaluator = new Function('data', 'value', `return Boolean(${condition});`);
     const result = evaluator(data, value);
     return result === true;
-  } catch (error) {
-    // Log error in development but don't break the UI
-    console.warn(`[pydantic-ui] Error evaluating visibility condition: "${condition}"`, error);
-    // Default to visible if there's an error in the condition
-    return true;
+  } catch (e) {
+    console.warn(`Error evaluating visibility condition "${condition}":`, e);
+    return true; // Default to visible on error
   }
 }
 
@@ -138,4 +136,72 @@ export function isFieldVisible(
 
   // Default: visible
   return true;
+}
+
+/**
+ * Resolve options from data based on a path string.
+ * Supports array traversal with [].
+ * Example: "users.[].name" extracts "name" from each object in "users" array.
+ */
+export function resolveOptionsFromData(
+  path: string,
+  data: Record<string, unknown>
+): { value: string; label: string }[] {
+  if (!path || !data) return [];
+
+  const parts = path.split('.');
+  let current: any = data;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+
+    if (part === '[]') {
+      if (!Array.isArray(current)) return [];
+      
+      // If [] is the last part, return array items
+      if (i === parts.length - 1) {
+        return current.map(item => ({
+          value: String(item),
+          label: String(item)
+        }));
+      }
+
+      // If [] is not last, map over items and extract remaining path
+      const remainingPath = parts.slice(i + 1).join('.');
+      const options: { value: string; label: string }[] = [];
+      
+      current.forEach(item => {
+        const val = getNestedValue(item, remainingPath);
+        if (val !== undefined && val !== null) {
+          options.push({
+            value: String(val),
+            label: String(val)
+          });
+        }
+      });
+      return options;
+    }
+
+    if (current === undefined || current === null) return [];
+    current = current[part];
+  }
+
+  if (Array.isArray(current)) {
+    return current.map(item => ({
+      value: String(item),
+      label: String(item)
+    }));
+  }
+
+  return [];
+}
+
+function getNestedValue(obj: any, path: string): any {
+  const parts = path.split('.');
+  let current = obj;
+  for (const part of parts) {
+    if (current === undefined || current === null) return undefined;
+    current = current[part];
+  }
+  return current;
 }

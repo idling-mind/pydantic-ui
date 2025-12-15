@@ -100,6 +100,10 @@ class DataHandler:
                     ui_config["hidden"] = config.hidden
                 if hasattr(config, "read_only"):
                     ui_config["read_only"] = config.read_only
+                if hasattr(config, "visible_when") and config.visible_when:
+                    ui_config["visible_when"] = config.visible_when
+                if hasattr(config, "options_from") and config.options_from:
+                    ui_config["options_from"] = config.options_from
                 if hasattr(config, "props") and config.props:
                     ui_config["props"] = config.props
 
@@ -110,6 +114,14 @@ class DataHandler:
             # Recurse into array items
             if field_schema.get("items"):
                 self._apply_field_configs_to_items(field_schema["items"], f"{full_path}.[].")
+
+            # Recurse into union variants
+            if field_schema.get("variants"):
+                for variant in field_schema["variants"]:
+                    if variant.get("fields"):
+                        self._apply_field_configs(variant["fields"], f"{full_path}.")
+                    if variant.get("items"):
+                        self._apply_field_configs_to_items(variant["items"], f"{full_path}.[].")
 
     def _apply_field_configs_to_items(self, item_schema: dict[str, Any], prefix: str) -> None:
         """Apply field configurations to array item schema."""
