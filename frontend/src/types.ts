@@ -108,7 +108,8 @@ export interface UIEvent {
     | 'confirmation_request'
     | 'refresh'
     | 'navigate'
-    | 'download_file';
+    | 'download_file'
+    | 'progress';
   payload: Record<string, unknown>;
   timestamp: number;
 }

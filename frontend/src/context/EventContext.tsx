@@ -4,6 +4,7 @@ import type { UIEvent, ToastMessage, ConfirmationRequest, FieldError } from '@/t
 interface EventContextValue {
   toasts: ToastMessage[];
   confirmationRequest: ConfirmationRequest | null;
+  progress: number | null;
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
   removeToast: (id: string) => void;
   respondToConfirmation: (confirmed: boolean) => void;
@@ -30,6 +31,7 @@ export function EventProvider({
 }: EventProviderProps) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [confirmationRequest, setConfirmationRequest] = useState<ConfirmationRequest | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollIntervalRef = useRef<number | null>(null);
 
@@ -98,6 +100,16 @@ export function EventProvider({
           variant: (event.payload.variant as 'default' | 'destructive') || 'default',
         });
         break;
+      case 'navigate':
+        {
+          const { url, new_tab } = event.payload as { url: string; new_tab: boolean };
+          if (new_tab) {
+            window.open(url, '_blank');
+          } else {
+            window.location.href = url;
+          }
+        }
+        break;
       case 'download_file':
         {
           const { filename, data } = event.payload as { filename: string; data: string };
@@ -113,6 +125,9 @@ export function EventProvider({
         if (onRefresh) {
           onRefresh();
         }
+        break;
+      case 'progress':
+        setProgress(event.payload.progress as number | null);
         break;
     }
   }, [onValidationErrors, onClearErrors, onDataPush, onRefresh, addToast]);
@@ -197,7 +212,6 @@ export function EventProvider({
         body: JSON.stringify({ confirmed }),
       });
     } catch (e) {
-      console.error('Failed to send confirmation response:', e);
     } finally {
       setConfirmationRequest(null);
     }
@@ -207,6 +221,7 @@ export function EventProvider({
     <EventContext.Provider value={{
       toasts,
       confirmationRequest,
+      progress,
       addToast,
       removeToast,
       respondToConfirmation,

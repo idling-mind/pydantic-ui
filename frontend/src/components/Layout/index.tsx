@@ -6,6 +6,7 @@ import { Footer } from '@/components/Footer';
 import { TreePanel } from '@/components/TreePanel';
 import { DetailPanel } from '@/components/DetailPanel';
 import { useData } from '@/context/DataContext';
+import { useEvents } from '@/context/EventContext';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -13,6 +14,7 @@ interface LayoutProps {
 
 export function Layout({}: LayoutProps) {
   const { config } = useData();
+  const { progress } = useEvents();
   const [panelWidth, setPanelWidth] = React.useState(280);
   const [isDragging, setIsDragging] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -47,7 +49,17 @@ export function Layout({}: LayoutProps) {
   }, [isDragging]);
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background relative">
+      {progress !== null && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-secondary z-50 overflow-hidden">
+          <div 
+            className="h-full bg-primary transition-all duration-300 ease-in-out relative"
+            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+          >
+            <div className="absolute inset-0 animate-progress-shimmer" />
+          </div>
+        </div>
+      )}
       <Header 
         title={config?.title} 
         logoText={config?.logo_text}

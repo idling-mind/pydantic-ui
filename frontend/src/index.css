@@ -91,10 +91,6 @@
   border-top: 1px solid hsl(var(--border));
 }
 
-
-
-
-
 /* Dark theme scrollbar webkit styles */
 .ag-theme-quartz-dark ::-webkit-scrollbar {
   width: 10px;
@@ -212,4 +208,32 @@
   bottom: 0;
   width: 1px;
   background-color: hsl(var(--border));
+}
+
+@layer utilities {
+  @keyframes progress-indeterminate {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .animate-progress-indeterminate {
+    animation: progress-indeterminate 2s infinite linear;
+  }
+
+  @keyframes progress-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .animate-progress-shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: progress-shimmer 2s infinite linear;
+  }
 }

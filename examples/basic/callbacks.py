@@ -284,9 +284,13 @@ async def save_all_settings(data: dict, controller: PydanticUIController):
 
         for i in range(0, 60, 10):
             await controller.show_toast(f"Redirecting in {60 - i} seconds...", "info")
-            await asyncio.sleep(10)
+            await controller.show_progress((i+1) / 60 * 100)
+            await asyncio.sleep(2)
 
         # And navigate
+        await controller.show_progress(100)
+        await controller.hide_progress()
+        await controller.show_toast("Redirecting now!", "success")
         await controller.navigate_to("api/data", new_tab=True)
 
     import asyncio

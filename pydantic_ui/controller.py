@@ -261,6 +261,27 @@ class PydanticUIController:
         session = await self._get_session()
         await session.push_event("download_file", {"filename": filename, "data": data})
 
+    async def show_progress(self, progress: int | None) -> None:
+        """Show or hide the progress bar.
+
+        Args:
+            progress: Percentage (0-100) to show, or None to hide.
+
+        Example:
+            await controller.show_progress(50)
+            await controller.show_progress(None)  # Hide
+        """
+        session = await self._get_session()
+        await session.push_event("progress", {"progress": progress})
+
+    async def hide_progress(self) -> None:
+        """Hide the progress bar.
+
+        Example:
+            await controller.hide_progress()
+        """
+        await self.show_progress(None)
+
     async def broadcast_toast(self, message: str, type: str = "info", duration: int = 5000) -> None:
         """Broadcast a toast notification to all sessions.
 
