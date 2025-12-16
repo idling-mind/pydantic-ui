@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Eye, EyeOff, Filter, FilterX } from 'lucide-react';
+import { Search, Eye, EyeOff, Filter, FilterX, ChevronsDown, ChevronsUp, ArrowUp } from 'lucide-react';
 import { cn, isFieldVisible } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,8 @@ export function TreePanel({ className }: TreePanelProps) {
     toggleExpanded,
     getErrorCountForPath,
     updateValue,
+    expandAll,
+    collapseAll,
   } = useData();
 
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -90,6 +92,31 @@ export function TreePanel({ className }: TreePanelProps) {
     },
     [toggleExpanded]
   );
+
+  const handleUpOneLevel = React.useCallback(() => {
+    if (!selectedPath) return;
+    
+    // Parse path to find parent
+    let parentPath = '';
+    if (selectedPath.endsWith(']')) {
+      // Remove [index]
+      const lastBracket = selectedPath.lastIndexOf('[');
+      if (lastBracket !== -1) {
+        parentPath = selectedPath.substring(0, lastBracket);
+      }
+    } else {
+      // Remove .name
+      const lastDot = selectedPath.lastIndexOf('.');
+      if (lastDot !== -1) {
+        parentPath = selectedPath.substring(0, lastDot);
+      } else {
+        // No dot, so it's a top level property. Parent is root.
+        parentPath = '';
+      }
+    }
+    
+    setSelectedPath(parentPath);
+  }, [selectedPath, setSelectedPath]);
 
   // Check if a field is a simple (primitive) field
   const isSimpleField = React.useCallback((field: SchemaField): boolean => {
@@ -237,6 +264,42 @@ export function TreePanel({ className }: TreePanelProps) {
             )}
           </Button>
         </div>
+      </div>
+
+      {/* Tree Actions */}
+      <div className="px-3 py-2 flex items-center gap-1 border-b bg-muted/20">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={expandAll} 
+          title="Expand All"
+          className="h-7 px-2 text-xs"
+        >
+          <ChevronsDown className="h-3.5 w-3.5 mr-1" />
+          Expand All
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={collapseAll} 
+          title="Collapse All"
+          className="h-7 px-2 text-xs"
+        >
+          <ChevronsUp className="h-3.5 w-3.5 mr-1" />
+          Collapse All
+        </Button>
+        <div className="flex-1" />
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleUpOneLevel} 
+          disabled={!selectedPath || selectedPath === ''}
+          title="Up One Level"
+          className="h-7 px-2 text-xs"
+        >
+          <ArrowUp className="h-3.5 w-3.5 mr-1" />
+          Up Level
+        </Button>
       </div>
 
       <Separator />

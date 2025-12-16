@@ -29,6 +29,8 @@ interface DataContextValue {
   variantSelections: Map<string, number>;
   setVariantSelection: (path: string, variantIndex: number) => void;
   clearVariantSelection: (path: string) => void;
+  expandAll: () => void;
+  collapseAll: () => void;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -172,6 +174,37 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
       }
       return next;
     });
+  }, []);
+
+  const expandAll = useCallback(() => {
+    const allPaths = new Set<string>(['']);
+    
+    const traverse = (currentData: unknown, currentPath: string) => {
+      if (currentData && typeof currentData === 'object') {
+        if (currentPath !== '') {
+          allPaths.add(currentPath);
+        }
+        
+        if (Array.isArray(currentData)) {
+          currentData.forEach((item, index) => {
+            const itemPath = currentPath ? `${currentPath}[${index}]` : `[${index}]`;
+            traverse(item, itemPath);
+          });
+        } else {
+          Object.entries(currentData).forEach(([key, value]) => {
+            const nextPath = currentPath ? `${currentPath}.${key}` : key;
+            traverse(value, nextPath);
+          });
+        }
+      }
+    };
+    
+    traverse(data, '');
+    setExpandedPaths(allPaths);
+  }, [data]);
+
+  const collapseAll = useCallback(() => {
+    setExpandedPaths(new Set(['']));
   }, []);
 
   const updateValue = useCallback((path: string, value: unknown) => {
@@ -364,6 +397,8 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
         setSelectedPath,
         toggleExpanded,
         expandPath,
+        expandAll,
+        collapseAll,
         updateValue,
         saveData,
         resetData,
