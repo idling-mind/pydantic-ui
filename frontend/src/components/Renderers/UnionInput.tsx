@@ -231,10 +231,16 @@ function detectCurrentVariant(
 
 /**
  * Get the display label for a variant.
+ * Priority: ui_config.label > variant_name (class name) > title > python_type > fallback
+ * For objects: prefers ui_config label or class name for clarity
  * For arrays/primitives: uses python_type (e.g., 'list[str]', 'list[int]') for clarity
- * For objects: uses variant_name (class name) > title > generic fallback
  */
 function getVariantLabel(variant: UnionVariant): string {
+  // Check ui_config label first (from class_configs)
+  if (variant.ui_config?.label) {
+    return variant.ui_config.label;
+  }
+  
   // For arrays and primitives, python_type provides more useful info (e.g., 'list[str]' vs 'list')
   if (variant.type === 'array' || ['string', 'integer', 'number', 'boolean'].includes(variant.type)) {
     if (variant.python_type) {
@@ -279,8 +285,14 @@ function isComplexVariant(variant: UnionVariant): boolean {
 
 /**
  * Get a description for a variant.
+ * Priority: ui_config.help_text > description > auto-generated based on type
  */
 function getVariantDescription(variant: UnionVariant): string {
+  // Check ui_config help_text first (from class_configs)
+  if (variant.ui_config?.help_text) {
+    return variant.ui_config.help_text;
+  }
+  
   if (variant.description) {
     return variant.description;
   }
@@ -601,6 +613,13 @@ export function UnionInput({
                     {getVariantDescription(variant)}
                   </p>
                 </div>
+
+                {/* Type badge for object types */}
+                {variant.type === 'object' && variant.variant_name && (
+                  <Badge variant="outline" className="text-xs shrink-0">
+                    {variant.variant_name}
+                  </Badge>
+                )}
                 
                 {/* Navigate arrow for complex types when selected */}
                 {isSelected && isComplex && (

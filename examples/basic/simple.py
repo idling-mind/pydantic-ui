@@ -59,6 +59,7 @@ class MyModel(BaseModel):
     name: str
     description: str
     created: datetime
+    single_user: Person
     users: list[Person]
     optional_string: str | None = "my string"
     optional_number: float | None = 42
@@ -85,6 +86,12 @@ ui_config = UIConfig(
     collapsible_tree=True,
     show_validation=True,
     show_save_reset=True,
+    class_configs={
+        "Person": FieldConfig(
+            label="Person Details",
+            help_text="Details about a person",
+        ),
+    }
 )
 
 # Field-specific configurations (alternative to annotations)
@@ -105,7 +112,17 @@ field_configs = {
     ),
     "my_field": FieldConfig(
         label="Custom My Field",
-        renderer=Renderer.SEGMENTED_CONTROL,
+        renderer=Renderer.RADIO_GROUP,
+    ),
+    # Configure union variant labels/descriptions using path-based field_configs
+    # Use the variant class name in the path to target specific union variants
+    "optional_complex.Person": FieldConfig(
+        label="Person (via field_config)",
+        help_text="This label and help_text are set via field_configs path",
+    ),
+    "optional_complex_with_default.Person": FieldConfig(
+        label="Person with Default",
+        help_text="Union variant configured via field_configs instead of class_configs",
     ),
 }
 

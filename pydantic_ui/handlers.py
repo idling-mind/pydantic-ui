@@ -118,6 +118,23 @@ class DataHandler:
             # Recurse into union variants
             if field_schema.get("variants"):
                 for variant in field_schema["variants"]:
+                    # Check if we have a config for this specific variant (e.g., "optional_complex.Person")
+                    variant_name = variant.get("name") or variant.get("variant_name")
+                    if variant_name:
+                        variant_path = f"{full_path}.{variant_name}"
+                        variant_config = self._match_field_config(variant_path)
+                        if variant_config:
+                            if variant.get("ui_config") is None:
+                                variant["ui_config"] = {}
+                            ui_config = variant["ui_config"]
+                            if hasattr(variant_config, "label") and variant_config.label:
+                                ui_config["label"] = variant_config.label
+                            if hasattr(variant_config, "help_text") and variant_config.help_text:
+                                ui_config["help_text"] = variant_config.help_text
+                            if hasattr(variant_config, "hidden"):
+                                ui_config["hidden"] = variant_config.hidden
+
+                    # Recurse into variant's fields
                     if variant.get("fields"):
                         self._apply_field_configs(variant["fields"], f"{full_path}.")
                     if variant.get("items"):
