@@ -2,6 +2,7 @@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { cn, getValueWithDefault } from '@/lib/utils';
+import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 export function ToggleInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -30,13 +31,22 @@ export function ToggleInput({ name, path, schema, value, errors, disabled, onCha
             <p className="text-xs text-muted-foreground">{schema.ui_config.help_text}</p>
           )}
         </div>
-        <Switch
-          id={path}
-          checked={Boolean(effectiveValue)}
-          onCheckedChange={(checked) => onChange(checked)}
-          disabled={isReadOnly}
-          className={cn(hasError && 'data-[state=unchecked]:border-destructive', isReadOnly && 'cursor-not-allowed')}
-        />
+        <div className="flex items-center gap-1">
+          <Switch
+            id={path}
+            checked={Boolean(effectiveValue)}
+            onCheckedChange={(checked) => onChange(checked)}
+            disabled={isReadOnly}
+            className={cn(hasError && 'data-[state=unchecked]:border-destructive', isReadOnly && 'cursor-not-allowed')}
+          />
+          <ClearResetButtons
+            schema={schema}
+            value={value}
+            onChange={onChange}
+            disabled={isReadOnly}
+            variant="inline"
+          />
+        </div>
       </div>
       {hasError && (
         <p className="text-xs text-destructive">{errors[0].message}</p>

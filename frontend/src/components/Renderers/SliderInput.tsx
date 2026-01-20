@@ -2,6 +2,7 @@
 import { Slider as SliderComponent } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { cn, getValueWithDefault } from '@/lib/utils';
+import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 export function SliderInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -32,6 +33,13 @@ export function SliderInput({ name, path, schema, value, errors, disabled, onCha
           </span>
         )}
       </div>
+      <ClearResetButtons
+        schema={schema}
+        value={value}
+        onChange={onChange}
+        disabled={isReadOnly}
+        variant="block"
+      />
       <SliderComponent
         id={path}
         value={[currentValue]}

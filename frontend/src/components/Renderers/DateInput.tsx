@@ -11,6 +11,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn, getValueWithDefault } from '@/lib/utils';
+import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 export function DateInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -77,48 +78,57 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
         {label}
         {schema.required !== false && <span className="text-destructive ml-1">*</span>}
       </Label>
-      <div className={cn('flex gap-2', includeTime ? 'flex-row' : 'flex-col')}>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              id={path}
-              variant="outline"
-              disabled={isReadOnly}
+      <div className={cn('flex gap-2 items-center', includeTime ? 'flex-row' : 'flex-col')}>
+        <div className="flex gap-2 items-center flex-1">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                id={path}
+                variant="outline"
+                disabled={isReadOnly}
+                className={cn(
+                  'flex-1 justify-start text-left font-normal',
+                  !date && 'text-muted-foreground',
+                  hasError && 'border-destructive focus-visible:ring-destructive',
+                  isReadOnly && 'bg-muted cursor-not-allowed'
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, includeTime ? 'PPP' : 'PPP') : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={handleDateSelect}
+                captionLayout="dropdown"
+                disabled={isReadOnly}
+              />
+            </PopoverContent>
+          </Popover>
+          {includeTime && (
+            <Input
+              type="time"
+              value={formatTime(date)}
+              onChange={handleTimeChange}
+              disabled={isReadOnly || !date}
+              readOnly={isReadOnly}
               className={cn(
-                'w-full justify-start text-left font-normal',
-                !date && 'text-muted-foreground',
+                'w-32',
                 hasError && 'border-destructive focus-visible:ring-destructive',
                 isReadOnly && 'bg-muted cursor-not-allowed'
               )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {date ? format(date, includeTime ? 'PPP' : 'PPP') : <span>Pick a date</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={handleDateSelect}
-              captionLayout="dropdown"
-              disabled={isReadOnly}
             />
-          </PopoverContent>
-        </Popover>
-        {includeTime && (
-          <Input
-            type="time"
-            value={formatTime(date)}
-            onChange={handleTimeChange}
-            disabled={isReadOnly || !date}
-            readOnly={isReadOnly}
-            className={cn(
-              'w-32',
-              hasError && 'border-destructive focus-visible:ring-destructive',
-              isReadOnly && 'bg-muted cursor-not-allowed'
-            )}
+          )}
+          <ClearResetButtons
+            schema={schema}
+            value={value}
+            onChange={onChange}
+            disabled={isReadOnly}
+            variant="inline"
           />
-        )}
+        </div>
       </div>
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>

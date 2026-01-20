@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn, getValueWithDefault, resolveOptionsFromData } from '@/lib/utils';
 import { useData } from '@/context/DataContext';
+import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 export function ChecklistInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -13,7 +14,7 @@ export function ChecklistInput({ name, path, schema, value, errors, disabled, on
   const isReadOnly = disabled || schema.ui_config?.read_only === true;
   
   // Use default value from schema if value is undefined/null
-  const effectiveValue = getValueWithDefault<any[]>(value, schema, []);
+  const effectiveValue = getValueWithDefault<unknown[]>(value, schema, []);
   
   // Get options from enum, literal values, custom options, or data source
   // For array fields, the options usually come from the items schema (if it's an enum)
@@ -33,13 +34,13 @@ export function ChecklistInput({ name, path, schema, value, errors, disabled, on
     const itemsSchema = schema.items;
     if (itemsSchema) {
         if (itemsSchema.enum) {
-            return itemsSchema.enum.map((val: any) => ({
+            return itemsSchema.enum.map((val: unknown) => ({
                 value: String(val),
                 label: String(val),
             }));
         }
         if (itemsSchema.literal_values) {
-            return itemsSchema.literal_values.map((val: any) => ({
+            return itemsSchema.literal_values.map((val: unknown) => ({
                 value: String(val),
                 label: String(val),
             }));
@@ -67,6 +68,13 @@ export function ChecklistInput({ name, path, schema, value, errors, disabled, on
         {label}
         {schema.required !== false && <span className="text-destructive ml-1">*</span>}
       </Label>
+      <ClearResetButtons
+        schema={schema}
+        value={value}
+        onChange={onChange}
+        disabled={isReadOnly}
+        variant="block"
+      />
       <div className="flex flex-col space-y-2">
         {options.map((opt) => {
           const isChecked = Array.isArray(effectiveValue) && effectiveValue.some(v => String(v) === opt.value);

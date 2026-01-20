@@ -13,10 +13,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { cn, createDefaultFromSchema } from '@/lib/utils';
+import { cn, createDefaultFromSchema, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 import type { SchemaField, UnionVariant } from '@/types';
 import { FieldRenderer } from '@/components/Renderers';
+import { ClearResetButtons } from './ClearResetButtons';
 import { useData } from '@/context/DataContext';
 
 /**
@@ -331,13 +332,17 @@ export function UnionInput({
   // Get stored variant selection if any (for ambiguous cases like empty arrays)
   const storedVariantIndex = variantSelections.get(path);
   
+  // Compute effective value (use schema default if value is undefined)
+  // This ensures default values for union fields are respected
+  const effectiveValue = getValueWithDefault(value, schema, null);
+  
   const [selectedVariantIndex, setSelectedVariantIndex] = React.useState<number | null>(() => {
     // First check if we have a stored selection (from previous user choice)
     if (storedVariantIndex !== undefined) {
       return storedVariantIndex;
     }
-    // Otherwise try to detect from value
-    return detectCurrentVariant(value, schema);
+    // Otherwise try to detect from effective value (includes default)
+    return detectCurrentVariant(effectiveValue, schema);
   });
   const [pendingVariantIndex, setPendingVariantIndex] = React.useState<number | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
@@ -359,36 +364,37 @@ export function UnionInput({
 
   // Track previous path and value to detect navigation and resets
   const prevPathRef = React.useRef(path);
-  const prevValueRef = React.useRef(value);
+  const prevEffectiveValueRef = React.useRef(effectiveValue);
   
   React.useEffect(() => {
     const prevPath = prevPathRef.current;
-    const prevValue = prevValueRef.current;
+    const prevEffectiveValue = prevEffectiveValueRef.current;
     prevPathRef.current = path;
-    prevValueRef.current = value;
+    prevEffectiveValueRef.current = effectiveValue;
     
     // If the path changed, we navigated to a different field - re-detect variant
     if (prevPath !== path) {
-      const detected = detectCurrentVariant(value, schema);
+      const detected = detectCurrentVariant(effectiveValue, schema);
       setSelectedVariantIndex(detected);
       return;
     }
     
-    // If value was reset to null/undefined from a non-null value, clear selection
-    if ((value === null || value === undefined) && prevValue !== null && prevValue !== undefined) {
+    // If value was reset to null from a non-null value, clear selection
+    // Note: We check raw value === null to detect explicit clearing
+    if (value === null && prevEffectiveValue !== null && prevEffectiveValue !== undefined) {
       setSelectedVariantIndex(null);
       return;
     }
     
     // If we have a value but no selected variant, try to detect it
     // This handles cases where value changes externally (e.g., from parent component)
-    if (selectedVariantIndex === null && value !== null && value !== undefined) {
-      const detected = detectCurrentVariant(value, schema);
+    if (selectedVariantIndex === null && effectiveValue !== null && effectiveValue !== undefined) {
+      const detected = detectCurrentVariant(effectiveValue, schema);
       if (detected !== null) {
         setSelectedVariantIndex(detected);
       }
     }
-  }, [path, value, schema, selectedVariantIndex]);
+  }, [path, value, effectiveValue, schema, selectedVariantIndex]);
 
   /**
    * Handle variant selection from card click.
@@ -508,6 +514,26 @@ export function UnionInput({
           Union
         </Badge>
       </div>
+
+      {/* Clear/Reset buttons for optional union fields */}
+      <ClearResetButtons
+        schema={schema}
+        value={value}
+        onChange={(newValue) => {
+          onChange(newValue);
+          // Clear variant selection when clearing
+          if (newValue === null) {
+            setSelectedVariantIndex(null);
+          } else if (newValue !== undefined) {
+            // When resetting to default, try to detect the variant
+            const detectedIdx = detectCurrentVariant(newValue, schema);
+            setSelectedVariantIndex(detectedIdx);
+          }
+        }}
+        disabled={disabled}
+        variant="block"
+        treatEmptyStringAsValue={true}
+      />
 
       {/* Help text */}
       {helpText && (

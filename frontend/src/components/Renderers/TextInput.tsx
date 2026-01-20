@@ -2,6 +2,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn, getValueWithDefault } from '@/lib/utils';
+import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 export function TextInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -25,18 +26,27 @@ export function TextInput({ name, path, schema, value, errors, disabled, onChang
         {label}
         {schema.required !== false && <span className="text-destructive ml-1">*</span>}
       </Label>
-      <Input
-        id={path}
-        type="text"
-        value={(effectiveValue as string) ?? ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder || `Enter ${label.toLowerCase()}`}
-        disabled={isReadOnly}
-        readOnly={isReadOnly}
-        maxLength={maxLength}
-        minLength={minLength}
-        className={cn(hasError && 'border-destructive focus-visible:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
-      />
+      <div className="flex items-center gap-1">
+        <Input
+          id={path}
+          type="text"
+          value={(effectiveValue as string) ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+          disabled={isReadOnly}
+          readOnly={isReadOnly}
+          maxLength={maxLength}
+          minLength={minLength}
+          className={cn('flex-1', hasError && 'border-destructive focus-visible:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
+        />
+        <ClearResetButtons
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          disabled={isReadOnly}
+          variant="inline"
+        />
+      </div>
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>
       )}

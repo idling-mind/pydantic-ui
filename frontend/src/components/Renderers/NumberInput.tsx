@@ -2,6 +2,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn, getValueWithDefault } from '@/lib/utils';
+import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 export function NumberInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -34,19 +35,28 @@ export function NumberInput({ name, path, schema, value, errors, disabled, onCha
         {label}
         {schema.required !== false && <span className="text-destructive ml-1">*</span>}
       </Label>
-      <Input
-        id={path}
-        type="number"
-        value={effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : ''}
-        onChange={handleChange}
-        placeholder={`Enter ${label.toLowerCase()}`}
-        disabled={isReadOnly}
-        readOnly={isReadOnly}
-        step={step || (schema.type === 'integer' ? 1 : 'any')}
-        min={min}
-        max={max}
-        className={cn(hasError && 'border-destructive focus-visible:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
-      />
+      <div className="flex items-center gap-1">
+        <Input
+          id={path}
+          type="number"
+          value={effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : ''}
+          onChange={handleChange}
+          placeholder={`Enter ${label.toLowerCase()}`}
+          disabled={isReadOnly}
+          readOnly={isReadOnly}
+          step={step || (schema.type === 'integer' ? 1 : 'any')}
+          min={min}
+          max={max}
+          className={cn('flex-1', hasError && 'border-destructive focus-visible:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
+        />
+        <ClearResetButtons
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          disabled={isReadOnly}
+          variant="inline"
+        />
+      </div>
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>
       )}

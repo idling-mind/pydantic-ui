@@ -287,45 +287,11 @@ export function TreeNodeContextMenu({
   }, [clipboard, currentValue, path, updateValue]);
 
   // Helper to create a cleared value based on schema type
-  const createClearedValue = useCallback((fieldSchema: SchemaField): unknown => {
-    // If schema has a default value, use it (deep clone for objects/arrays)
-    if (fieldSchema.default !== undefined) {
-      if (fieldSchema.default === null) {
-        // If default is null, check if it's because it's required (no default) or optional (default None)
-        // If required is true, default=null means "no default" (PydanticUndefined)
-        // If required is false, default=null means "None"
-        if (fieldSchema.required !== true) {
-          return null;
-        }
-        // If required is true, fall through to type-based clearing
-      } else {
-        return JSON.parse(JSON.stringify(fieldSchema.default));
-      }
-    }
-
-    switch (fieldSchema.type) {
-      case 'object':
-        // For objects, recursively clear fields
-        if (fieldSchema.fields) {
-          const cleared: Record<string, unknown> = {};
-          for (const [key, subSchema] of Object.entries(fieldSchema.fields)) {
-            cleared[key] = createClearedValue(subSchema);
-          }
-          return cleared;
-        }
-        return {};
-      case 'array':
-        return [];
-      case 'string':
-        return '';
-      case 'integer':
-      case 'number':
-        return null;
-      case 'boolean':
-        return false;
-      default:
-        return null;
-    }
+  const createClearedValue = useCallback((_fieldSchema: SchemaField): unknown => {
+    // For clearing, we always set to null which represents "no value"
+    // This allows optional fields to be truly empty
+    // The backend will interpret null as None/undefined based on the field requirements
+    return null;
   }, []);
 
   const handleClear = useCallback(() => {
@@ -349,7 +315,8 @@ export function TreeNodeContextMenu({
   const hasClipboard = !!clipboard;
   const isObjectType = schema.type === 'object';
   const isArrayType = schema.type === 'array';
-  const isClearable = isObjectType || isArrayType;
+  // All fields are clearable from the context menu (not just objects/arrays)
+  const isClearable = true;
   const targetCount = selectedPaths.length > 1 ? selectedPaths.length : 1;
   // Can delete if this is an array item (has parent array path and index)
   const canDelete = parentArrayPath !== undefined && arrayIndex !== undefined;
@@ -407,7 +374,7 @@ export function TreeNodeContextMenu({
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Clear Values
+            Clear Value
           </ContextMenuItem>
 
           {/* Delete array item */}
@@ -453,8 +420,9 @@ export function TreeNodeContextMenu({
           <AlertDialogHeader>
             <AlertDialogTitle>Clear "{nodeName}"?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will clear all values within "{nodeName}" and reset them to their default empty state.
-              {isArrayType ? ' All items in the array will be removed.' : ' All sub-fields will be cleared.'}
+              This will clear the value of "{nodeName}" and set it to empty/null.
+              {isArrayType && ' All items in the array will be removed.'}
+              {isObjectType && ' All sub-fields will be cleared.'}
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -464,7 +432,7 @@ export function TreeNodeContextMenu({
               onClick={handleClear}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Clear Values
+              Clear Value
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

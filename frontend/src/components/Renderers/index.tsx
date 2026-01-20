@@ -16,6 +16,7 @@ import { RadioGroupInput } from './RadioGroupInput';
 import { ChecklistInput } from './ChecklistInput';
 import { MarkdownInput } from './MarkdownInput';
 import { SegmentedControlInput } from './SegmentedControlInput';
+import { ClearResetButtons, useClearResetButtons } from './ClearResetButtons';
 import { useData } from '@/context/DataContext';
 import type { RendererProps } from './types';
 import type { SchemaField, FieldError } from '@/types';
@@ -193,6 +194,8 @@ export {
   FileSelectInput,
   FileUploadInput,
   UnionInput,
+  ClearResetButtons,
+  useClearResetButtons,
 };
 
 // Export utility

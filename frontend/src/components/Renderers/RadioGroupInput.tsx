@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn, getValueWithDefault, resolveOptionsFromData } from '@/lib/utils';
 import { useData } from '@/context/DataContext';
+import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 export function RadioGroupInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -12,8 +13,12 @@ export function RadioGroupInput({ name, path, schema, value, errors, disabled, o
   const label = schema.ui_config?.label || schema.title || name;
   const isReadOnly = disabled || schema.ui_config?.read_only === true;
   
-  // Use default value from schema if value is undefined/null
+  // Use default value from schema if value is undefined (not null - null means cleared)
   const effectiveValue = getValueWithDefault<string | null>(value, schema, null);
+  
+  // Use a key that changes when the value becomes null to force RadioGroup to remount
+  // This fixes the issue where clearing doesn't properly update the UI
+  const radioGroupKey = value === null ? `${path}-cleared` : path;
   
   // Get options from enum, literal values, custom options, or data source
   const options: { value: string; label: string }[] = React.useMemo(() => {
@@ -46,8 +51,16 @@ export function RadioGroupInput({ name, path, schema, value, errors, disabled, o
         {label}
         {schema.required !== false && <span className="text-destructive ml-1">*</span>}
       </Label>
+      <ClearResetButtons
+        schema={schema}
+        value={value}
+        onChange={onChange}
+        disabled={isReadOnly}
+        variant="block"
+      />
       <RadioGroup
-        value={effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : undefined}
+        key={radioGroupKey}
+        value={effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : ''}
         onValueChange={(val) => onChange(val)}
         disabled={isReadOnly}
         className="flex flex-col space-y-1"

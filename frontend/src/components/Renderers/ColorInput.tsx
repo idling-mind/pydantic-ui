@@ -2,6 +2,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn, getValueWithDefault } from '@/lib/utils';
+import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 type ColorFormat = 'hex' | 'rgb' | 'hsl';
@@ -96,7 +97,7 @@ export function ColorInput({ name, path, schema, value, errors, disabled, onChan
         {label}
         {schema.required !== false && <span className="text-destructive ml-1">*</span>}
       </Label>
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <Input
           type="color"
           value={toHex(effectiveValue)}
@@ -117,6 +118,13 @@ export function ColorInput({ name, path, schema, value, errors, disabled, onChan
             hasError && 'border-destructive focus-visible:ring-destructive',
             isReadOnly && 'bg-muted cursor-not-allowed'
           )}
+        />
+        <ClearResetButtons
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          disabled={isReadOnly}
+          variant="inline"
         />
       </div>
       {schema.description && (

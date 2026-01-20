@@ -7,7 +7,7 @@ This example shows how to create a simple data editing UI for a configuration mo
 # Import pydantic_ui components
 import sys
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 # StrEnum is available in Python 3.11+, define it for older versions
 try:
@@ -60,6 +60,19 @@ class MyModel(BaseModel):
     description: str
     created: datetime
     users: list[Person]
+    optional_string: str | None = "my string"
+    optional_number: float | None = 42
+    optional_date: date | None = str(date.today())
+    optional_boolean: bool | None = None
+    optional_color: str | None = "#333333"
+    optional_complex: str | Person | None = None
+    optional_complex_with_default: str | Person | None = "default value"
+    optional_list: list[int] | None = None
+    my_field: Literal["this", "that", "other"] = Field(
+        default="this",
+        title="My Field",
+        description="An example of a field with limited choices",
+    )
 
 
 # Create FastAPI app
@@ -71,6 +84,7 @@ ui_config = UIConfig(
     description="Edit the fields of MyModel below.",
     collapsible_tree=True,
     show_validation=True,
+    show_save_reset=True,
 )
 
 # Field-specific configurations (alternative to annotations)
@@ -84,6 +98,14 @@ field_configs = {
         label="User Age",
         renderer=Renderer.SLIDER,
         props={"min": 0, "max": 120, "step": 1},
+    ),
+    "optional_color": FieldConfig(
+        label="Favorite Color",
+        renderer=Renderer.COLOR_PICKER,
+    ),
+    "my_field": FieldConfig(
+        label="Custom My Field",
+        renderer=Renderer.SEGMENTED_CONTROL,
     ),
 }
 

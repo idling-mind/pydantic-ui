@@ -2,6 +2,7 @@
 import { Textarea as TextareaComponent } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn, getValueWithDefault } from '@/lib/utils';
+import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 export function TextareaInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -25,6 +26,13 @@ export function TextareaInput({ name, path, schema, value, errors, disabled, onC
         {label}
         {schema.required !== false && <span className="text-destructive ml-1">*</span>}
       </Label>
+      <ClearResetButtons
+        schema={schema}
+        value={value}
+        onChange={onChange}
+        disabled={isReadOnly}
+        variant="block"
+      />
       <TextareaComponent
         id={path}
         value={(effectiveValue as string) ?? ''}

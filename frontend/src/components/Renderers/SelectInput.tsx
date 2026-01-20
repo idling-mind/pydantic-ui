@@ -9,6 +9,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { cn, getValueWithDefault, resolveOptionsFromData } from '@/lib/utils';
 import { useData } from '@/context/DataContext';
+import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 export function SelectInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
@@ -19,8 +20,12 @@ export function SelectInput({ name, path, schema, value, errors, disabled, onCha
   const placeholder = (props.placeholder as string) || `Select ${label.toLowerCase()}`;
   const isReadOnly = disabled || schema.ui_config?.read_only === true;
   
-  // Use default value from schema if value is undefined/null
+  // Use default value from schema if value is undefined (not null - null means cleared)
   const effectiveValue = getValueWithDefault<string | null>(value, schema, null);
+  
+  // Use a key that changes when the value becomes null/undefined to force Select to remount
+  // This fixes the issue where clearing doesn't properly update the UI
+  const selectKey = value === null ? `${path}-cleared` : path;
   
   // Get options from enum, literal values, custom options, or data source
   const options: { value: string; label: string }[] = React.useMemo(() => {
@@ -53,25 +58,35 @@ export function SelectInput({ name, path, schema, value, errors, disabled, onCha
         {label}
         {schema.required !== false && <span className="text-destructive ml-1">*</span>}
       </Label>
-      <Select
-        value={effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : undefined}
-        onValueChange={(val) => onChange(val)}
-        disabled={isReadOnly}
-      >
-        <SelectTrigger
-          id={path}
-          className={cn(hasError && 'border-destructive focus:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
+      <div className="flex items-center gap-1">
+        <Select
+          key={selectKey}
+          value={effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : ''}
+          onValueChange={(val) => onChange(val)}
+          disabled={isReadOnly}
         >
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <SelectTrigger
+            id={path}
+            className={cn('flex-1', hasError && 'border-destructive focus:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
+          >
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <ClearResetButtons
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          disabled={isReadOnly}
+          variant="inline"
+        />
+      </div>
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>
       )}

@@ -7,20 +7,32 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Get the effective value for a field, using the schema default if the value is undefined/null.
- * This ensures that default values defined in Pydantic models are properly displayed in the UI.
+ * Get the effective value for a field, using the schema default if the value is undefined.
+ * 
+ * IMPORTANT: This function distinguishes between:
+ * - undefined: Field value not set yet, use schema default
+ * - null: Field was explicitly cleared, return null (don't fall back to default)
+ * 
+ * This ensures that default values defined in Pydantic models are properly displayed in the UI,
+ * while also allowing users to clear optional fields to null.
  */
 export function getValueWithDefault<T = unknown>(
   value: unknown,
   schema: SchemaField,
   fallback?: T
 ): T | unknown {
-  // If value is defined and not null, use it
-  if (value !== undefined && value !== null) {
+  // If value is explicitly null, return null (field was cleared)
+  // This allows optional fields to be truly empty
+  if (value === null) {
+    return null;
+  }
+  
+  // If value is defined (not undefined), use it
+  if (value !== undefined) {
     return value;
   }
   
-  // If schema has a default value, use it
+  // Value is undefined - use schema default if available
   if (schema.default !== undefined && schema.default !== null) {
     return schema.default;
   }
