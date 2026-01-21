@@ -79,7 +79,14 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
         {schema.required !== false && <span className="text-destructive ml-1">*</span>}
       </Label>
       <div className={cn('flex gap-2 items-center', includeTime ? 'flex-row' : 'flex-col')}>
-        <div className="flex gap-2 items-center flex-1">
+        {/*
+          When not including time we render in a column layout. In that case
+          `flex-1` expands vertically but not horizontally, which prevents the
+          date picker button from filling the available width. Use `w-full`
+          for column mode and `flex-1` for row mode so the control is full
+          width when time input is omitted.
+        */}
+        <div className={cn('flex gap-2 items-center', includeTime ? 'flex-1' : 'w-full')}>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
