@@ -144,6 +144,11 @@ ui_config = UIConfig(
     
     # Custom Actions (see Action Buttons section)
     actions=[],                       # List of ActionButton configurations
+
+    # Control the label, description and the control used to fill in specific field
+    # either based on class name or full path to the attribute. Look into examples to understand more.
+    class_configs={},                  # Map[class_name, FieldConfig] - global per-class FieldConfig
+    attr_configs={},                   # Map[path, FieldConfig] - per-field configs by path (e.g., 'users.[].age')
 )
 
 app.include_router(
