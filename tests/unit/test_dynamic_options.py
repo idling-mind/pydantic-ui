@@ -36,11 +36,13 @@ class TestDynamicOptions:
     @pytest.mark.asyncio
     async def test_options_from_simple_field(self):
         """Test options_from on a simple field."""
-        field_configs = {
-            "items.[].user": FieldConfig(renderer=Renderer.SELECT, options_from="users.[].name")
-        }
+        ui_config = UIConfig(
+            attr_configs={
+                "items.[].user": FieldConfig(renderer=Renderer.SELECT, options_from="users.[].name")
+            }
+        )
 
-        handler = DataHandler(model=Container, ui_config=UIConfig(), field_configs=field_configs)
+        handler = DataHandler(model=Container, ui_config=ui_config)
 
         schema = await handler.get_schema()
 
@@ -62,12 +64,14 @@ class TestDynamicOptions:
             users: list[User]
             data: str | ObjVariant
 
-        field_configs = {
-            "data.prop": FieldConfig(renderer=Renderer.SELECT, options_from="users.[].name")
-        }
+        ui_config = UIConfig(
+            attr_configs={
+                "data.prop": FieldConfig(renderer=Renderer.SELECT, options_from="users.[].name")
+            }
+        )
 
         handler = DataHandler(
-            model=UnionContainer2, ui_config=UIConfig(), field_configs=field_configs
+            model=UnionContainer2, ui_config=ui_config
         )
 
         schema = await handler.get_schema()
@@ -99,11 +103,13 @@ class TestDynamicOptions:
             sources: list[str]
             items: list[ComplexItem]
 
-        field_configs = {
-            "items.[].data.[].name": FieldConfig(renderer=Renderer.SELECT, options_from="sources")
-        }
+        ui_config = UIConfig(
+            attr_configs={
+                "items.[].data.[].name": FieldConfig(renderer=Renderer.SELECT, options_from="sources")
+            }
+        )
 
-        handler = DataHandler(model=Root, ui_config=UIConfig(), field_configs=field_configs)
+        handler = DataHandler(model=Root, ui_config=ui_config)
 
         schema = await handler.get_schema()
 

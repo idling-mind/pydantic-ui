@@ -288,28 +288,23 @@ def custom_ui_config() -> UIConfig:
             ActionButton(id="export", label="Export", variant="outline"),
         ],
         show_save_reset=True,
+        attr_configs={
+            "name": FieldConfig(
+                label="Full Name",
+                placeholder="Enter your name",
+                help_text="Your legal name",
+            ),
+            "age": FieldConfig(
+                renderer=Renderer.SLIDER,
+                props={"min": 0, "max": 120, "step": 1},
+            ),
+            # Wildcard pattern for array items
+            "tasks.[].title": FieldConfig(
+                label="Task Title",
+                placeholder="What needs to be done?",
+            ),
+        },
     )
-
-
-@pytest.fixture
-def field_configs() -> dict[str, FieldConfig]:
-    """Return field configurations."""
-    return {
-        "name": FieldConfig(
-            label="Full Name",
-            placeholder="Enter your name",
-            help_text="Your legal name",
-        ),
-        "age": FieldConfig(
-            renderer=Renderer.SLIDER,
-            props={"min": 0, "max": 120, "step": 1},
-        ),
-        # Wildcard pattern for array items
-        "tasks.[].title": FieldConfig(
-            label="Task Title",
-            placeholder="What needs to be done?",
-        ),
-    }
 
 
 # =============================================================================
@@ -348,13 +343,11 @@ def data_handler(simple_model: type[SimpleModel]) -> DataHandler:
 def data_handler_with_config(
     person_model: type[Person],
     custom_ui_config: UIConfig,
-    field_configs: dict[str, FieldConfig],
 ) -> DataHandler:
     """Return a data handler with custom configuration."""
     return DataHandler(
         model=person_model,
         ui_config=custom_ui_config,
-        field_configs=field_configs,
     )
 
 
@@ -376,14 +369,12 @@ def app_simple(simple_model: type[SimpleModel]) -> FastAPI:
 def app_with_config(
     person_model: type[Person],
     custom_ui_config: UIConfig,
-    field_configs: dict[str, FieldConfig],
 ) -> FastAPI:
     """Return a FastAPI app with custom configuration."""
     app = FastAPI()
     router = create_pydantic_ui(
         person_model,
         ui_config=custom_ui_config,
-        field_configs=field_configs,
         prefix="/editor",
     )
     app.include_router(router)

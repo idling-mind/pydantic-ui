@@ -25,7 +25,14 @@ from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
-from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui
+from pydantic_ui import (
+    ActionButton,
+    FieldConfig,
+    PydanticUIController,
+    Renderer,
+    UIConfig,
+    create_pydantic_ui,
+)
 
 
 class Currency(StrEnum):
@@ -79,23 +86,8 @@ class MyModel(BaseModel):
 # Create FastAPI app
 app = FastAPI(title="Pydantic UI Example")
 
-# Configure UI
-ui_config = UIConfig(
-    title="My Model Editor",
-    description="Edit the fields of MyModel below.",
-    collapsible_tree=True,
-    show_validation=True,
-    show_save_reset=True,
-    class_configs={
-        "Person": FieldConfig(
-            label="Person Details",
-            help_text="Details about a person",
-        ),
-    }
-)
-
-# Field-specific configurations (alternative to annotations)
-field_configs = {
+# Attribute-specific configurations (alternative to annotations)
+attr_configs = {
     "created": FieldConfig(
         label="Created Date",
         placeholder="Select a date",
@@ -110,32 +102,74 @@ field_configs = {
         label="Favorite Color",
         renderer=Renderer.COLOR_PICKER,
     ),
-    "my_field": FieldConfig(
-        label="Custom My Field",
-        renderer=Renderer.RADIO_GROUP,
-    ),
-    # Configure union variant labels/descriptions using path-based field_configs
+    # "my_field": FieldConfig(
+    #     label="Custom My Field",
+    #     renderer=Renderer.RADIO_GROUP,
+    # ),
+    # Configure union variant labels/descriptions using path-based attr_configs
     # Use the variant class name in the path to target specific union variants
     "optional_complex.Person": FieldConfig(
-        label="Person (via field_config)",
-        help_text="This label and help_text are set via field_configs path",
+        label="Person (via attr_config)",
+        help_text="This label and help_text are set via attr_configs path",
+    ),
+    "optional_complex.str": FieldConfig(
+        label="Some random string",
+        help_text="This is the string variant of the union",
     ),
     "optional_complex_with_default.Person": FieldConfig(
         label="Person with Default",
-        help_text="Union variant configured via field_configs instead of class_configs",
+        help_text="Union variant configured via attr_configs instead of class_configs",
     ),
 }
+
+# Configure UI
+ui_config = UIConfig(
+    title="My Model Editor",
+    description="Edit the fields of MyModel below.",
+    collapsible_tree=True,
+    show_validation=True,
+    show_save_reset=True,
+    class_configs={
+        "Person": FieldConfig(
+            label="Person Details",
+            help_text="Details about a person",
+        ),
+    },
+    attr_configs=attr_configs,
+    actions=[
+        ActionButton(
+            id="print",
+            label="Print Data",
+            variant="secondary",
+            icon="check-circle",
+            tooltip="Run custom validation",
+        ),
+    ]
+)
 
 # Create and mount the pydantic-ui router
 pydantic_ui_router = create_pydantic_ui(
     model=MyModel,
     ui_config=ui_config,
-    field_configs=field_configs,
     prefix="/config",
 )
 
 app.include_router(pydantic_ui_router)
 
+# Custom action handlers using the decorator
+@pydantic_ui_router.action("print")
+async def handle_print(data: dict, controller: PydanticUIController):
+    """
+    Full Pydantic validation + custom business rules.
+
+    This demonstrates how to:
+    1. Run Pydantic's built-in validation (type checks, constraints like ge/le, etc.)
+    2. Add custom business rule validation on top
+    3. Convert all errors to the UI format
+    """
+    errors = []
+
+    print("MyModel data to validate:", data)
 
 # Custom endpoint to demonstrate data handling
 @app.get("/api/current-config")

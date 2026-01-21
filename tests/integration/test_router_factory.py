@@ -243,19 +243,21 @@ class TestFieldConfigs:
     """Tests for field configurations."""
 
     @pytest.mark.asyncio
-    async def test_field_configs_applied(self):
-        """Test field configs are applied to schema."""
-        field_configs = {
-            "name": FieldConfig(
-                label="Full Name",
-                renderer=Renderer.TEXT_INPUT,
-            ),
-        }
+    async def test_attr_configs_applied(self):
+        """Test attr configs are applied to schema."""
+        ui_config = UIConfig(
+            attr_configs={
+                "name": FieldConfig(
+                    label="Full Name",
+                    renderer=Renderer.TEXT_INPUT,
+                ),
+            }
+        )
 
         app = FastAPI()
         router = create_pydantic_ui(
             SampleModel,
-            field_configs=field_configs,
+            ui_config=ui_config,
             prefix="/test",
         )
         app.include_router(router)
@@ -266,6 +268,6 @@ class TestFieldConfigs:
             schema = response.json()
 
             name_field = schema["fields"]["name"]
-            ui_config = name_field.get("ui_config")
-            if ui_config:
-                assert ui_config.get("label") == "Full Name"
+            ui_config_field = name_field.get("ui_config")
+            if ui_config_field:
+                assert ui_config_field.get("label") == "Full Name"

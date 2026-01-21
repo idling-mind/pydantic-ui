@@ -25,14 +25,13 @@ class DataHandler:
         self,
         model: type[BaseModel],
         ui_config: UIConfig,
-        field_configs: dict[str, Any] | None = None,
         initial_data: BaseModel | None = None,
         data_loader: Callable[[], Any] | None = None,
         data_saver: Callable[[BaseModel], None] | None = None,
     ):
         self.model = model
         self.ui_config = ui_config
-        self.field_configs = field_configs or {}
+        self.field_configs = ui_config.attr_configs or {}
         self.data_loader = data_loader
         self.data_saver = data_saver
 

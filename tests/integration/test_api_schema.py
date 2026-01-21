@@ -43,7 +43,7 @@ class TestGetSchema:
         assert schema["fields"]["value"]["title"] == "Value"
 
     @pytest.mark.asyncio
-    async def test_schema_with_field_configs(self, client_with_config: AsyncClient):
+    async def test_schema_with_attr_configs(self, client_with_config: AsyncClient):
         """Test schema reflects field configurations."""
         response = await client_with_config.get("/editor/api/schema")
         schema = response.json()

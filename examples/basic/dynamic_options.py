@@ -65,7 +65,7 @@ class CompanyData(BaseModel):
     )
 
 
-field_configs = {
+attr_configs = {
     "active_project.tasks.[].assignee": FieldConfig(
         renderer=Renderer.SELECT,
         options_from="hr_data.staff.[].name",
@@ -81,7 +81,9 @@ field_configs = {
 }
 
 app = FastAPI()
-app.include_router(create_pydantic_ui(CompanyData, field_configs=field_configs))
+app.include_router(
+    create_pydantic_ui(CompanyData, ui_config=UIConfig(attr_configs=attr_configs))
+)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

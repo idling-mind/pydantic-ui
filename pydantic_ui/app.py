@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
-from pydantic_ui.config import FieldConfig, UIConfig
+from pydantic_ui.config import UIConfig
 from pydantic_ui.controller import PydanticUIController
 from pydantic_ui.handlers import DataHandler
 from pydantic_ui.schema import model_to_data
@@ -21,7 +21,6 @@ def create_pydantic_ui(
     model: type[BaseModel],
     *,
     ui_config: UIConfig | None = None,
-    field_configs: dict[str, FieldConfig] | None = None,
     initial_data: BaseModel | None = None,
     data_loader: Callable[[], BaseModel | dict[str, Any]] | None = None,
     data_saver: Callable[[BaseModel], None] | None = None,
@@ -31,8 +30,7 @@ def create_pydantic_ui(
 
     Args:
         model: The Pydantic model class to create a UI for
-        ui_config: Global UI configuration options
-        field_configs: Per-field UI configurations (keyed by field path)
+        ui_config: Global UI configuration options (includes attr_configs for per-field configurations)
         initial_data: Initial data to populate the form
         data_loader: Async function to load data
         data_saver: Async function to save data
@@ -81,7 +79,6 @@ def create_pydantic_ui(
     handler = DataHandler(
         model=model,
         ui_config=ui_config,
-        field_configs=field_configs,
         initial_data=initial_data,
         data_loader=data_loader,
         data_saver=data_saver,

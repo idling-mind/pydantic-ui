@@ -145,25 +145,22 @@ ui_config = UIConfig(
     description="Edit your application configuration",
     collapsible_tree=True,
     show_validation=True,
+    attr_configs={
+        "server.name": FieldConfig(
+            label="Application Name",
+            placeholder="Enter your app name",
+        ),
+        "database.password": FieldConfig(
+            label="Database Password",
+            props={"type": "password"},
+        ),
+    },
 )
-
-# Field-specific configurations (alternative to annotations)
-field_configs = {
-    "server.name": FieldConfig(
-        label="Application Name",
-        placeholder="Enter your app name",
-    ),
-    "database.password": FieldConfig(
-        label="Database Password",
-        props={"type": "password"},
-    ),
-}
 
 # Create and mount the pydantic-ui router
 pydantic_ui_router = create_pydantic_ui(
     model=AppConfig,
     ui_config=ui_config,
-    field_configs=field_configs,
     prefix="/config",
 )
 

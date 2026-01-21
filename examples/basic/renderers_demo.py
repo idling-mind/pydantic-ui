@@ -74,12 +74,12 @@ def main():
             title="New Renderers Demo",
             description="Showcase of Radio Group, Checklist, Segmented Control, and Markdown renderers.",
             show_save_reset=True,
+            attr_configs={
+                "tags": FieldConfig(
+                    renderer=Renderer.MULTI_SELECT,
+                )
+            },
         ),
-        field_configs={
-            "tags": FieldConfig(
-                renderer=Renderer.MULTI_SELECT,
-            )
-        },
     )
 
     app.include_router(ui_router)

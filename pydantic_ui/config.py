@@ -198,3 +198,7 @@ class UIConfig(BaseModel):
         default_factory=dict,
         description="Configuration for specific Pydantic model classes, keyed by class name.",
     )
+    attr_configs: dict[str, FieldConfig] = Field(
+        default_factory=dict,
+        description="Per-field UI configurations keyed by field path (e.g., 'user.name', 'items.[].title').",
+    )

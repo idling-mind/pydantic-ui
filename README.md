@@ -58,13 +58,6 @@ class Person(BaseModel):
     tags: list[str] = []
 
 
-# Field-specific configurations (alternative to annotations)
-field_configs = {
-    "age": FieldConfig(
-        label="User Age",
-        renderer=Renderer.SLIDER,
-    )
-}
 # Create FastAPI app and mount pydantic-ui
 app = FastAPI()
 
@@ -72,8 +65,16 @@ app.include_router(
     create_pydantic_ui(
         Person,
         prefix="/editor",
-        field_configs=field_configs,
-        ui_config=UIConfig(title="Person Editor", show_save_reset=True),
+        ui_config=UIConfig(
+            title="Person Editor",
+            show_save_reset=True,
+            attr_configs={
+                "age": FieldConfig(
+                    label="User Age",
+                    renderer=Renderer.SLIDER,
+                )
+            },
+        ),
     ),
 )
 
@@ -237,35 +238,37 @@ class User(BaseModel):
     admin_email: Annotated[Email, FieldConfig(label="Admin Contact")]
 ```
 
-### Field Configs via Path (Alternative Method)
+### Attr Configs via Path (Alternative Method)
 
-You can also configure fields by path without using `Annotated`:
+You can also configure fields by path without using `Annotated`, using `UIConfig.attr_configs`:
 
 ```python
-field_configs = {
-    # Direct field path
-    "server.name": FieldConfig(
-        label="Application Name",
-        placeholder="Enter your app name",
-    ),
-    
-    # Array item fields using [] syntax
-    "users.[].age": FieldConfig(
-        label="User Age",
-        renderer=Renderer.SLIDER,
-        props={"min": 0, "max": 120, "step": 1},
-    ),
-    
-    # Nested paths
-    "database.password": FieldConfig(
-        label="Database Password",
-        props={"type": "password"},
-    ),
-}
+ui_config = UIConfig(
+    attr_configs={
+        # Direct field path
+        "server.name": FieldConfig(
+            label="Application Name",
+            placeholder="Enter your app name",
+        ),
+        
+        # Array item fields using [] syntax
+        "users.[].age": FieldConfig(
+            label="User Age",
+            renderer=Renderer.SLIDER,
+            props={"min": 0, "max": 120, "step": 1},
+        ),
+        
+        # Nested paths
+        "database.password": FieldConfig(
+            label="Database Password",
+            props={"type": "password"},
+        ),
+    }
+)
 
 pydantic_ui_router = create_pydantic_ui(
     model=AppConfig,
-    field_configs=field_configs,
+    ui_config=ui_config,
     prefix="/config",
 )
 ```
@@ -507,8 +510,7 @@ Complete signature for `create_pydantic_ui`:
 def create_pydantic_ui(
     model: type[BaseModel],           # The Pydantic model class (required)
     *,
-    ui_config: UIConfig | None = None,           # Global UI configuration
-    field_configs: dict[str, FieldConfig] | None = None,  # Per-field configs by path
+    ui_config: UIConfig | None = None,           # Global UI configuration (includes attr_configs)
     initial_data: BaseModel | None = None,       # Initial data to populate form
     data_loader: Callable[[], BaseModel | dict] | None = None,  # Data loader function
     data_saver: Callable[[BaseModel], None] | None = None,      # Data saver function

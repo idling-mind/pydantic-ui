@@ -51,31 +51,28 @@ ui_config = UIConfig(
             confirm="Are you sure you want to save all data?",
         ),
     ],
+    attr_configs={
+        "created_at": FieldConfig(
+            label="Created Date",
+            placeholder="Select a date",
+            renderer=Renderer.DATE_PICKER,
+        ),
+        "contacts.[].value": FieldConfig(
+            label="Value of the type",
+            description="The value associated with the contact type",
+        ),
+        "contacts.[].photo": FieldConfig(
+            label="Photo",
+            description="Path to the contact's photo",
+            renderer=Renderer.FILE_UPLOAD,
+        ),
+    },
 )
-
-# Field-specific configurations (alternative to annotations)
-field_configs = {
-    "created_at": FieldConfig(
-        label="Created Date",
-        placeholder="Select a date",
-        renderer=Renderer.DATE_PICKER,
-    ),
-    "contacts.[].value": FieldConfig(
-        label="Value of the type",
-        description="The value associated with the contact type",
-    ),
-    "contacts.[].photo": FieldConfig(
-        label="Photo",
-        description="Path to the contact's photo",
-        renderer=Renderer.FILE_UPLOAD,
-    ),
-}
 
 # Create and mount the pydantic-ui router
 pydantic_ui_router = create_pydantic_ui(
     model=DeepNestedModel,
     ui_config=ui_config,
-    field_configs=field_configs,
     prefix="/config",
 )
 
