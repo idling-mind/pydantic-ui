@@ -199,6 +199,11 @@ class Settings(BaseModel):
 
 ### Class-Based Configuration
 
+## License ✅
+
+This project is licensed under the MIT License — see the `LICENSE` file for details.
+
+
 You can configure specific classes globally using `class_configs` in `UIConfig`. This is useful when you want to apply the same configuration to a type wherever it appears in your model hierarchy.
 
 ```python
