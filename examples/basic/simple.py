@@ -144,7 +144,7 @@ ui_config = UIConfig(
             icon="check-circle",
             tooltip="Run custom validation",
         ),
-    ]
+    ],
 )
 
 # Create and mount the pydantic-ui router
@@ -155,6 +155,7 @@ pydantic_ui_router = create_pydantic_ui(
 )
 
 app.include_router(pydantic_ui_router)
+
 
 # Custom action handlers using the decorator
 @pydantic_ui_router.action("print")
@@ -170,6 +171,7 @@ async def handle_print(data: dict, controller: PydanticUIController):
     errors = []
 
     print("MyModel data to validate:", data)
+
 
 # Custom endpoint to demonstrate data handling
 @app.get("/api/current-config")

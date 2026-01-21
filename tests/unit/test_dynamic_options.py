@@ -70,9 +70,7 @@ class TestDynamicOptions:
             }
         )
 
-        handler = DataHandler(
-            model=UnionContainer2, ui_config=ui_config
-        )
+        handler = DataHandler(model=UnionContainer2, ui_config=ui_config)
 
         schema = await handler.get_schema()
 
@@ -105,7 +103,9 @@ class TestDynamicOptions:
 
         ui_config = UIConfig(
             attr_configs={
-                "items.[].data.[].name": FieldConfig(renderer=Renderer.SELECT, options_from="sources")
+                "items.[].data.[].name": FieldConfig(
+                    renderer=Renderer.SELECT, options_from="sources"
+                )
             }
         )
 

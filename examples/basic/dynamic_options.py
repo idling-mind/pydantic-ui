@@ -81,9 +81,7 @@ attr_configs = {
 }
 
 app = FastAPI()
-app.include_router(
-    create_pydantic_ui(CompanyData, ui_config=UIConfig(attr_configs=attr_configs))
-)
+app.include_router(create_pydantic_ui(CompanyData, ui_config=UIConfig(attr_configs=attr_configs)))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
