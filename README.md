@@ -447,6 +447,81 @@ if confirmed:
     delete_all_users()
 ```
 
+### Navigation
+
+```python
+# Navigate to a URL
+await controller.navigate_to("https://example.com")
+
+# Open in new tab
+await controller.navigate_to("/reports", new_tab=True)
+```
+
+### File Downloads
+
+```python
+# Trigger a file download in the browser
+# Data must be a base64 data URL
+import base64
+
+content = "Hello, World!"
+b64_content = base64.b64encode(content.encode()).decode()
+data_url = f"data:text/plain;base64,{b64_content}"
+
+await controller.download_file("hello.txt", data_url)
+```
+
+### Progress Bar
+
+```python
+# Show progress bar (0-100)
+await controller.show_progress(50)
+
+# Update progress
+await controller.show_progress(75)
+
+# Hide progress bar
+await controller.hide_progress()
+# Or equivalently:
+await controller.show_progress(None)
+```
+
+### File Uploads
+
+When an action button triggers a file upload, access the uploaded file via the controller:
+
+```python
+@router.action("upload")
+async def handle_upload(data: dict, controller: PydanticUIController):
+    file = controller.uploaded_file
+    if file:
+        # file is a dict with: name, size, type, data (base64 string)
+        print(f"Received: {file['name']} ({file['size']} bytes)")
+        # Decode the base64 data
+        import base64
+        content = base64.b64decode(file['data'])
+```
+
+### Controller Method Reference
+
+| Method | Description |
+|--------|-------------|
+| `show_validation_errors(errors)` | Display validation errors in the UI |
+| `clear_validation_errors()` | Clear all validation errors |
+| `show_toast(message, type, duration)` | Show a toast notification |
+| `broadcast_toast(message, type, duration)` | Show toast to ALL connected sessions |
+| `push_data(data)` | Push new data to the UI |
+| `get_current_data()` | Get current data from session (sync) |
+| `get_model_instance()` | Get validated model instance (sync) |
+| `refresh()` | Tell UI to refresh data from server |
+| `broadcast_refresh()` | Tell ALL UIs to refresh |
+| `request_confirmation(...)` | Show confirmation dialog (async, waits for response) |
+| `navigate_to(url, new_tab)` | Navigate the browser to a URL |
+| `download_file(filename, data)` | Trigger a file download |
+| `show_progress(progress)` | Show progress bar (0-100) or hide (None) |
+| `hide_progress()` | Hide the progress bar |
+| `uploaded_file` | Property: get uploaded file from current action |
+
 ## Data Handlers
 
 ### Custom Data Loading and Saving
