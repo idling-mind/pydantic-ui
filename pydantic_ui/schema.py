@@ -91,7 +91,22 @@ def get_discriminator_values(variant_type: type, discriminator_field: str) -> li
 
 
 def get_variant_name(variant_type: type) -> str:
-    """Get a display name for a union variant."""
+    """Get a display name for a union variant.
+
+    For generic types like list[Person], returns the full type name (e.g., "list[Person]")
+    to enable proper matching with attr_configs paths.
+    """
+    # Handle generic types (List, Dict, etc.) to get full name like "list[Person]"
+    origin = get_origin(variant_type)
+    if origin is not None:
+        args = get_args(variant_type)
+        origin_name = getattr(origin, "__name__", str(origin))
+        if args:
+            args_str = ", ".join(get_python_type_name(arg) for arg in args)
+            return f"{origin_name}[{args_str}]"
+        return origin_name
+
+    # Handle regular types
     if hasattr(variant_type, "__name__"):
         return variant_type.__name__
     return str(variant_type)

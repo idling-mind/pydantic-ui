@@ -75,6 +75,7 @@ class MyModel(BaseModel):
     optional_boolean: bool | None = None
     optional_color: str | None = "#333333"
     optional_complex: str | Person | None = None
+    optional_complex_with_list: str | Person | list[Person] | None = None
     optional_complex_with_default: str | Person | None = "default value"
     optional_list: list[int] | None = None
     my_field: Literal["this", "that", "other"] = Field(
@@ -109,8 +110,12 @@ attr_configs = {
     # ),
     # Configure union variant labels/descriptions using path-based attr_configs
     # Use the variant class name in the path to target specific union variants
-    "optional_complex.Person": FieldConfig(
+    "optional_complex_with_list.Person": FieldConfig(
         label="Person (via attr_config)",
+        help_text="This label and help_text are set via attr_configs path",
+    ),
+    "optional_complex_with_list.list[Person]": FieldConfig(
+        label="List of Persons (via attr_config)",
         help_text="This label and help_text are set via attr_configs path",
     ),
     "optional_complex.str": FieldConfig(
@@ -153,7 +158,7 @@ Here are some example rates:
 | JPY      | 0.009       |
 | SEK      | 0.11        |
 
-Here's the flag for Sweden: ![](https://en.wikipedia.org/wiki/Flag_of_Sweden#/media/File:Flag_of_Sweden.svg)
+Here's the flag for Sweden: ![](https://swedishpress.com/wp-content/uploads/2021/01/Sweden-Flag.jpg)
 
 ```python
 import requests

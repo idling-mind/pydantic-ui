@@ -16,6 +16,7 @@ from pydantic_ui.schema import (
     get_format_for_type,
     get_json_type,
     get_python_type_name,
+    get_variant_name,
     model_to_data,
     parse_field,
     parse_model,
@@ -111,6 +112,43 @@ class TestGetPythonTypeName:
         """Test generic dict type name."""
         result = get_python_type_name(dict[str, int])
         assert "dict" in result.lower()
+
+
+# =============================================================================
+# Tests for get_variant_name()
+# =============================================================================
+
+
+class TestGetVariantName:
+    """Tests for get_variant_name function."""
+
+    def test_simple_types(self):
+        """Test simple type names."""
+        assert get_variant_name(str) == "str"
+        assert get_variant_name(int) == "int"
+        assert get_variant_name(bool) == "bool"
+
+    def test_pydantic_model(self):
+        """Test Pydantic model type name."""
+        assert get_variant_name(Address) == "Address"
+
+    def test_generic_list_with_model(self):
+        """Test generic list with Pydantic model returns full type name.
+
+        This is important for attr_configs matching like 'field.list[Person]'.
+        """
+        result = get_variant_name(list[Address])
+        assert result == "list[Address]"
+
+    def test_generic_list_with_simple_type(self):
+        """Test generic list with simple type."""
+        result = get_variant_name(list[str])
+        assert result == "list[str]"
+
+    def test_generic_dict(self):
+        """Test generic dict type name."""
+        result = get_variant_name(dict[str, int])
+        assert result == "dict[str, int]"
 
 
 # =============================================================================
