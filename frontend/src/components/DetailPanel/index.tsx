@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import FieldHelp from '@/components/FieldHelp';
 import { useData } from '@/context/DataContext';
 import { ObjectEditor, ArrayEditor, ArrayListEditor } from './ObjectEditor';
 import { FieldRenderer } from '@/components/Renderers';
@@ -510,8 +511,12 @@ export function DetailPanel({ className }: DetailPanelProps) {
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
             {getDisplayLabel()}
+            {/* show help icon if selected schema has help text */}
+            {selectedSchema?.ui_config?.help_text && (
+              <FieldHelp helpText={selectedSchema.ui_config.help_text} />
+            )}
           </h2>
           <div className="flex items-center gap-2">
             {errors && errors.length > 0 && (
@@ -528,9 +533,9 @@ export function DetailPanel({ className }: DetailPanelProps) {
             )}
           </div>
         </div>
-        {(selectedSchema?.ui_config?.help_text || selectedSchema?.description) && (
+        {selectedSchema?.description && (
           <p className="text-sm text-muted-foreground">
-            {selectedSchema.ui_config?.help_text || selectedSchema.description}
+            {selectedSchema.description}
           </p>
         )}
         {basePath && (

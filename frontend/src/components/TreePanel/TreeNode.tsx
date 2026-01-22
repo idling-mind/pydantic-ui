@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, List, Hash, ToggleLeft, Type, AlertCircle, Layers } from 'lucide-react';
 import { cn, isFieldVisible } from '@/lib/utils';
+import FieldHelp from '@/components/FieldHelp';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Badge } from '@/components/ui/badge';
@@ -626,7 +627,10 @@ export function TreeNode({
         <span className="w-5 shrink-0" />
       )}
       <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
-      <span className="truncate flex-1">{getNodeLabel(name, schema, path)}</span>
+      <span className="truncate flex-1 flex items-center gap-2">
+        <span className="truncate flex-1">{getNodeLabel(name, schema, path)}</span>
+        {schema.ui_config?.help_text && <FieldHelp helpText={schema.ui_config.help_text} />}
+      </span>
       {/* Show detected variant badge for unions */}
       {isUnion && detectedVariant && (
         <Badge 

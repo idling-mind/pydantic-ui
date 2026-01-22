@@ -1,6 +1,7 @@
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import FieldHelp from '@/components/FieldHelp';
 import { cn, getValueWithDefault } from '@/lib/utils';
 import type { RendererProps } from './types';
 
@@ -29,16 +30,17 @@ export function CheckboxInput({ name, path, schema, value, errors, disabled, onC
             hasError && 'text-destructive'
           )}
         >
-          {label}
-          {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+          <span className="inline-flex items-center gap-2">
+            <span className="truncate">{label}</span>
+            {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+            <FieldHelp helpText={schema.ui_config?.help_text} />
+          </span>
         </Label>
       </div>
       {schema.description && (
         <p className="text-xs text-muted-foreground ml-6">{schema.description}</p>
       )}
-      {schema.ui_config?.help_text && (
-        <p className="text-xs text-muted-foreground ml-6">{schema.ui_config.help_text}</p>
-      )}
+      {/* help_text now shown via FieldHelp next to title */}
       {hasError && (
         <p className="text-xs text-destructive ml-6">{errors[0].message}</p>
       )}

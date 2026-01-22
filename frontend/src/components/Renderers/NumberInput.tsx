@@ -1,6 +1,7 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import FieldHelp from '@/components/FieldHelp';
 import { cn, getValueWithDefault } from '@/lib/utils';
 import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
@@ -32,8 +33,11 @@ export function NumberInput({ name, path, schema, value, errors, disabled, onCha
   return (
     <div className="space-y-2">
       <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
-        {label}
-        {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+        <span className="inline-flex items-center gap-2">
+          <span className="truncate">{label}</span>
+          {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+          <FieldHelp helpText={schema.ui_config?.help_text} />
+        </span>
       </Label>
       <div className="flex items-center gap-1">
         <Input
@@ -60,9 +64,7 @@ export function NumberInput({ name, path, schema, value, errors, disabled, onCha
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>
       )}
-      {schema.ui_config?.help_text && (
-        <p className="text-xs text-muted-foreground">{schema.ui_config.help_text}</p>
-      )}
+      {/* help_text now shown via FieldHelp next to title */}
       {hasError && (
         <p className="text-xs text-destructive">{errors[0].message}</p>
       )}

@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import FieldHelp from '@/components/FieldHelp';
 import type { SchemaField, FieldError } from '@/types';
 
 interface NestedFieldCardProps {
@@ -110,15 +111,18 @@ export function NestedFieldCard({
         <CardContent className="flex items-center gap-3 p-4">
           <div className="flex-shrink-0 opacity-50">{info.icon}</div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium truncate text-sm text-muted-foreground">{label}</h3>
+            <h3 className="font-medium truncate text-sm text-muted-foreground flex items-center gap-2">
+              <span className="truncate">{label}</span>
+              {schema.ui_config?.help_text && <FieldHelp helpText={schema.ui_config.help_text} />}
+            </h3>
             <p className="text-xs text-muted-foreground/70">
               Not configured (optional)
             </p>
-            {(schema.ui_config?.help_text || schema.description) && (
-              <p className="text-xs text-muted-foreground/50 truncate mt-0.5">
-                {schema.ui_config?.help_text || schema.description}
-              </p>
-            )}
+                {schema.description && (
+                  <p className="text-xs text-muted-foreground/50 truncate mt-0.5">
+                    {schema.description}
+                  </p>
+                )}
           </div>
           <Badge 
             variant="outline" 
@@ -156,7 +160,12 @@ export function NestedFieldCard({
         <CardContent className="flex items-center gap-3 p-4">
           <div className="flex-shrink-0">{info.icon}</div>
           <div className="flex-1 min-w-0">
-            <h3 className={cn('font-medium truncate text-sm', hasError && 'text-destructive')}>{label}</h3>
+            <h3 className={cn('font-medium truncate text-sm', hasError && 'text-destructive')}>
+              <span className="inline-flex items-center gap-2">
+                <span className="truncate">{label}</span>
+                {schema.ui_config?.help_text && <FieldHelp helpText={schema.ui_config.help_text} />}
+              </span>
+            </h3>
             <p className="text-xs text-muted-foreground">
               {info.description}
               {info.subtitle && (
@@ -164,10 +173,10 @@ export function NestedFieldCard({
               )}
             </p>
             {(schema.ui_config?.help_text || schema.description) && (
-              <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
-                {schema.ui_config?.help_text || schema.description}
-              </p>
-            )}
+                <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
+                  {schema.description}
+                </p>
+              )}
           </div>
           {hasError && (
             <AlertCircle className="h-4 w-4 text-destructive shrink-0" />

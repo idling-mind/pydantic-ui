@@ -171,15 +171,26 @@
   }
 }
 
-/* Custom scrollbar styles */
+/* Custom scrollbar styles (thinner + appear on hover) */
+/*
+  - Default: invisible (transparent) to keep a clean UI
+  - On hover or focus-within: thumb becomes visible and slightly darker on hover
+  - Uses both standard and WebKit rules for cross-browser support
+*/
 .scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: transparent transparent;
+}
+
+.scrollbar-thin:hover,
+.scrollbar-thin:focus-within {
+  /* Firefox: show thumb when hovered or focused */
+  scrollbar-color: hsl(var(--muted-foreground) / 0.45) transparent;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
@@ -187,12 +198,18 @@
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 4px;
+  background-color: transparent;
+  border-radius: 9999px;
+  transition: background-color 120ms ease, opacity 120ms ease;
+}
+
+.scrollbar-thin:hover::-webkit-scrollbar-thumb,
+.scrollbar-thin:focus-within::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.45);
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background-color: hsl(var(--muted-foreground) / 0.5);
+  background-color: hsl(var(--muted-foreground) / 0.6);
 }
 
 /* Tree lines */

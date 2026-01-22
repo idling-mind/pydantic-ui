@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertCircle, Layers, Check, ChevronRight, Folder, List, Hash, Type, ToggleLeft, Braces } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import FieldHelp from '@/components/FieldHelp';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -285,14 +286,9 @@ function isComplexVariant(variant: UnionVariant): boolean {
 
 /**
  * Get a description for a variant.
- * Priority: ui_config.help_text > description > auto-generated based on type
+ * Priority: description > auto-generated based on type
  */
 function getVariantDescription(variant: UnionVariant): string {
-  // Check ui_config help_text first (from class_configs)
-  if (variant.ui_config?.help_text) {
-    return variant.ui_config.help_text;
-  }
-  
   if (variant.description) {
     return variant.description;
   }
@@ -364,7 +360,6 @@ export function UnionInput({
   const discriminatorField = schema.discriminator?.field;
   
   const label = schema.ui_config?.label || schema.title || name;
-  const helpText = schema.ui_config?.help_text || schema.description;
 
   // Get errors for this field
   const fieldErrors = React.useMemo(() => {
@@ -520,8 +515,13 @@ export function UnionInput({
       {/* Label */}
       <div className="flex items-center gap-2">
         <Layers className="h-4 w-4 text-muted-foreground" />
-        <Label className={cn(hasError && 'text-destructive')}>{label}</Label>
-        {schema.required && <span className="text-destructive">*</span>}
+        <Label className={cn(hasError && 'text-destructive')}>
+          <span className="inline-flex items-center gap-2">
+            <span className="truncate">{label}</span>
+            {schema.required && <span className="text-destructive">*</span>}
+            <FieldHelp helpText={schema.ui_config?.help_text} />
+          </span>
+        </Label>
         <Badge variant="outline" className="ml-auto text-xs">
           Union
         </Badge>
@@ -547,10 +547,7 @@ export function UnionInput({
         treatEmptyStringAsValue={true}
       />
 
-      {/* Help text */}
-      {helpText && (
-        <p className="text-sm text-muted-foreground">{helpText}</p>
-      )}
+      {/* help_text moved to FieldHelp next to title; description is shown where appropriate */}
 
       {/* Error display */}
       {hasError && fieldErrors[0]?.path === path && (
@@ -603,6 +600,9 @@ export function UnionInput({
                     )}>
                       {variantLabel}
                     </h4>
+                    {variant.ui_config?.help_text && (
+                      <FieldHelp helpText={variant.ui_config.help_text} />
+                    )}
                     {isSelected && isComplex && (
                       <Badge variant="secondary" className="text-xs shrink-0">
                         Selected

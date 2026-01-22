@@ -1,6 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Label } from '@/components/ui/label';
+import FieldHelp from '@/components/FieldHelp';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn, getValueWithDefault } from '@/lib/utils';
@@ -20,8 +21,11 @@ export function MarkdownInput({ name, path, schema, value, errors, disabled, onC
   return (
     <div className="space-y-2">
       <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
-        {label}
-        {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+        <span className="inline-flex items-center gap-2">
+          <span className="truncate">{label}</span>
+          {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+          <FieldHelp helpText={schema.ui_config?.help_text} />
+        </span>
       </Label>
       
       <Tabs defaultValue="write" className="w-full">
@@ -62,9 +66,7 @@ export function MarkdownInput({ name, path, schema, value, errors, disabled, onC
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>
       )}
-      {schema.ui_config?.help_text && (
-        <p className="text-xs text-muted-foreground">{schema.ui_config.help_text}</p>
-      )}
+      {/* help_text now shown via FieldHelp next to title */}
       {hasError && (
         <p className="text-xs text-destructive">{errors[0].message}</p>
       )}

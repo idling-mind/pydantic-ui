@@ -7,6 +7,7 @@ This example shows how to create a simple data editing UI for a configuration mo
 # Import pydantic_ui components
 import sys
 from datetime import date, datetime
+from pathlib import Path
 from typing import Annotated, Literal
 
 # StrEnum is available in Python 3.11+, define it for older versions
@@ -132,7 +133,35 @@ ui_config = UIConfig(
     class_configs={
         "Person": FieldConfig(
             label="Person Details",
-            help_text="Details about a person",
+            help_text=Path("c:/tools/dev/pydantic-ui/README.md").read_text(encoding="utf-8"),
+        ),
+        "Compensation": FieldConfig(
+            label="Compensation Details",
+            help_text="""
+# Compensation information including amount and currency
+
+Use this section to specify the compensation details for the person.
+
+You can get the current exchange rates from [ExchangeRate-API](https://www.exchangerate-api.com/).
+
+Here are some example rates:
+
+| Currency | Rate to USD |
+|----------|-------------|
+| EUR      | 1.1         |
+| GBP      | 1.3         |
+| JPY      | 0.009       |
+| SEK      | 0.11        |
+
+Here's the flag for Sweden: ![](https://en.wikipedia.org/wiki/Flag_of_Sweden#/media/File:Flag_of_Sweden.svg)
+
+```python
+import requests
+import sys
+
+comp = Compensation(amount=100000, currency=Currency.SEK)
+```
+"""
         ),
     },
     attr_configs=attr_configs,

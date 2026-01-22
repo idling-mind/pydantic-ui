@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import FieldHelp from '@/components/FieldHelp';
 import {
   Popover,
   PopoverContent,
@@ -75,8 +76,11 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
   return (
     <div className="space-y-2">
       <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
-        {label}
-        {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+        <span className="inline-flex items-center gap-2">
+          <span className="truncate">{label}</span>
+          {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+          <FieldHelp helpText={schema.ui_config?.help_text} />
+        </span>
       </Label>
       <div className={cn('flex gap-2 items-center', includeTime ? 'flex-row' : 'flex-col')}>
         {/*
@@ -140,9 +144,7 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
       {schema.description && (
         <p className="text-xs text-muted-foreground">{schema.description}</p>
       )}
-      {schema.ui_config?.help_text && (
-        <p className="text-xs text-muted-foreground">{schema.ui_config.help_text}</p>
-      )}
+      {/* help_text now shown via FieldHelp next to title */}
       {hasError && (
         <p className="text-xs text-destructive">{errors[0].message}</p>
       )}
