@@ -1,8 +1,8 @@
-from typing import Annotated
-from pydantic import BaseModel, Field
-from pydantic_ui import create_pydantic_ui, FieldConfig, Renderer
 import uvicorn
 from fastapi import FastAPI
+from pydantic import BaseModel, Field
+
+from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui
 
 
 class Subclass(BaseModel):

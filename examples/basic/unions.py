@@ -13,7 +13,7 @@ import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from pydantic_ui import UIConfig, create_pydantic_ui, Renderer
+from pydantic_ui import Renderer, UIConfig, create_pydantic_ui
 
 # ============================================================================
 # Example 1: Discriminated Union with string discriminator

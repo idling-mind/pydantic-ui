@@ -166,7 +166,7 @@ import sys
 
 comp = Compensation(amount=100000, currency=Currency.SEK)
 ```
-"""
+""",
         ),
     },
     attr_configs=attr_configs,
@@ -193,7 +193,7 @@ app.include_router(pydantic_ui_router)
 
 # Custom action handlers using the decorator
 @pydantic_ui_router.action("print")
-async def handle_print(data: dict, controller: PydanticUIController):
+async def handle_print(data: dict, _controller: PydanticUIController):
     """
     Full Pydantic validation + custom business rules.
 
@@ -202,8 +202,6 @@ async def handle_print(data: dict, controller: PydanticUIController):
     2. Add custom business rule validation on top
     3. Convert all errors to the UI format
     """
-    errors = []
-
     print("MyModel data to validate:", data)
 
 
