@@ -821,10 +821,6 @@ export function ArrayListEditor({
 
   return (
     <div className="space-y-4">
-      {schema.description && (
-        <p className="text-sm text-muted-foreground">{schema.description}</p>
-      )}
-
       {/* Show orphaned errors (errors for paths not found in schema) */}
       {errors && errors.length > 0 && (
         <OrphanedErrors
