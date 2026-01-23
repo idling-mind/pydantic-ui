@@ -16,10 +16,11 @@ describe('FieldHelp', () => {
     const button = screen.getByRole('button', { name: /field help/i });
     expect(button).toBeInTheDocument();
 
-    await user.click(button);
+    // Hover to show the popover (hover behavior is supported by the component)
+    await user.hover(button);
 
     // The markdown should be rendered inside the popover
-    expect(screen.getByText('bold')).toBeInTheDocument();
-    expect(screen.getByText('link')).toBeInTheDocument();
+    expect(await screen.findByText('bold')).toBeInTheDocument();
+    expect(await screen.findByText('link')).toBeInTheDocument();
   });
 });

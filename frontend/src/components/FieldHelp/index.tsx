@@ -15,6 +15,7 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const clickLockRef = useRef(false);
 
   // Close popover when mouse leaves both trigger and content
   const handleMouseLeave = () => {
@@ -24,7 +25,7 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
   if (!helpText) return null;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(v) => setOpen(v)}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -33,10 +34,21 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
           ref={triggerRef}
           onMouseEnter={() => setOpen(true)}
           onMouseLeave={(e) => {
-            // Don't close if moving to the popover content
+            // Defer close to avoid racing with click events (relatedTarget can be null during click)
             const relatedTarget = e.relatedTarget as Node | null;
-            if (contentRef.current?.contains(relatedTarget)) return;
-            handleMouseLeave();
+            setTimeout(() => {
+              if (clickLockRef.current) return;
+              if (contentRef.current?.contains(relatedTarget)) return;
+              // Also avoid closing if focus moved into the content
+              if (contentRef.current && contentRef.current.contains(document.activeElement as Node)) return;
+              handleMouseLeave();
+            }, 0);
+          }}
+          onClick={() => {
+            // Ensure clicks open the popover and avoid immediate mouseleave races
+            setOpen(true);
+            clickLockRef.current = true;
+            setTimeout(() => (clickLockRef.current = false), 100);
           }}
           // onFocus={() => setOpen(true)}
           // onBlur={() => setOpen(false)}
@@ -50,10 +62,14 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
         className="w-auto max-w-[36rem] max-h-[60vh] overflow-auto scrollbar-thin"
         ref={contentRef}
         onMouseLeave={(e) => {
-          // Don't close if moving back to the trigger
+          // Defer close to avoid racing with click events
           const relatedTarget = e.relatedTarget as Node | null;
-          if (triggerRef.current?.contains(relatedTarget)) return;
-          handleMouseLeave();
+          setTimeout(() => {
+            if (clickLockRef.current) return;
+            if (triggerRef.current?.contains(relatedTarget)) return;
+            if (triggerRef.current && triggerRef.current.contains(document.activeElement as Node)) return;
+            handleMouseLeave();
+          }, 0);
         }}
         // Prevent events inside the popover from bubbling to document handlers
         onMouseDown={(e) => e.stopPropagation()}
