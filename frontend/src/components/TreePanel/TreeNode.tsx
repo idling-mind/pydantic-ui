@@ -420,9 +420,10 @@ function unionHasExpandableVariants(schema: SchemaField): boolean {
 // For regular fields, use the schema-based fallback chain
 function getNodeLabel(name: string, schema: SchemaField, path: string): string {
   // For array items, the 'name' prop already contains the computed label from getArrayItemLabel
-  // which prioritizes data values (obj.name/label/title) over schema
+  // which prioritizes data values (obj.name/label/title) over schema.
+  // Data-based labels (name/title/label fields) get priority over attr_configs/class_configs.
   if (isArrayItemPath(path)) {
-    return schema.ui_config?.label || name;
+    return name;
   }
   // For regular fields, use the standard fallback chain
   return schema.ui_config?.label || schema.title || name;

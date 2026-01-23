@@ -90,6 +90,9 @@ export function TableView({
       cellStyle: { 
         fontWeight: 'bold',
         color: 'var(--ag-secondary-foreground-color)',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
       },
       valueGetter: (params) => (params.data?.__rowIndex ?? 0) + 1,
       rowDrag: !disabled,
@@ -107,6 +110,11 @@ export function TableView({
     resizable: true,
     editable: !disabled,
     minWidth: 80,
+    cellStyle: {
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
   }), [disabled]);
 
   // Handle grid ready
@@ -278,16 +286,25 @@ export function TableView({
     ? 'hsl(217.2 32.6% 25%)' // Slightly lighter than dark border for visibility
     : 'hsl(214.3 31.8% 85%)'; // Slightly darker than light border
 
+  // Compute solid background colors for rows
+  const evenRowBgColor = isDark 
+    ? 'hsl(222.2 84% 4.9%)' // Dark background
+    : 'hsl(0 0% 100%)'; // Light background (white)
+  
+  const oddRowBgColor = isDark 
+    ? 'hsl(217.2 32.6% 12%)' // Slightly lighter than dark background
+    : 'hsl(210 40% 96.1%)'; // Muted light background
+
   // Apply custom theme based on shadcn/ui variables
   const gridTheme = useMemo(() => {
     return themeQuartz.withParams({
       accentColor: 'hsl(var(--primary))',
-      backgroundColor: 'hsl(var(--background))',
+      backgroundColor: evenRowBgColor,
       foregroundColor: 'hsl(var(--foreground))',
       borderColor: mutedBorderColor,
       headerBackgroundColor: 'hsl(var(--muted))',
       headerTextColor: 'hsl(var(--foreground))',
-      oddRowBackgroundColor: 'hsl(var(--muted) / 0.3)',
+      oddRowBackgroundColor: oddRowBgColor,
       rowHoverColor: 'hsl(var(--accent))',
       selectedRowBackgroundColor: 'hsl(var(--accent))',
       cellHorizontalPaddingScale: 0.8,
@@ -302,7 +319,7 @@ export function TableView({
       headerRowBorder: { style: 'solid', width: 1, color: mutedBorderColor },
       headerColumnBorder: { style: 'solid', width: 1, color: mutedBorderColor },
     });
-  }, [isDark, mutedBorderColor]);
+  }, [isDark, mutedBorderColor, evenRowBgColor, oddRowBgColor]);
 
   // Error display
   const arrayErrors = errors?.filter(e => e.path === path) || [];
@@ -377,6 +394,7 @@ export function TableView({
           'rounded-md border overflow-hidden',
           isDark ? 'ag-theme-quartz-dark' : 'ag-theme-quartz'
         )}
+        style={{ height: 'calc(100vh - 400px)', minHeight: '200px' }}
       >
         <AgGridReact
           ref={gridRef}
@@ -403,7 +421,6 @@ export function TableView({
           rowHeight={36}
           headerHeight={40}
           groupHeaderHeight={36}
-          domLayout="autoHeight"
           stopEditingWhenCellsLoseFocus={true}
           singleClickEdit={true}
           /* Clipboard support */

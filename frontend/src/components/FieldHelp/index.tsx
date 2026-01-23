@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github.css';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 
 interface FieldHelpProps {
   helpText?: string | null;
@@ -12,26 +12,16 @@ interface FieldHelpProps {
 }
 
 export function FieldHelp({ helpText, className }: FieldHelpProps) {
-  if (!helpText) return null;
-
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
-  // Close popover when clicking outside or pressing Escape
-  useEffect(() => {
-    if (!open) return;
+  // Close popover when mouse leaves both trigger and content
+  const handleMouseLeave = () => {
+    setOpen(false);
+  };
 
-    function handleDocMouseDown(e: MouseEvent) {
-      const target = e.target as Node;
-      if (triggerRef.current?.contains(target) || contentRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    document.addEventListener('mousedown', handleDocMouseDown);
-    return () => {
-      document.removeEventListener('mousedown', handleDocMouseDown);
-    };
-  }, [open]);
+  if (!helpText) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -42,7 +32,14 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
           aria-label="Field help"
           ref={triggerRef}
           onMouseEnter={() => setOpen(true)}
-          onFocus={() => setOpen(true)}
+          onMouseLeave={(e) => {
+            // Don't close if moving to the popover content
+            const relatedTarget = e.relatedTarget as Node | null;
+            if (contentRef.current?.contains(relatedTarget)) return;
+            handleMouseLeave();
+          }}
+          // onFocus={() => setOpen(true)}
+          // onBlur={() => setOpen(false)}
         >
           <HelpCircle className="h-4 w-4" />
         </button>
@@ -52,6 +49,12 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
         sideOffset={6}
         className="w-auto max-w-[36rem] max-h-[60vh] overflow-auto scrollbar-thin"
         ref={contentRef}
+        onMouseLeave={(e) => {
+          // Don't close if moving back to the trigger
+          const relatedTarget = e.relatedTarget as Node | null;
+          if (triggerRef.current?.contains(relatedTarget)) return;
+          handleMouseLeave();
+        }}
         // Prevent events inside the popover from bubbling to document handlers
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
