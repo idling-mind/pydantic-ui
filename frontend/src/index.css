@@ -227,6 +227,71 @@
   background-color: hsl(var(--border));
 }
 
+/* 
+ * Field help code highlighting theme switching
+ * highlight.js imports both github.css and github-dark.css
+ * We override the hljs background to use our theme colors
+ * and hide the dark theme styles in light mode (and vice versa)
+ */
+.field-help-content .hljs {
+  background: transparent;
+  padding: 0;
+}
+
+/* Ensure code text is readable in both themes */
+.field-help-content code {
+  color: hsl(var(--foreground));
+}
+
+/* Dark mode: apply github-dark theme colors via CSS custom properties */
+.dark .field-help-content .hljs-keyword,
+.dark .field-help-content .hljs-selector-tag,
+.dark .field-help-content .hljs-literal,
+.dark .field-help-content .hljs-section,
+.dark .field-help-content .hljs-link {
+  color: #ff7b72;
+}
+
+.dark .field-help-content .hljs-string,
+.dark .field-help-content .hljs-title,
+.dark .field-help-content .hljs-name,
+.dark .field-help-content .hljs-type,
+.dark .field-help-content .hljs-attribute,
+.dark .field-help-content .hljs-symbol,
+.dark .field-help-content .hljs-bullet,
+.dark .field-help-content .hljs-addition,
+.dark .field-help-content .hljs-variable,
+.dark .field-help-content .hljs-template-tag,
+.dark .field-help-content .hljs-template-variable {
+  color: #a5d6ff;
+}
+
+.dark .field-help-content .hljs-comment,
+.dark .field-help-content .hljs-quote,
+.dark .field-help-content .hljs-deletion,
+.dark .field-help-content .hljs-meta {
+  color: #8b949e;
+}
+
+.dark .field-help-content .hljs-function .hljs-keyword,
+.dark .field-help-content .hljs-class .hljs-keyword {
+  color: #ff7b72;
+}
+
+.dark .field-help-content .hljs-function .hljs-title,
+.dark .field-help-content .hljs-class .hljs-title {
+  color: #d2a8ff;
+}
+
+.dark .field-help-content .hljs-number,
+.dark .field-help-content .hljs-regexp {
+  color: #79c0ff;
+}
+
+.dark .field-help-content .hljs-built_in {
+  color: #ffa657;
+}
+
 @layer utilities {
   @keyframes progress-indeterminate {
     0% { transform: translateX(-100%); }

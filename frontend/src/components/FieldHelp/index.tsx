@@ -4,7 +4,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github.css';
+import 'highlight.js/styles/github-dark.css';
 import { useState, useRef } from 'react';
+import { cn } from '@/lib/utils';
 
 interface FieldHelpProps {
   helpText?: string | null;
@@ -59,7 +61,7 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
 
       <PopoverContent
         sideOffset={6}
-        className="w-auto max-w-[36rem] max-h-[60vh] overflow-auto scrollbar-thin"
+        className="w-auto max-w-[40rem] max-h-[60vh] overflow-auto scrollbar-thin"
         ref={contentRef}
         onMouseLeave={(e) => {
           // Defer close to avoid racing with click events
@@ -78,39 +80,54 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
         onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="text-sm text-muted-foreground">
-          <div className="prose prose-sm dark:prose-invert max-w-none">
+          <div className="prose prose-sm dark:prose-invert max-w-none field-help-content">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
               components={{
-                img: ({ node, ...props }) => (
-                  // eslint-disable-next-line jsx-a11y/alt-text
-                  <img className="max-w-full h-auto rounded" {...props} />
+                img: ({ node, alt, ...props }) => (
+                  <img 
+                    className="max-w-full h-auto rounded" 
+                    alt={alt ?? 'Help image'} 
+                    {...props} 
+                  />
                 ),
                 table: ({ node, ...props }) => (
                   <table className="min-w-full border-collapse text-sm" {...props} />
                 ),
                 th: ({ node, ...props }) => (
-                  <th className="border px-2 py-1 bg-muted text-left" {...props} />
+                  <th className="border border-border px-2 py-1 bg-muted text-left" {...props} />
                 ),
                 td: ({ node, ...props }) => (
-                  <td className="border px-2 py-1" {...props} />
+                  <td className="border border-border px-2 py-1" {...props} />
                 ),
-                pre: ({ node, ...props }) => (
-                  // Constrain code blocks to a max height and allow scrolling
-                  <pre className="bg-muted p-2 rounded overflow-auto text-sm max-h-[30rem]" {...props} />
+                pre: ({ node, children, ...props }) => (
+                  <pre 
+                    className="!bg-muted/50 p-3 rounded overflow-auto text-sm max-h-[30rem]" 
+                    {...props}
+                  >
+                    {children}
+                  </pre>
                 ),
-                code: ({ node, inline, className, children, ...props }: any) => {
+                code: ({ node, inline, className: codeClassName, children, ...props }: any) => {
                   if (inline) {
                     return (
-                      <code className="bg-muted px-1 rounded text-sm" {...props}>
+                      <code 
+                        className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" 
+                        {...props}
+                      >
                         {children}
                       </code>
                     );
                   }
                   return (
-                    // Ensure long lines can scroll horizontally and block won't exceed parent max height
-                    <code className={"block p-2 rounded bg-muted text-sm whitespace-pre overflow-auto max-h-[28rem] " + (className ?? '')} {...props}>
+                    <code 
+                      className={cn(
+                        'block p-3 rounded text-sm font-mono whitespace-pre overflow-auto',
+                        codeClassName
+                      )} 
+                      {...props}
+                    >
                       {children}
                     </code>
                   );
