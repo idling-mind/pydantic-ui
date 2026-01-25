@@ -534,7 +534,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
           </div>
         </div>
         {selectedSchema?.description && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground truncate">
             {selectedSchema.description}
           </p>
         )}
