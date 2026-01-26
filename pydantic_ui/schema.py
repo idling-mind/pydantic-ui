@@ -422,7 +422,6 @@ def _merge_display_configs(base: DisplayConfig, override: DisplayConfig) -> Disp
         title=override.title if override.title is not None else base.title,
         subtitle=override.subtitle if override.subtitle is not None else base.subtitle,
         help_text=override.help_text if override.help_text is not None else base.help_text,
-        icon=override.icon if override.icon is not None else base.icon,
         tree=merge_view(base.tree, override.tree),
         detail=merge_view(base.detail, override.detail),
         table=merge_view(base.table, override.table),
