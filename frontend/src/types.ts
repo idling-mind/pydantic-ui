@@ -1,5 +1,29 @@
 // Schema types
 
+// View-specific display configuration
+export interface ViewDisplay {
+  title?: string | null;
+  subtitle?: string | null;
+  help_text?: string | null;
+  icon?: string | null;
+}
+
+// Unified display configuration
+export interface DisplayConfig {
+  title?: string | null;
+  subtitle?: string | null;
+  help_text?: string | null;
+  icon?: string | null;
+  // Per-view overrides
+  tree?: ViewDisplay | null;
+  detail?: ViewDisplay | null;
+  table?: ViewDisplay | null;
+  card?: ViewDisplay | null;
+}
+
+// View types for display resolution
+export type ViewType = 'tree' | 'detail' | 'table' | 'card';
+
 // Discriminator configuration for discriminated unions
 export interface DiscriminatorConfig {
   field: string | null;  // The field name used for discrimination, null for callable discriminators
@@ -37,9 +61,8 @@ export interface SchemaField {
   // UI config
   ui_config?: {
     renderer?: string;
-    label?: string;
+    display?: DisplayConfig | null;
     placeholder?: string;
-    help_text?: string;
     hidden?: boolean;
     read_only?: boolean;
     visible_when?: string;

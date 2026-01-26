@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel
 
 from pydantic_ui import (
+    DisplayConfig,
     FieldConfig,
     Renderer,
     UIConfig,
@@ -248,7 +249,7 @@ class TestFieldConfigs:
         ui_config = UIConfig(
             attr_configs={
                 "name": FieldConfig(
-                    label="Full Name",
+                    display=DisplayConfig(title="Full Name"),
                     renderer=Renderer.TEXT_INPUT,
                 ),
             }
@@ -270,4 +271,4 @@ class TestFieldConfigs:
             name_field = schema["fields"]["name"]
             ui_config_field = name_field.get("ui_config")
             if ui_config_field:
-                assert ui_config_field.get("label") == "Full Name"
+                assert ui_config_field.get("display", {}).get("title") == "Full Name"

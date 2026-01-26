@@ -162,7 +162,7 @@ export function TreePanel({ className }: TreePanelProps) {
       if (name.toLowerCase().includes(query)) return true;
       if (field.title?.toLowerCase().includes(query)) return true;
       if (field.description?.toLowerCase().includes(query)) return true;
-      if (field.ui_config?.label?.toLowerCase().includes(query)) return true;
+      if (field.ui_config?.display?.title?.toLowerCase().includes(query)) return true;
       
       // Check children
       if (field.type === 'object' && field.fields) {

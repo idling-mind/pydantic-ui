@@ -51,7 +51,7 @@ class TestGetSchema:
         # Check that ui_config is applied
         name_field = schema["fields"]["name"]
         if name_field.get("ui_config"):
-            assert name_field["ui_config"]["label"] == "Full Name"
+            assert name_field["ui_config"]["display"]["title"] == "Full Name"
 
     @pytest.mark.asyncio
     async def test_schema_response_format(self, client_simple: AsyncClient):

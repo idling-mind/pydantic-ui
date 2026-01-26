@@ -3,11 +3,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import FieldHelp from '@/components/FieldHelp';
 import { cn, getValueWithDefault } from '@/lib/utils';
+import { getFieldLabel, getFieldHelpText, getFieldSubtitle } from '@/lib/displayUtils';
 import type { RendererProps } from './types';
 
 export function CheckboxInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
   const hasError = errors && errors.length > 0;
-  const label = schema.ui_config?.label || schema.title || name;
+  const label = getFieldLabel(schema, name);
+  const helpText = getFieldHelpText(schema);
+  const subtitle = getFieldSubtitle(schema);
   const isReadOnly = disabled || schema.ui_config?.read_only === true;
   
   // Use default value from schema if value is undefined/null
@@ -33,12 +36,12 @@ export function CheckboxInput({ name, path, schema, value, errors, disabled, onC
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
-            <FieldHelp helpText={schema.ui_config?.help_text} />
+            <FieldHelp helpText={helpText} />
           </span>
         </Label>
       </div>
-      {schema.description && (
-        <p className="text-xs text-muted-foreground ml-6">{schema.description}</p>
+      {subtitle && (
+        <p className="text-xs text-muted-foreground ml-6">{subtitle}</p>
       )}
       {/* help_text now shown via FieldHelp next to title */}
       {hasError && (

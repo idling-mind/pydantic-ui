@@ -14,6 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn, createDefaultFromSchema, isFieldVisible } from '@/lib/utils';
+import { getFieldLabel, resolveArrayItemDisplay } from '@/lib/displayUtils';
 import { FieldRenderer } from '@/components/Renderers';
 import { NestedFieldCard } from './NestedFieldCard';
 import { OrphanedErrors } from './OrphanedErrors';
@@ -94,7 +95,7 @@ export function ObjectEditor({
   const { style: gridStyle } = useResponsiveColumns(config);
   
   const fields = schema.fields || {};
-  const label = schema.ui_config?.label || schema.title || name;
+  const label = getFieldLabel(schema, name);
   const currentValue = value || {};
 
   const handleFieldChange = (fieldName: string, fieldValue: unknown) => {
@@ -341,7 +342,7 @@ export function ArrayEditor({
   
   const items = value || [];
   const itemSchema = schema.items;
-  const label = schema.ui_config?.label || schema.title || name;
+  const label = getFieldLabel(schema, name);
   const minItems = schema.min_items;
   const maxItems = schema.max_items;
 
@@ -675,34 +676,15 @@ function formatValue(value: unknown): string {
   return String(value);
 }
 
-// Get a title for an array item based on its schema and value
-function getArrayItemTitle(item: unknown, index: number, itemSchema?: SchemaField): string {
-  if (item === null || item === undefined) {
-    return `Item ${index + 1}`;
+// Get display info for an array item based on its schema and value
+function getArrayItemDisplay(item: unknown, index: number, itemSchema?: SchemaField) {
+  if (!itemSchema) {
+    return { title: `Item ${index + 1}`, subtitle: null };
   }
-
-  // If the schema has a title template or specific display field, use it
-  const titleField = itemSchema?.ui_config?.props?.title_field as string | undefined;
   
-  if (typeof item === 'object' && !Array.isArray(item)) {
-    const obj = item as Record<string, unknown>;
-    
-    // Try to use the title_field from config first
-    if (titleField && obj[titleField] !== undefined) {
-      return String(obj[titleField]);
-    }
-    
-    // Try common name fields
-    const nameField = obj.name || obj.title || obj.label || obj.id;
-    if (nameField && (typeof nameField === 'string' || typeof nameField === 'number')) {
-      return String(nameField);
-    }
-    
-    // Fallback to index
-    return `Item ${index + 1}`;
-  }
-
-  return `Item ${index + 1}`;
+  // Use the unified display resolver which handles templates like "{name}: {age} years old"
+  const display = resolveArrayItemDisplay(itemSchema, item, index, 'card');
+  return { title: display.title, subtitle: display.subtitle };
 }
 
 export function ArrayListEditor({
@@ -886,6 +868,7 @@ export function ArrayListEditor({
           {items.map((item, index) => {
             const itemErrors = getItemErrors(index);
             const hasError = itemErrors.length > 0;
+            const itemDisplay = getArrayItemDisplay(item, index, itemSchema);
             
             return (
             <div key={index} className="space-y-1">
@@ -905,10 +888,10 @@ export function ArrayListEditor({
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className={cn('font-medium truncate text-sm', hasError && 'text-destructive')}>
-                      {getArrayItemTitle(item, index, itemSchema)}
+                      {itemDisplay.title}
                     </h3>
                     <p className="text-xs text-muted-foreground truncate">
-                      {getItemRepr(item)}
+                      {itemDisplay.subtitle || getItemRepr(item)}
                     </p>
                   </div>
                   {hasError && (

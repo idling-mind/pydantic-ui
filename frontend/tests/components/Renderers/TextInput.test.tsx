@@ -67,16 +67,17 @@ describe('TextInput', () => {
     expect(input).toBeDisabled();
   });
 
-  it('shows help text from ui_config', () => {
+  it('shows subtitle from description', () => {
     const props = {
       ...defaultProps,
       schema: {
         ...defaultProps.schema,
-        description: 'This is helpful information',
+        description: 'This is the field subtitle',
       },
     };
     render(<TextInput {...props} />);
-    expect(screen.getByText('This is helpful information')).toBeInTheDocument();
+    // Description should appear as subtitle below the label
+    expect(screen.getByText('This is the field subtitle')).toBeInTheDocument();
   });
 
   it('handles undefined value', () => {

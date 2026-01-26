@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn, createDefaultFromSchema, getValueWithDefault } from '@/lib/utils';
+import { getFieldLabel, getFieldHelpText, getFieldSubtitle } from '@/lib/displayUtils';
 import type { RendererProps } from './types';
 import type { SchemaField, UnionVariant } from '@/types';
 import { FieldRenderer } from '@/components/Renderers';
@@ -232,14 +233,19 @@ function detectCurrentVariant(
 
 /**
  * Get the display label for a variant.
- * Priority: ui_config.label > variant_name (class name) > title > python_type > fallback
+ * Priority: card view override > display.title > variant_name (class name) > title > python_type > fallback
  * For objects: prefers ui_config label or class name for clarity
  * For arrays/primitives: uses python_type (e.g., 'list[str]', 'list[int]') for clarity
  */
 function getVariantLabel(variant: UnionVariant): string {
-  // Check ui_config label first (from class_configs)
-  if (variant.ui_config?.label) {
-    return variant.ui_config.label;
+  // Check for card view override first (union variants are displayed as cards)
+  if (variant.ui_config?.display?.card?.title) {
+    return variant.ui_config.display.card.title;
+  }
+  
+  // Check ui_config display.title (from class_configs)
+  if (variant.ui_config?.display?.title) {
+    return variant.ui_config.display.title;
   }
   
   // For arrays and primitives, python_type provides more useful info (e.g., 'list[str]' vs 'list')
@@ -285,10 +291,20 @@ function isComplexVariant(variant: UnionVariant): boolean {
 }
 
 /**
- * Get a description for a variant.
- * Priority: description > auto-generated based on type
+ * Get a description/subtitle for a variant.
+ * Priority: card view override > display.subtitle > description > auto-generated based on type
  */
 function getVariantDescription(variant: UnionVariant): string {
+  // Check for card view subtitle override first (union variants are displayed as cards)
+  if (variant.ui_config?.display?.card?.subtitle) {
+    return variant.ui_config.display.card.subtitle;
+  }
+  
+  // Check for display.subtitle
+  if (variant.ui_config?.display?.subtitle) {
+    return variant.ui_config.display.subtitle;
+  }
+  
   if (variant.description) {
     return variant.description;
   }
@@ -359,7 +375,9 @@ export function UnionInput({
   const hasDiscriminator = !!schema.discriminator?.field;
   const discriminatorField = schema.discriminator?.field;
   
-  const label = schema.ui_config?.label || schema.title || name;
+  const label = getFieldLabel(schema, name);
+  const helpText = getFieldHelpText(schema);
+  const subtitle = getFieldSubtitle(schema);
 
   // Get errors for this field
   const fieldErrors = React.useMemo(() => {
@@ -513,18 +531,23 @@ export function UnionInput({
   return (
     <div className="space-y-3">
       {/* Label */}
-      <div className="flex items-center gap-2">
-        <Layers className="h-4 w-4 text-muted-foreground" />
-        <Label className={cn(hasError && 'text-destructive')}>
-          <span className="inline-flex items-center gap-2">
-            <span className="truncate">{label}</span>
-            {schema.required && <span className="text-destructive">*</span>}
-            <FieldHelp helpText={schema.ui_config?.help_text} />
-          </span>
-        </Label>
-        <Badge variant="outline" className="ml-auto text-xs">
-          Union
-        </Badge>
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-2">
+          <Layers className="h-4 w-4 text-muted-foreground" />
+          <Label className={cn(hasError && 'text-destructive')}>
+            <span className="inline-flex items-center gap-2">
+              <span className="truncate">{label}</span>
+              {schema.required && <span className="text-destructive">*</span>}
+              <FieldHelp helpText={helpText} />
+            </span>
+          </Label>
+          <Badge variant="outline" className="ml-auto text-xs">
+            Union
+          </Badge>
+        </div>
+        {subtitle && (
+          <p className="text-xs text-muted-foreground ml-6">{subtitle}</p>
+        )}
       </div>
 
       {/* Clear/Reset buttons for optional union fields */}
@@ -600,8 +623,8 @@ export function UnionInput({
                     )}>
                       {variantLabel}
                     </h4>
-                    {variant.ui_config?.help_text && (
-                      <FieldHelp helpText={variant.ui_config.help_text} />
+                    {(variant.ui_config?.display?.card?.help_text || variant.ui_config?.display?.help_text) && (
+                      <FieldHelp helpText={variant.ui_config.display.card?.help_text || variant.ui_config.display.help_text!} />
                     )}
                     {isSelected && isComplex && (
                       <Badge variant="secondary" className="text-xs shrink-0">

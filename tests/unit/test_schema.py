@@ -8,7 +8,7 @@ from typing import Annotated, Any, Literal
 
 import pytest
 
-from pydantic_ui.config import FieldConfig, Renderer
+from pydantic_ui.config import DisplayConfig, FieldConfig, Renderer
 from pydantic_ui.schema import (
     extract_field_config,
     get_constraints,
@@ -466,7 +466,7 @@ class TestParseField:
         """Test parsing Annotated field with FieldConfig."""
         from pydantic.fields import FieldInfo
 
-        config = FieldConfig(renderer=Renderer.SLIDER, help_text="Age slider")
+        config = FieldConfig(renderer=Renderer.SLIDER, display=DisplayConfig(help_text="Age slider"))
         annotated_type = Annotated[int, config]
         result = parse_field("age", FieldInfo(), annotated_type)
         assert result["type"] == "integer"

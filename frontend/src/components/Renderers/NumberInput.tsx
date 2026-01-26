@@ -3,13 +3,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import FieldHelp from '@/components/FieldHelp';
 import { cn, getValueWithDefault } from '@/lib/utils';
+import { getFieldLabel, getFieldHelpText, getFieldSubtitle } from '@/lib/displayUtils';
 import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
 
 export function NumberInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
   const hasError = errors && errors.length > 0;
   const props = schema.ui_config?.props || {};
-  const label = schema.ui_config?.label || schema.title || name;
+  const label = getFieldLabel(schema, name);
+  const helpText = getFieldHelpText(schema);
+  const subtitle = getFieldSubtitle(schema);
   const step = props.step as number | undefined;
   const min = schema.minimum ?? schema.exclusive_minimum;
   const max = schema.maximum ?? schema.exclusive_maximum;
@@ -32,13 +35,18 @@ export function NumberInput({ name, path, schema, value, errors, disabled, onCha
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
-        <span className="inline-flex items-center gap-2">
-          <span className="truncate">{label}</span>
-          {schema.required !== false && <span className="text-destructive ml-1">*</span>}
-          <FieldHelp helpText={schema.ui_config?.help_text} />
-        </span>
-      </Label>
+      <div className="space-y-0.5">
+        <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
+          <span className="inline-flex items-center gap-2">
+            <span className="truncate">{label}</span>
+            {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+            <FieldHelp helpText={helpText} />
+          </span>
+        </Label>
+        {subtitle && (
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        )}
+      </div>
       <div className="flex items-center gap-1">
         <Input
           id={path}
@@ -61,10 +69,7 @@ export function NumberInput({ name, path, schema, value, errors, disabled, onCha
           variant="inline"
         />
       </div>
-      {schema.description && (
-        <p className="text-xs text-muted-foreground">{schema.description}</p>
-      )}
-      {/* help_text now shown via FieldHelp next to title */}
+      {/* description now shown as subtitle above, help_text shown via FieldHelp */}
       {hasError && (
         <p className="text-xs text-destructive">{errors[0].message}</p>
       )}

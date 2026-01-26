@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from pydantic_ui.config import ActionButton, FieldConfig, Renderer, UIConfig
+from pydantic_ui.config import ActionButton, DisplayConfig, FieldConfig, Renderer, UIConfig, ViewDisplay
 
 # =============================================================================
 # Tests for Renderer Enum
@@ -52,9 +52,8 @@ class TestFieldConfig:
         """Test FieldConfig defaults."""
         config = FieldConfig()
         assert config.renderer == Renderer.AUTO
-        assert config.label is None
+        assert config.display is None
         assert config.placeholder is None
-        assert config.help_text is None
         assert config.hidden is False
         assert config.read_only is False
         assert config.visible_when is None
@@ -64,18 +63,17 @@ class TestFieldConfig:
         """Test FieldConfig with all options set."""
         config = FieldConfig(
             renderer=Renderer.SLIDER,
-            label="Custom Label",
+            display=DisplayConfig(title="Custom Label", help_text="This is help text"),
             placeholder="Enter value",
-            help_text="This is help text",
             hidden=True,
             read_only=True,
             visible_when="data.status === 'active'",
             props={"min": 0, "max": 100, "step": 5},
         )
         assert config.renderer == Renderer.SLIDER
-        assert config.label == "Custom Label"
+        assert config.display.title == "Custom Label"
         assert config.placeholder == "Enter value"
-        assert config.help_text == "This is help text"
+        assert config.display.help_text == "This is help text"
         assert config.hidden is True
         assert config.read_only is True
         assert config.visible_when == "data.status === 'active'"
@@ -95,13 +93,13 @@ class TestFieldConfig:
         """Test FieldConfig serialization."""
         config = FieldConfig(
             renderer=Renderer.SLIDER,
-            label="Test",
+            display=DisplayConfig(title="Test"),
             visible_when="data.enabled === true",
             props={"min": 0},
         )
         data = config.model_dump()
         assert data["renderer"] == "slider"  # enum value
-        assert data["label"] == "Test"
+        assert data["display"]["title"] == "Test"
         assert data["visible_when"] == "data.enabled === true"
         assert data["props"] == {"min": 0}
 

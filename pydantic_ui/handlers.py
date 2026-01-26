@@ -89,12 +89,10 @@ class DataHandler:
                         if hasattr(config.renderer, "value")
                         else config.renderer
                     )
-                if hasattr(config, "label") and config.label:
-                    ui_config["label"] = config.label
+                if hasattr(config, "display") and config.display:
+                    ui_config["display"] = config.display.model_dump()
                 if hasattr(config, "placeholder") and config.placeholder:
                     ui_config["placeholder"] = config.placeholder
-                if hasattr(config, "help_text") and config.help_text:
-                    ui_config["help_text"] = config.help_text
                 if hasattr(config, "hidden"):
                     ui_config["hidden"] = config.hidden
                 if hasattr(config, "read_only"):
@@ -126,21 +124,54 @@ class DataHandler:
                             if variant.get("ui_config") is None:
                                 variant["ui_config"] = {}
                             ui_config = variant["ui_config"]
-                            if hasattr(variant_config, "label") and variant_config.label:
-                                ui_config["label"] = variant_config.label
-                            if hasattr(variant_config, "help_text") and variant_config.help_text:
-                                ui_config["help_text"] = variant_config.help_text
+                            if hasattr(variant_config, "display") and variant_config.display:
+                                ui_config["display"] = variant_config.display.model_dump()
                             if hasattr(variant_config, "hidden"):
                                 ui_config["hidden"] = variant_config.hidden
 
-                    # Recurse into variant's fields
-                    if variant.get("fields"):
-                        self._apply_field_configs(variant["fields"], f"{full_path}.")
-                    if variant.get("items"):
-                        self._apply_field_configs_to_items(variant["items"], f"{full_path}.[].")
+                        # Recurse into variant's fields with the variant path as prefix
+                        # e.g., "optional_complex_with_list.Person." so we can match "optional_complex_with_list.Person.name"
+                        if variant.get("fields"):
+                            self._apply_field_configs(variant["fields"], f"{variant_path}.")
+                        if variant.get("items"):
+                            self._apply_field_configs_to_items(variant["items"], f"{variant_path}.[].")
+                    else:
+                        # No variant name, use the base field path
+                        if variant.get("fields"):
+                            self._apply_field_configs(variant["fields"], f"{full_path}.")
+                        if variant.get("items"):
+                            self._apply_field_configs_to_items(variant["items"], f"{full_path}.[].")
 
     def _apply_field_configs_to_items(self, item_schema: dict[str, Any], prefix: str) -> None:
-        """Apply field configurations to array item schema."""
+        """Apply field configurations to array item schema.
+        
+        The prefix should end with ".[]." (e.g., "users.[].").
+        We first check for a config matching the array items path (e.g., "users.[]")
+        and apply it to the item_schema itself, then recurse into its fields.
+        """
+        # Check for config matching this items path (strip the trailing dot)
+        # e.g., prefix="users.[]." -> item_path="users.[]"
+        item_path = prefix.rstrip(".")
+        item_config = self._match_field_config(item_path)
+        if item_config:
+            if item_schema.get("ui_config") is None:
+                item_schema["ui_config"] = {}
+            ui_config = item_schema["ui_config"]
+            if hasattr(item_config, "display") and item_config.display:
+                ui_config["display"] = item_config.display.model_dump()
+            if hasattr(item_config, "renderer") and item_config.renderer:
+                ui_config["renderer"] = (
+                    item_config.renderer.value
+                    if hasattr(item_config.renderer, "value")
+                    else item_config.renderer
+                )
+            if hasattr(item_config, "placeholder") and item_config.placeholder:
+                ui_config["placeholder"] = item_config.placeholder
+            if hasattr(item_config, "hidden"):
+                ui_config["hidden"] = item_config.hidden
+            if hasattr(item_config, "read_only"):
+                ui_config["read_only"] = item_config.read_only
+
         # If items is an object with fields, recurse into those fields
         if item_schema.get("fields"):
             self._apply_field_configs(item_schema["fields"], prefix)

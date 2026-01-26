@@ -26,9 +26,9 @@ describe('FieldHelp', () => {
 
   it('renders fenced code block with padding', async () => {
     const user = userEvent.setup();
-    const codeBlock = '```
+    const codeBlock = `\`\`\`
 const x = 1
-```';
+\`\`\``;
     render(<FieldHelp helpText={codeBlock} />);
 
     const button = screen.getByRole('button', { name: /field help/i });

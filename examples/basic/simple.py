@@ -10,6 +10,8 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Literal
 
+from pydantic_ui.config import DisplayConfig, ViewDisplay
+
 # StrEnum is available in Python 3.11+, define it for older versions
 try:
     from enum import StrEnum
@@ -91,18 +93,48 @@ app = FastAPI(title="Pydantic UI Example")
 # Attribute-specific configurations (alternative to annotations)
 attr_configs = {
     "created": FieldConfig(
-        label="Created Date",
         placeholder="Select a date",
         renderer=Renderer.DATE_PICKER,
+        display=DisplayConfig(
+            title="Creation Date",
+            subtitle="Date when this config was created",
+            help_text="The date when this configuration was created",
+        ),
+    ),
+    "users": FieldConfig(
+        display=DisplayConfig(
+            title="User List",
+            subtitle="List of users",
+            help_text="List of users in the system",
+            tree=ViewDisplay(title="Users - tree", subtitle="This is the users tree view"),
+            card=ViewDisplay(title="Users - card", subtitle="This is the users card view", help_text="Card view help text"),
+            detail=ViewDisplay(title="Users - detail", subtitle="This is the users detail view"),
+        ),
+    ),
+    "users.[]": FieldConfig(
+        display=DisplayConfig(
+            title="{name}: {age} years old",
+            subtitle="User details: {birthday}",
+            tree=ViewDisplay(title="{name} - tree", subtitle="This is the user tree view"),
+        ),
     ),
     "users.[].age": FieldConfig(
-        label="User Age",
         renderer=Renderer.SLIDER,
         props={"min": 0, "max": 120, "step": 1},
+        display=DisplayConfig(
+            title="User Age",
+            subtitle="User's age in years",
+            help_text="Specify the age in years",
+        )
     ),
     "optional_color": FieldConfig(
-        label="Favorite Color",
         renderer=Renderer.COLOR_PICKER,
+        display=DisplayConfig(
+            title="Favorite Color",
+            subtitle="Pick your favorite color",
+            help_text="Pick your favorite color",
+            detail=ViewDisplay(title="Color Picker", subtitle="This is the color picker view"),
+        ),
     ),
     # "my_field": FieldConfig(
     #     label="Custom My Field",
@@ -111,20 +143,43 @@ attr_configs = {
     # Configure union variant labels/descriptions using path-based attr_configs
     # Use the variant class name in the path to target specific union variants
     "optional_complex_with_list.Person": FieldConfig(
-        label="Person (via attr_config)",
-        help_text="This label and help_text are set via attr_configs path",
+        display=DisplayConfig(
+            title="Person (via attr_config)",
+            subtitle="Person variant of the union",
+            help_text="This label and help_text are set via attr_configs path",
+        ),
+    ),
+    "optional_complex_with_list.Person.name": FieldConfig(
+        display=DisplayConfig(
+            title="Person (via attr_config) Name",
+        ),
     ),
     "optional_complex_with_list.list[Person]": FieldConfig(
-        label="List of Persons (via attr_config)",
-        help_text="This label and help_text are set via attr_configs path",
+        display=DisplayConfig(
+            title="List of Persons (via attr_config)",
+            help_text="This label and help_text are set via attr_configs path",
+        ),
     ),
     "optional_complex.str": FieldConfig(
-        label="Some random string",
-        help_text="This is the string variant of the union",
+        display=DisplayConfig(
+            title="Some random string",
+            help_text="This is the string variant of the union",
+        ),
     ),
     "optional_complex_with_default.Person": FieldConfig(
-        label="Person with Default",
-        help_text="Union variant configured via attr_configs instead of class_configs",
+        display=DisplayConfig(
+            title="Person with Default",
+            help_text="Union variant configured via attr_configs instead of class_configs",
+            card=ViewDisplay(title="Person Card", subtitle="This is the person card view"),
+        ),
+    ),
+    "optional_complex_with_default.str": FieldConfig(
+        display=DisplayConfig(
+            title="String with Default",
+            help_text="String variant of union with default value",
+            card=ViewDisplay(title="String Card", subtitle="This is the string card view"),
+            detail=ViewDisplay(title="String Detail", subtitle="This is the string detail view"),
+        ),
     ),
 }
 
@@ -137,12 +192,17 @@ ui_config = UIConfig(
     show_save_reset=True,
     class_configs={
         "Person": FieldConfig(
-            label="Person Details",
-            help_text=Path("c:/tools/dev/pydantic-ui/README.md").read_text(encoding="utf-8"),
+            display=DisplayConfig(
+                title="Person Details",
+                help_text=Path("c:/tools/dev/pydantic-ui/README.md").read_text(encoding="utf-8"),
+                card=ViewDisplay(title="Person Card", subtitle="This is the person card view"),
+                tree=ViewDisplay(title="Person - tree", subtitle="This is the person tree view"),
+            ),
         ),
         "Compensation": FieldConfig(
-            label="Compensation Details",
-            help_text="""
+            display=DisplayConfig(
+                title="Compensation Details",
+                help_text="""
 # Compensation information including amount and currency
 
 Use this section to specify the compensation details for the person.
@@ -167,7 +227,8 @@ import sys
 comp = Compensation(amount=100000, currency=Currency.SEK)
 ```
 """,
-        ),
+            ),
+        )
     },
     attr_configs=attr_configs,
     actions=[

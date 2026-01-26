@@ -68,15 +68,16 @@ describe('NumberInput', () => {
     expect(input).toHaveValue(123);
   });
 
-  it('shows help text from ui_config', () => {
+  it('shows subtitle from description', () => {
     const props = {
       ...defaultProps,
       schema: {
         ...defaultProps.schema,
-        description: 'Enter a number',
+        description: 'Enter a valid number',
       },
     };
     render(<NumberInput {...props} />);
-    expect(screen.getByText('Enter a number')).toBeInTheDocument();
+    // Description should appear as subtitle below the label
+    expect(screen.getByText('Enter a valid number')).toBeInTheDocument();
   });
 });
