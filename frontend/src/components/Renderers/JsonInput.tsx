@@ -3,11 +3,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import FieldHelp from '@/components/FieldHelp';
 import { cn, getValueWithDefault } from '@/lib/utils';
+import { getFieldLabel, getFieldHelpText, getFieldSubtitle } from '@/lib/displayUtils';
 import type { RendererProps } from './types';
 
 export function JsonInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
   const props = schema.ui_config?.props || {};
-  const label = schema.ui_config?.label || schema.title || name;
+  const label = getFieldLabel(schema, name);
+  const helpText = getFieldHelpText(schema);
+  const subtitle = getFieldSubtitle(schema);
   const rows = (props.rows as number) || 8;
   const isReadOnly = disabled || schema.ui_config?.read_only === true;
   
@@ -58,13 +61,18 @@ export function JsonInput({ name, path, schema, value, errors, disabled, onChang
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={path} className={cn(hasErrors && 'text-destructive')}>
-        <span className="inline-flex items-center gap-2">
-          <span className="truncate">{label}</span>
-          {schema.required !== false && <span className="text-destructive ml-1">*</span>}
-          <FieldHelp helpText={schema.ui_config?.help_text} />
-        </span>
-      </Label>
+      <div className="space-y-0.5">
+        <Label htmlFor={path} className={cn(hasErrors && 'text-destructive')}>
+          <span className="inline-flex items-center gap-2">
+            <span className="truncate">{label}</span>
+            {schema.required !== false && <span className="text-destructive ml-1">*</span>}
+            <FieldHelp helpText={helpText} />
+          </span>
+        </Label>
+        {subtitle && (
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        )}
+      </div>
       <Textarea
         id={path}
         value={textValue}
@@ -79,9 +87,6 @@ export function JsonInput({ name, path, schema, value, errors, disabled, onChang
           isReadOnly && 'bg-muted cursor-not-allowed'
         )}
       />
-      {schema.description && (
-        <p className="text-xs text-muted-foreground">{schema.description}</p>
-      )}
       {/* help_text now shown via FieldHelp next to title */}
       {hasErrors && (
         <p className="text-xs text-destructive">{combinedErrors[0].message}</p>

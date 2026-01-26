@@ -85,7 +85,7 @@ class ConfigResponse(BaseModel):
     """Response for the /api/config endpoint."""
 
     title: str
-    description: str
+    subtitle: str
     theme: str
     read_only: bool
     show_validation: bool

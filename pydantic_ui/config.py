@@ -7,6 +7,81 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
+@dataclass
+class ViewDisplay:
+    """Per-view display overrides.
+
+    All fields are optional - unset fields fall back to the parent DisplayConfig values.
+
+    Example:
+        ViewDisplay(
+            title="Port",  # Shorter title for tree view
+        )
+    """
+
+    title: str | None = None
+    subtitle: str | None = None
+    help_text: str | None = None
+
+    def model_dump(self) -> dict[str, Any]:
+        """Return a dict representation."""
+        return {
+            "title": self.title,
+            "subtitle": self.subtitle,
+            "help_text": self.help_text,
+        }
+
+
+@dataclass
+class DisplayConfig:
+    """Unified display configuration for a field or object.
+
+    Defines how title, subtitle, help text, and icon are displayed across all views.
+    Per-view overrides allow customizing display for specific contexts (tree, detail, table, card).
+
+    Title and subtitle support template syntax with curly braces to reference data fields:
+    - "{name}" → value of data.name
+    - "{address.city}" → value of data.address.city
+    - "{name} ({role})" → combines multiple fields with static text
+
+    Example:
+        DisplayConfig(
+            title="Server Configuration",
+            subtitle="Primary application server",
+            help_text="Configure the main server settings here.",
+            tree=ViewDisplay(title="Server"),  # Shorter in tree view
+        )
+
+    For array items, use templates to derive display from item data:
+        DisplayConfig(
+            title="{name}",
+            subtitle="{role} - {department}",
+        )
+    """
+
+    title: str | None = None
+    subtitle: str | None = None
+    help_text: str | None = None
+
+    # Per-view overrides
+    tree: ViewDisplay | None = None
+    detail: ViewDisplay | None = None
+    table: ViewDisplay | None = None
+    card: ViewDisplay | None = None
+
+    def model_dump(self) -> dict[str, Any]:
+        """Return a dict representation."""
+        return {
+            "title": self.title,
+            "subtitle": self.subtitle,
+            "help_text": self.help_text,
+            "tree": self.tree.model_dump() if self.tree else None,
+            "detail": self.detail.model_dump() if self.detail else None,
+            "table": self.table.model_dump() if self.table else None,
+            "card": self.card.model_dump() if self.card else None,
+        }
+
+
 class ActionButton(BaseModel):
     """Configuration for a custom action button.
 
@@ -79,12 +154,27 @@ class FieldConfig:
     Use with Annotated types to customize how fields are rendered:
 
         from typing import Annotated
-        from pydantic_ui import FieldConfig, Renderer
+        from pydantic_ui import FieldConfig, Renderer, DisplayConfig
 
         class MyModel(BaseModel):
             age: Annotated[int, FieldConfig(
                 renderer=Renderer.SLIDER,
+                display=DisplayConfig(
+                    title="User Age",
+                    subtitle="Age in years",
+                    help_text="Enter age between 0 and 120",
+                ),
                 props={"min": 0, "max": 120}
+            )]
+
+    For array items, use template syntax to derive display from data:
+
+        class MyModel(BaseModel):
+            users: Annotated[list[User], FieldConfig(
+                display=DisplayConfig(
+                    title="{name}",
+                    subtitle="{role} - {department}",
+                )
             )]
 
     Use visible_when to conditionally show/hide fields based on JavaScript logic:
@@ -101,9 +191,8 @@ class FieldConfig:
     """
 
     renderer: Renderer | str = Renderer.AUTO
-    label: str | None = None
+    display: DisplayConfig | None = None
     placeholder: str | None = None
-    help_text: str | None = None
     hidden: bool = False
     read_only: bool = False
     visible_when: str | None = None
@@ -116,9 +205,8 @@ class FieldConfig:
             "renderer": self.renderer.value
             if isinstance(self.renderer, Renderer)
             else self.renderer,
-            "label": self.label,
+            "display": self.display.model_dump() if self.display else None,
             "placeholder": self.placeholder,
-            "help_text": self.help_text,
             "hidden": self.hidden,
             "read_only": self.read_only,
             "visible_when": self.visible_when,
@@ -134,9 +222,9 @@ class UIConfig(BaseModel):
         default="Data Editor",
         description="Title shown in the header and as default for root panel",
     )
-    description: str = Field(
+    subtitle: str = Field(
         default="",
-        description="Description shown below the title",
+        description="Subtitle shown below the title, overrides model docstring on main page",
     )
     logo_text: str | None = Field(
         default=None,
@@ -185,14 +273,6 @@ class UIConfig(BaseModel):
     responsive_columns: dict[int, int] = Field(
         default_factory=lambda: {640: 1, 1000: 2, 1600: 3},
         description="Responsive column breakpoints. Keys are max-width in pixels, values are number of columns. E.g., {640: 1, 1000: 2, 1600: 3} means 1 column up to 640px, 2 columns from 640-1000px, 3 columns above 1000px.",
-    )
-    footer_text: str = Field(
-        default="Powered by Pydantic UI",
-        description="Text shown in the footer. Set to empty string to hide footer.",
-    )
-    footer_url: str = Field(
-        default="https://github.com/idling-mind/pydantic-ui",
-        description="URL that the footer links to",
     )
     class_configs: dict[str, FieldConfig] = Field(
         default_factory=dict,

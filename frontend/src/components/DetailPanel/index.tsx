@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { resolveDisplay, resolveArrayItemDisplay } from '@/lib/displayUtils';
 import FieldHelp from '@/components/FieldHelp';
 import { useData } from '@/context/DataContext';
 import { ObjectEditor, ArrayEditor, ArrayListEditor } from './ObjectEditor';
@@ -361,25 +362,63 @@ export function DetailPanel({ className }: DetailPanelProps) {
   // Check if current path is an array item
   const isArrayItemPath = (path: string): boolean => /\[\d+\]$/.test(path);
   
-  // Get the display label for the header - same logic as TreeNode
-  const getDisplayLabel = (): string => {
-    if (!selectedSchema) return config?.title || 'Data Editor';
-    if (!basePath) return selectedSchema.ui_config?.label || selectedSchema.title || config?.title || 'Data Editor';
-    
-    // For array items, try to get label from data (name/label/title fields)
-    if (isArrayItemPath(basePath) && selectedValue && typeof selectedValue === 'object' && !Array.isArray(selectedValue)) {
-      const obj = selectedValue as Record<string, unknown>;
-      const nameField = obj.name || obj.label || obj.title;
-      if (nameField && typeof nameField === 'string') {
-        return nameField;
-      }
-      // Fall back to schema label or python type
-      if (selectedSchema.ui_config?.label) return selectedSchema.ui_config.label;
-      if (selectedSchema.python_type) return selectedSchema.python_type;
+  // Extract array index from path like "users[2]" -> 2
+  const getArrayIndex = (path: string): number | undefined => {
+    const match = path.match(/\[(\d+)\]$/);
+    return match ? parseInt(match[1], 10) : undefined;
+  };
+  
+  // Get the display properties for the header using the unified resolver
+  const getDisplayInfo = () => {
+    if (!selectedSchema) {
+      return { title: config?.title || 'Data Editor', helpText: null, subtitle: null };
     }
     
-    return selectedSchema.ui_config?.label || selectedSchema.title || basePath;
+    const name = basePath ? basePath.split(/[.\[]/).pop()?.replace(']', '') || '' : '';
+    
+    // For array items, use the array item display resolver with data
+    if (basePath && isArrayItemPath(basePath)) {
+      const index = getArrayIndex(basePath);
+      const display = resolveArrayItemDisplay(
+        selectedSchema,
+        selectedValue,
+        index ?? 0,
+        'detail'
+      );
+      return display;
+    }
+    
+    // For union types with a selected value, use the detected variant's schema for display
+    if (selectedSchema.type === 'union' && selectedValue !== null && selectedValue !== undefined) {
+      const storedVariant = variantSelections.get(basePath);
+      const detectedVariant = detectVariant(selectedSchema, selectedValue, storedVariant);
+      if (detectedVariant) {
+        // Use the variant's display config (which may come from class_configs or attr_configs)
+        // Cast to UnionVariant to access variant_name
+        const variantName = (detectedVariant as { variant_name?: string }).variant_name || 
+                            detectedVariant.title || name || 'Value';
+        const display = resolveDisplay({
+          schema: detectedVariant,
+          view: 'detail',
+          name: variantName,
+          data: selectedValue,
+        });
+        return display;
+      }
+    }
+    
+    // For root or regular fields
+    const display = resolveDisplay({
+      schema: selectedSchema,
+      view: 'detail',
+      name: name || config?.title || 'Data Editor',
+      data: selectedValue,
+    });
+    
+    return display;
   };
+  
+  const displayInfo = getDisplayInfo();
 
   // Get errors for the current selection
   const getRelevantErrors = () => {
@@ -512,10 +551,10 @@ export function DetailPanel({ className }: DetailPanelProps) {
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            {getDisplayLabel()}
+            {displayInfo.title}
             {/* show help icon if selected schema has help text */}
-            {selectedSchema?.ui_config?.help_text && (
-              <FieldHelp helpText={selectedSchema.ui_config.help_text} />
+            {displayInfo.helpText && (
+              <FieldHelp helpText={displayInfo.helpText} />
             )}
           </h2>
           <div className="flex items-center gap-2">
@@ -533,9 +572,9 @@ export function DetailPanel({ className }: DetailPanelProps) {
             )}
           </div>
         </div>
-        {selectedSchema?.description && (
-          <p className="text-sm text-muted-foreground">
-            {selectedSchema.description}
+        {displayInfo.subtitle && (
+          <p className="text-sm text-muted-foreground truncate">
+            {displayInfo.subtitle}
           </p>
         )}
         {basePath && (

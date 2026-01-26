@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui
+from pydantic_ui import DisplayConfig, FieldConfig, Renderer, UIConfig, create_pydantic_ui
 
 
 class Address(BaseModel):
@@ -18,15 +18,20 @@ class User(BaseModel):
     address: Address
     # This one overrides class config
     billing_address: Annotated[
-        Address, FieldConfig(label="Billing Address", help_text="Where to send the bill")
+        Address,
+        FieldConfig(
+            display=DisplayConfig(title="Billing Address", subtitle="Where to send the bill")
+        ),
     ]
 
 
 # Define class configs
 class_configs = {
     "Address": FieldConfig(
-        label="Global Address Label",
-        help_text="Global address help text",
+        display=DisplayConfig(
+            title="Global Address Label",
+            subtitle="Global address help text",
+        ),
         renderer=Renderer.JSON,  # Just to test renderer override
     )
 }

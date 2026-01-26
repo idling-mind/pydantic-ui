@@ -61,8 +61,8 @@ const rendererMap: Record<string, React.ComponentType<RendererProps>> = {
 
 // Determine the best renderer based on schema
 function getDefaultRenderer(schema: SchemaField): string {
-  // Check for explicit renderer in ui_config
-  if (schema.ui_config?.renderer) {
+  // Check for explicit renderer in ui_config (but ignore 'auto')
+  if (schema.ui_config?.renderer && schema.ui_config.renderer !== 'auto') {
     return schema.ui_config.renderer;
   }
 

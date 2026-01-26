@@ -1,5 +1,6 @@
 import type { SchemaField } from '@/types';
 import type { ColDef, ColGroupDef, ValueGetterParams, ValueSetterParams } from 'ag-grid-community';
+import { resolveDisplay } from './displayUtils';
 
 /**
  * Represents a flattened field with its full path and schema
@@ -396,6 +397,11 @@ export function generateColumnDefs(
     const isArray = field.schema.type === 'array';
     const hasEnum = !!(field.schema.enum || field.schema.literal_values);
 
+    // Use the display resolver for table view to get the label
+    const display = resolveDisplay({ schema: field.schema, view: 'table', name: headerName });
+    const displayLabel = display.title;
+    const displayTooltip = display.helpText || field.schema.description || field.path;
+
     // Calculate min/max for numeric columns
     let minMax: { min: number; max: number } | undefined;
     if (isNumeric && rowData.length > 0) {
@@ -418,8 +424,8 @@ export function generateColumnDefs(
 
     const colDef: ColDef = {
       field: field.path,
-      headerName: headerName,
-      headerTooltip: field.schema.description || field.path,
+      headerName: displayLabel,
+      headerTooltip: displayTooltip,
       editable: !field.schema.ui_config?.read_only && !isArray,
       sortable: true,
       filter: filterType,
@@ -555,10 +561,13 @@ export function generateFlatColumnDefs(
     // Get cell editor configuration
     const editorConfig = getCellEditorForType(field.schema);
 
+    // Use the display resolver to get proper label and tooltip
+    const display = resolveDisplay({ schema: field.schema, view: 'table', name: field.path });
+
     const colDef: ColDef = {
       field: field.path,
-      headerName: field.path, // Use full path as header
-      headerTooltip: field.schema.description || field.path,
+      headerName: display.title, // Use resolved display title
+      headerTooltip: display.helpText || field.schema.description || field.path,
       editable: !field.schema.ui_config?.read_only && !isArray,
       sortable: true,
       filter: true,

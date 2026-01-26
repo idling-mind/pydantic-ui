@@ -9,7 +9,25 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
-from pydantic_ui.config import FieldConfig, Renderer
+from pydantic_ui.config import DisplayConfig, FieldConfig, Renderer, ViewDisplay
+
+
+def build_ui_config(field_config: FieldConfig) -> dict[str, Any]:
+    """Build the ui_config dict from a FieldConfig."""
+    return {
+        "renderer": (
+            field_config.renderer.value
+            if isinstance(field_config.renderer, Renderer)
+            else field_config.renderer
+        ),
+        "display": field_config.display.model_dump() if field_config.display else None,
+        "placeholder": field_config.placeholder,
+        "hidden": field_config.hidden,
+        "read_only": field_config.read_only,
+        "visible_when": field_config.visible_when,
+        "options_from": field_config.options_from,
+        "props": field_config.props,
+    }
 
 
 def extract_discriminator(field_info: FieldInfo) -> dict[str, Any] | None:
@@ -212,21 +230,7 @@ def parse_union_field(
     # Extract field config
     field_config = extract_field_config(field_info, type(None), class_configs)
     if field_config:
-        result["ui_config"] = {
-            "renderer": (
-                field_config.renderer.value
-                if isinstance(field_config.renderer, Renderer)
-                else field_config.renderer
-            ),
-            "label": field_config.label,
-            "placeholder": field_config.placeholder,
-            "help_text": field_config.help_text,
-            "hidden": field_config.hidden,
-            "read_only": field_config.read_only,
-            "visible_when": field_config.visible_when,
-            "options_from": field_config.options_from,
-            "props": field_config.props,
-        }
+        result["ui_config"] = build_ui_config(field_config)
     else:
         result["ui_config"] = None
 
@@ -353,9 +357,8 @@ def extract_field_config(
             # Start with a copy of class config
             new_config = FieldConfig(
                 renderer=config.renderer,
-                label=config.label,
+                display=config.display,
                 placeholder=config.placeholder,
-                help_text=config.help_text,
                 hidden=config.hidden,
                 read_only=config.read_only,
                 visible_when=config.visible_when,
@@ -366,12 +369,16 @@ def extract_field_config(
             # Apply annotated config properties that are NOT their defaults
             if annotated_config.renderer != Renderer.AUTO:
                 new_config.renderer = annotated_config.renderer
-            if annotated_config.label is not None:
-                new_config.label = annotated_config.label
+            if annotated_config.display is not None:
+                # Merge display configs if both exist
+                if new_config.display is not None:
+                    new_config.display = _merge_display_configs(
+                        new_config.display, annotated_config.display
+                    )
+                else:
+                    new_config.display = annotated_config.display
             if annotated_config.placeholder is not None:
                 new_config.placeholder = annotated_config.placeholder
-            if annotated_config.help_text is not None:
-                new_config.help_text = annotated_config.help_text
             if annotated_config.hidden is True:
                 new_config.hidden = True
             if annotated_config.read_only is True:
@@ -388,6 +395,38 @@ def extract_field_config(
         return annotated_config
 
     return config
+
+
+def _merge_display_configs(base: DisplayConfig, override: DisplayConfig) -> DisplayConfig:
+    """Merge two DisplayConfig objects, with override taking precedence."""
+
+    def merge_view(
+        base_view: ViewDisplay | None, override_view: ViewDisplay | None
+    ) -> ViewDisplay | None:
+        if override_view is None:
+            return base_view
+        if base_view is None:
+            return override_view
+        return ViewDisplay(
+            title=override_view.title if override_view.title is not None else base_view.title,
+            subtitle=override_view.subtitle
+            if override_view.subtitle is not None
+            else base_view.subtitle,
+            help_text=override_view.help_text
+            if override_view.help_text is not None
+            else base_view.help_text,
+            icon=override_view.icon if override_view.icon is not None else base_view.icon,
+        )
+
+    return DisplayConfig(
+        title=override.title if override.title is not None else base.title,
+        subtitle=override.subtitle if override.subtitle is not None else base.subtitle,
+        help_text=override.help_text if override.help_text is not None else base.help_text,
+        tree=merge_view(base.tree, override.tree),
+        detail=merge_view(base.detail, override.detail),
+        table=merge_view(base.table, override.table),
+        card=merge_view(base.card, override.card),
+    )
 
 
 def get_constraints(field_info: FieldInfo, field_type: type) -> dict[str, Any]:
@@ -466,23 +505,7 @@ def parse_field(
 
         # Extract field config
         field_config = extract_field_config(field_info, field_type, class_configs)
-        ui_config = None
-        if field_config:
-            ui_config = {
-                "renderer": (
-                    field_config.renderer.value
-                    if isinstance(field_config.renderer, Renderer)
-                    else field_config.renderer
-                ),
-                "label": field_config.label,
-                "placeholder": field_config.placeholder,
-                "help_text": field_config.help_text,
-                "hidden": field_config.hidden,
-                "read_only": field_config.read_only,
-                "visible_when": field_config.visible_when,
-                "options_from": field_config.options_from,
-                "props": field_config.props,
-            }
+        ui_config = build_ui_config(field_config) if field_config else None
 
         return {
             "type": json_type,
@@ -508,23 +531,7 @@ def parse_field(
 
         # Extract field config
         field_config = extract_field_config(field_info, field_type, class_configs)
-        ui_config = None
-        if field_config:
-            ui_config = {
-                "renderer": (
-                    field_config.renderer.value
-                    if isinstance(field_config.renderer, Renderer)
-                    else field_config.renderer
-                ),
-                "label": field_config.label,
-                "placeholder": field_config.placeholder,
-                "help_text": field_config.help_text,
-                "hidden": field_config.hidden,
-                "read_only": field_config.read_only,
-                "visible_when": field_config.visible_when,
-                "options_from": field_config.options_from,
-                "props": field_config.props,
-            }
+        ui_config = build_ui_config(field_config) if field_config else None
 
         return {
             "type": get_json_type(field_type),
@@ -543,23 +550,7 @@ def parse_field(
 
         # Extract field config
         field_config = extract_field_config(field_info, field_type, class_configs)
-        ui_config = None
-        if field_config:
-            ui_config = {
-                "renderer": (
-                    field_config.renderer.value
-                    if isinstance(field_config.renderer, Renderer)
-                    else field_config.renderer
-                ),
-                "label": field_config.label,
-                "placeholder": field_config.placeholder,
-                "help_text": field_config.help_text,
-                "hidden": field_config.hidden,
-                "read_only": field_config.read_only,
-                "visible_when": field_config.visible_when,
-                "options_from": field_config.options_from,
-                "props": field_config.props,
-            }
+        ui_config = build_ui_config(field_config) if field_config else None
 
         return {
             "type": "array",
@@ -579,23 +570,7 @@ def parse_field(
 
         # Extract field config
         field_config = extract_field_config(field_info, field_type, class_configs)
-        ui_config = None
-        if field_config:
-            ui_config = {
-                "renderer": (
-                    field_config.renderer.value
-                    if isinstance(field_config.renderer, Renderer)
-                    else field_config.renderer
-                ),
-                "label": field_config.label,
-                "placeholder": field_config.placeholder,
-                "help_text": field_config.help_text,
-                "hidden": field_config.hidden,
-                "read_only": field_config.read_only,
-                "visible_when": field_config.visible_when,
-                "options_from": field_config.options_from,
-                "props": field_config.props,
-            }
+        ui_config = build_ui_config(field_config) if field_config else None
 
         return {
             "type": "object",
@@ -628,21 +603,7 @@ def parse_field(
         # Extract and add ui_config for nested models
         field_config = extract_field_config(field_info, field_type, class_configs)
         if field_config:
-            result["ui_config"] = {
-                "renderer": (
-                    field_config.renderer.value
-                    if isinstance(field_config.renderer, Renderer)
-                    else field_config.renderer
-                ),
-                "label": field_config.label,
-                "placeholder": field_config.placeholder,
-                "help_text": field_config.help_text,
-                "hidden": field_config.hidden,
-                "read_only": field_config.read_only,
-                "visible_when": field_config.visible_when,
-                "options_from": field_config.options_from,
-                "props": field_config.props,
-            }
+            result["ui_config"] = build_ui_config(field_config)
         return result
 
     # Handle datetime types
@@ -650,23 +611,7 @@ def parse_field(
 
     # Extract field config
     field_config = extract_field_config(field_info, field_type, class_configs)
-    ui_config = None
-    if field_config:
-        ui_config = {
-            "renderer": (
-                field_config.renderer.value
-                if isinstance(field_config.renderer, Renderer)
-                else field_config.renderer
-            ),
-            "label": field_config.label,
-            "placeholder": field_config.placeholder,
-            "help_text": field_config.help_text,
-            "hidden": field_config.hidden,
-            "read_only": field_config.read_only,
-            "visible_when": field_config.visible_when,
-            "options_from": field_config.options_from,
-            "props": field_config.props,
-        }
+    ui_config = build_ui_config(field_config) if field_config else None
 
     # Primitive types
     default_value = None

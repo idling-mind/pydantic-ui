@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, List, Hash, ToggleLeft, Type, AlertCircle, Layers } from 'lucide-react';
 import { cn, isFieldVisible } from '@/lib/utils';
+import { resolveDisplay, resolveArrayItemDisplay } from '@/lib/displayUtils';
 import FieldHelp from '@/components/FieldHelp';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ContextMenuTrigger } from '@/components/ui/context-menu';
@@ -35,6 +36,9 @@ interface TreeNodeProps {
   // For array items - parent array path and index for delete functionality
   parentArrayPath?: string;
   arrayIndex?: number;
+  // Search highlighting
+  matchedPaths?: Set<string>;
+  searchQuery?: string;
 }
 
 interface ConnectedTreeNodeProps {
@@ -55,6 +59,9 @@ interface ConnectedTreeNodeProps {
   multiSelectedPaths?: Set<string>;
   onMultiSelect?: (path: string, additive: boolean) => void;
   onMultiPaste?: (paths: string[], data: unknown) => void;
+  // Search highlighting
+  matchedPaths?: Set<string>;
+  searchQuery?: string;
 }
 
 // Helper to get value at a path that may include array indices
@@ -94,50 +101,15 @@ function getValueAtPath(data: unknown, path: string): unknown {
 }
 
 // Get the label for an array item based on its value and schema
-// Priority for list items:
-// 1. object.name/object.label/object.title (from data)
-// 2. schema.ui_config?.label (FieldConfig.label from items schema)
-// 3. schema.python_type or class name
-// 4. Fallback to `Item {index + 1}`
+// Uses the unified display resolver with template support
 function getArrayItemLabel(item: unknown, index: number, itemSchema?: SchemaField): string {
-  if (item === null || item === undefined) {
-    // Try schema-based fallbacks for null/undefined items
-    if (itemSchema?.ui_config?.label) {
-      return `${itemSchema.ui_config.label} ${index + 1}`;
-    }
-    if (itemSchema?.python_type) {
-      return `${itemSchema.python_type} ${index + 1}`;
-    }
+  if (!itemSchema) {
     return `Item ${index + 1}`;
   }
-  
-  if (typeof item === 'object' && !Array.isArray(item)) {
-    // For objects, try to find a name/label/title field from the data
-    const obj = item as Record<string, unknown>;
-    const nameField = obj.name || obj.label || obj.title;
-    if (nameField && typeof nameField === 'string') {
-      return nameField;
-    }
-    
-    // Fall back to schema-based label
-    if (itemSchema?.ui_config?.label) {
-      return `${itemSchema.ui_config.label} ${index + 1}`;
-    }
-    
-    // Fall back to python type / class name
-    if (itemSchema?.python_type) {
-      return `${itemSchema.python_type} ${index + 1}`;
-    }
-    
-    return `Item ${index + 1}`;
-  }
-  
-  // For primitives, show the value
-  const str = String(item);
-  if (str.length > 30) {
-    return str.substring(0, 27) + '...';
-  }
-  return str;
+
+  // Use the display resolver for array items
+  const display = resolveArrayItemDisplay(itemSchema, item, index, 'tree');
+  return display.title;
 }
 
 function getTypeIcon(type: string, isExpanded: boolean) {
@@ -387,9 +359,13 @@ function detectCurrentVariant(
 
 /**
  * Get the variant label for display in the tree.
- * Shows the discriminator value, python_type for arrays/primitives, or variant name.
+ * Priority: ui_config.display.title > discriminator values > python_type > variant_name
  */
 function getVariantLabel(variant: UnionVariant): string {
+  // Check for display config title first (from class_configs or attr_configs)
+  if (variant.ui_config?.display?.title) {
+    return variant.ui_config.display.title;
+  }
   // Prefer discriminator values (e.g., "cat", "dog")
   if (variant.discriminator_values && variant.discriminator_values.length > 0) {
     return String(variant.discriminator_values[0]);
@@ -417,16 +393,16 @@ function unionHasExpandableVariants(schema: SchemaField): boolean {
 
 // Get the display label for a node
 // For array items, prefer the computed name from data (e.g., "Weld A")
-// For regular fields, use the schema-based fallback chain
+// For regular fields, use the unified display resolver
 function getNodeLabel(name: string, schema: SchemaField, path: string): string {
   // For array items, the 'name' prop already contains the computed label from getArrayItemLabel
-  // which prioritizes data values (obj.name/label/title) over schema.
-  // Data-based labels (name/title/label fields) get priority over attr_configs/class_configs.
+  // which uses the display resolver with template support.
   if (isArrayItemPath(path)) {
     return name;
   }
-  // For regular fields, use the standard fallback chain
-  return schema.ui_config?.label || schema.title || name;
+  // For regular fields, use the display resolver for tree view
+  const display = resolveDisplay({ schema, view: 'tree', name });
+  return display.title;
 }
 
 export function TreeNode({
@@ -450,8 +426,42 @@ export function TreeNode({
   onMultiPaste,
   parentArrayPath,
   arrayIndex,
+  matchedPaths,
+  searchQuery,
 }: TreeNodeProps) {
   const { data, variantSelections } = useData();
+  
+  // Check if this node is a direct match (not just a parent of a match)
+  const isDirectMatch = matchedPaths && searchQuery && matchedPaths.has(path);
+  
+  // Helper to highlight matched text
+  const highlightText = (text: string): React.ReactNode => {
+    if (!searchQuery || !isDirectMatch) {
+      return text;
+    }
+    
+    const lowerText = text.toLowerCase();
+    const lowerQuery = searchQuery.toLowerCase();
+    const index = lowerText.indexOf(lowerQuery);
+    
+    if (index === -1) {
+      return text;
+    }
+    
+    const before = text.slice(0, index);
+    const match = text.slice(index, index + searchQuery.length);
+    const after = text.slice(index + searchQuery.length);
+    
+    return (
+      <>
+        {before}
+        <mark className="bg-yellow-300 dark:bg-yellow-600 font-medium px-0.5 rounded">
+          {match}
+        </mark>
+        {highlightText(after)}
+      </>
+    );
+  };
   const isArray = schema.type === 'array';
   const isUnion = schema.type === 'union' && schema.variants;
   
@@ -629,8 +639,10 @@ export function TreeNode({
       )}
       <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
       <span className="truncate flex-1 flex items-center gap-2">
-        <span className="truncate flex-1">{getNodeLabel(name, schema, path)}</span>
-        {schema.ui_config?.help_text && <FieldHelp helpText={schema.ui_config.help_text} />}
+        <span className="truncate flex-1">{highlightText(getNodeLabel(name, schema, path))}</span>
+        {resolveDisplay({ schema, view: 'tree', name }).helpText && (
+          <FieldHelp helpText={resolveDisplay({ schema, view: 'tree', name }).helpText!} />
+        )}
       </span>
       {/* Show detected variant badge for unions */}
       {isUnion && detectedVariant && (
@@ -709,7 +721,7 @@ export function TreeNode({
           )}
         </button>
         <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
-        <span className="truncate flex-1">{getNodeLabel(name, schema, path)}</span>
+        <span className="truncate flex-1">{highlightText(getNodeLabel(name, schema, path))}</span>
         {/* Show detected variant badge for unions */}
         {isUnion && detectedVariant && (
           <Badge 
@@ -764,7 +776,16 @@ export function TreeNode({
             style={{ left: `${depth * 16 + 18}px` }}
           />
           {/* Render object children (including union variant fields) */}
-          {children.map(([childName, childSchema]) => {
+          {children
+            .filter(([childName]) => {
+              // If searching, only show children that are in matchedPaths
+              if (searchQuery && matchedPaths && matchedPaths.size > 0) {
+                const childPath = `${path}.${childName}`;
+                return matchedPaths.has(childPath);
+              }
+              return true;
+            })
+            .map(([childName, childSchema]) => {
             const childPath = `${path}.${childName}`;
             const childErrorCount = getErrorCountForPath(childPath);
             return (
@@ -787,11 +808,23 @@ export function TreeNode({
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiSelect={onMultiSelect}
                 onMultiPaste={onMultiPaste}
+                matchedPaths={matchedPaths}
+                searchQuery={searchQuery}
               />
             );
           })}
           {/* Render array items as sub-nodes */}
-          {isArray && Array.isArray(arrayData) && arrayData.map((item, index) => {
+          {isArray && Array.isArray(arrayData) && arrayData
+            .map((item, index) => ({ item, index }))
+            .filter(({ index }) => {
+              // If searching, only show array items that are in matchedPaths
+              if (searchQuery && matchedPaths && matchedPaths.size > 0) {
+                const itemPath = `${path}[${index}]`;
+                return matchedPaths.has(itemPath);
+              }
+              return true;
+            })
+            .map(({ item, index }) => {
             const itemPath = `${path}[${index}]`;
             const itemSchema = schema.items || { type: 'object' };
             const itemLabel = getArrayItemLabel(item, index, itemSchema);
@@ -826,6 +859,8 @@ export function TreeNode({
                   onMultiPaste={onMultiPaste}
                   parentArrayPath={path}
                   arrayIndex={index}
+                  matchedPaths={matchedPaths}
+                  searchQuery={searchQuery}
                 />
               );
             }
@@ -864,6 +899,8 @@ export function TreeNode({
                   onMultiPaste={onMultiPaste}
                   parentArrayPath={path}
                   arrayIndex={index}
+                  matchedPaths={matchedPaths}
+                  searchQuery={searchQuery}
                 />
               );
             }
@@ -1099,6 +1136,9 @@ interface UnionArrayItemNodeProps {
   onMultiPaste?: (paths: string[], data: unknown) => void;
   parentArrayPath?: string;
   arrayIndex?: number;
+  // Search highlighting
+  matchedPaths?: Set<string>;
+  searchQuery?: string;
 }
 
 function UnionArrayItemNode({
@@ -1122,6 +1162,8 @@ function UnionArrayItemNode({
   onMultiPaste,
   parentArrayPath,
   arrayIndex,
+  matchedPaths,
+  searchQuery,
 }: UnionArrayItemNodeProps) {
   const { data, variantSelections } = useData();
   const isMultiSelected = multiSelectedPaths.has(path);
@@ -1290,7 +1332,16 @@ function UnionArrayItemNode({
             style={{ left: `${depth * 16 + 18}px` }}
           />
           {/* Render union variant's object children */}
-          {children.map(([childName, childSchema]) => {
+          {children
+            .filter(([childName]) => {
+              // If searching, only show children that are in matchedPaths
+              if (searchQuery && matchedPaths && matchedPaths.size > 0) {
+                const childPath = `${path}.${childName}`;
+                return matchedPaths.has(childPath);
+              }
+              return true;
+            })
+            .map(([childName, childSchema]) => {
             const childPath = `${path}.${childName}`;
             const childErrorCount = getErrorCountForPath(childPath);
             return (
@@ -1313,12 +1364,24 @@ function UnionArrayItemNode({
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiSelect={onMultiSelect}
                 onMultiPaste={onMultiPaste}
+                matchedPaths={matchedPaths}
+                searchQuery={searchQuery}
               />
             );
           })}
           {/* Render union variant's array items */}
           {detectedVariant?.variant.type === 'array' && 
-           Array.isArray(variantArrayData) && (variantArrayData as unknown[]).map((arrayItem, index) => {
+           Array.isArray(variantArrayData) && (variantArrayData as unknown[])
+            .map((arrayItem, index) => ({ arrayItem, index }))
+            .filter(({ index }) => {
+              // If searching, only show array items that are in matchedPaths
+              if (searchQuery && matchedPaths && matchedPaths.size > 0) {
+                const itemPath = `${path}[${index}]`;
+                return matchedPaths.has(itemPath);
+              }
+              return true;
+            })
+            .map(({ arrayItem, index }) => {
             const itemPath = `${path}[${index}]`;
             const variantItemSchema = detectedVariant.variant.items || { type: 'object' };
             const itemLabel = getArrayItemLabel(arrayItem, index, variantItemSchema);
@@ -1351,6 +1414,8 @@ function UnionArrayItemNode({
                   onMultiPaste={onMultiPaste}
                   parentArrayPath={path}
                   arrayIndex={index}
+                  matchedPaths={matchedPaths}
+                  searchQuery={searchQuery}
                 />
               );
             }
@@ -1404,6 +1469,8 @@ export function ConnectedTreeNode({
   multiSelectedPaths = new Set(),
   onMultiSelect,
   onMultiPaste,
+  matchedPaths,
+  searchQuery,
 }: ConnectedTreeNodeProps) {
   const errorCount = getErrorCountForPath(path);
   
@@ -1427,6 +1494,8 @@ export function ConnectedTreeNode({
       multiSelectedPaths={multiSelectedPaths}
       onMultiSelect={onMultiSelect}
       onMultiPaste={onMultiPaste}
+      matchedPaths={matchedPaths}
+      searchQuery={searchQuery}
     />
   );
 }

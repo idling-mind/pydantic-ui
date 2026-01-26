@@ -15,7 +15,7 @@ interface LayoutProps {
 export function Layout({}: LayoutProps) {
   const { config } = useData();
   const { progress } = useEvents();
-  const [panelWidth, setPanelWidth] = React.useState(280);
+  const [panelWidth, setPanelWidth] = React.useState(300);
   const [isDragging, setIsDragging] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -92,10 +92,7 @@ export function Layout({}: LayoutProps) {
         </div>
       </div>
 
-      <Footer 
-        text={config?.footer_text}
-        url={config?.footer_url}
-      />
+      <Footer/>
     </div>
   );
 }

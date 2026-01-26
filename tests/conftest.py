@@ -19,7 +19,14 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel, Field
 
-from pydantic_ui import ActionButton, FieldConfig, Renderer, UIConfig, create_pydantic_ui
+from pydantic_ui import (
+    ActionButton,
+    DisplayConfig,
+    FieldConfig,
+    Renderer,
+    UIConfig,
+    create_pydantic_ui,
+)
 from pydantic_ui.handlers import DataHandler
 from pydantic_ui.sessions import Session, SessionManager
 
@@ -117,7 +124,7 @@ class AnnotatedModel(BaseModel):
         int,
         FieldConfig(
             renderer=Renderer.SLIDER,
-            help_text="Your age",
+            display=DisplayConfig(help_text="Your age"),
             props={"min": 0, "max": 120},
         ),
     ] = 30
@@ -278,7 +285,7 @@ def custom_ui_config() -> UIConfig:
     """Return custom UI configuration."""
     return UIConfig(
         title="Custom Editor",
-        description="A custom editor",
+        subtitle="A custom editor",
         theme="dark",
         show_validation=True,
         auto_save=True,
@@ -290,9 +297,8 @@ def custom_ui_config() -> UIConfig:
         show_save_reset=True,
         attr_configs={
             "name": FieldConfig(
-                label="Full Name",
+                display=DisplayConfig(title="Full Name", help_text="Your legal name"),
                 placeholder="Enter your name",
-                help_text="Your legal name",
             ),
             "age": FieldConfig(
                 renderer=Renderer.SLIDER,
@@ -300,7 +306,7 @@ def custom_ui_config() -> UIConfig:
             ),
             # Wildcard pattern for array items
             "tasks.[].title": FieldConfig(
-                label="Task Title",
+                display=DisplayConfig(title="Task Title"),
                 placeholder="What needs to be done?",
             ),
         },

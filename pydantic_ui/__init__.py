@@ -6,7 +6,14 @@ Pydantic models with tree navigation and customizable field renderers.
 """
 
 from pydantic_ui.app import create_pydantic_ui
-from pydantic_ui.config import ActionButton, FieldConfig, Renderer, UIConfig
+from pydantic_ui.config import (
+    ActionButton,
+    DisplayConfig,
+    FieldConfig,
+    Renderer,
+    UIConfig,
+    ViewDisplay,
+)
 from pydantic_ui.controller import PydanticUIController
 
 __version__ = "0.1.0"
@@ -16,5 +23,7 @@ __all__ = [
     "FieldConfig",
     "Renderer",
     "ActionButton",
+    "DisplayConfig",
+    "ViewDisplay",
     "PydanticUIController",
 ]

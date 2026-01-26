@@ -5,7 +5,13 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from pydantic_ui.config import ActionButton, FieldConfig, Renderer, UIConfig
+from pydantic_ui.config import (
+    ActionButton,
+    DisplayConfig,
+    FieldConfig,
+    Renderer,
+    UIConfig,
+)
 
 # =============================================================================
 # Tests for Renderer Enum
@@ -52,9 +58,8 @@ class TestFieldConfig:
         """Test FieldConfig defaults."""
         config = FieldConfig()
         assert config.renderer == Renderer.AUTO
-        assert config.label is None
+        assert config.display is None
         assert config.placeholder is None
-        assert config.help_text is None
         assert config.hidden is False
         assert config.read_only is False
         assert config.visible_when is None
@@ -64,18 +69,17 @@ class TestFieldConfig:
         """Test FieldConfig with all options set."""
         config = FieldConfig(
             renderer=Renderer.SLIDER,
-            label="Custom Label",
+            display=DisplayConfig(title="Custom Label", help_text="This is help text"),
             placeholder="Enter value",
-            help_text="This is help text",
             hidden=True,
             read_only=True,
             visible_when="data.status === 'active'",
             props={"min": 0, "max": 100, "step": 5},
         )
         assert config.renderer == Renderer.SLIDER
-        assert config.label == "Custom Label"
+        assert config.display.title == "Custom Label"
         assert config.placeholder == "Enter value"
-        assert config.help_text == "This is help text"
+        assert config.display.help_text == "This is help text"
         assert config.hidden is True
         assert config.read_only is True
         assert config.visible_when == "data.status === 'active'"
@@ -95,13 +99,13 @@ class TestFieldConfig:
         """Test FieldConfig serialization."""
         config = FieldConfig(
             renderer=Renderer.SLIDER,
-            label="Test",
+            display=DisplayConfig(title="Test"),
             visible_when="data.enabled === true",
             props={"min": 0},
         )
         data = config.model_dump()
         assert data["renderer"] == "slider"  # enum value
-        assert data["label"] == "Test"
+        assert data["display"]["title"] == "Test"
         assert data["visible_when"] == "data.enabled === true"
         assert data["props"] == {"min": 0}
 
@@ -199,7 +203,7 @@ class TestUIConfig:
         """Test UIConfig defaults."""
         config = UIConfig()
         assert config.title == "Data Editor"
-        assert config.description == ""
+        assert config.subtitle == ""
         assert config.logo_text is None
         assert config.logo_url is None
         assert config.theme == "system"
@@ -211,8 +215,6 @@ class TestUIConfig:
         assert config.show_types is True
         assert config.actions == []
         assert config.show_save_reset is False
-        assert config.footer_text == "Powered by Pydantic UI"
-        assert config.footer_url == "https://github.com/idling-mind/pydantic-ui"
 
     def test_all_options(self):
         """Test UIConfig with all options."""
@@ -222,7 +224,7 @@ class TestUIConfig:
         ]
         config = UIConfig(
             title="Custom Editor",
-            description="A custom configuration editor",
+            subtitle="A custom configuration editor",
             logo_text="CE",
             logo_url="https://example.com/logo.png",
             theme="dark",
@@ -234,11 +236,9 @@ class TestUIConfig:
             show_types=False,
             actions=actions,
             show_save_reset=True,
-            footer_text="Custom Footer",
-            footer_url="https://example.com",
         )
         assert config.title == "Custom Editor"
-        assert config.description == "A custom configuration editor"
+        assert config.subtitle == "A custom configuration editor"
         assert config.logo_text == "CE"
         assert config.logo_url == "https://example.com/logo.png"
         assert config.theme == "dark"
@@ -250,8 +250,6 @@ class TestUIConfig:
         assert config.show_types is False
         assert len(config.actions) == 2
         assert config.show_save_reset is True
-        assert config.footer_text == "Custom Footer"
-        assert config.footer_url == "https://example.com"
 
     def test_with_actions(self):
         """Test UIConfig with action buttons."""
