@@ -466,7 +466,9 @@ class TestParseField:
         """Test parsing Annotated field with FieldConfig."""
         from pydantic.fields import FieldInfo
 
-        config = FieldConfig(renderer=Renderer.SLIDER, display=DisplayConfig(help_text="Age slider"))
+        config = FieldConfig(
+            renderer=Renderer.SLIDER, display=DisplayConfig(help_text="Age slider")
+        )
         annotated_type = Annotated[int, config]
         result = parse_field("age", FieldInfo(), annotated_type)
         assert result["type"] == "integer"

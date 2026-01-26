@@ -17,7 +17,8 @@ class User(BaseModel):
     name: str
     address: Address
     billing_address: Annotated[
-        Address, FieldConfig(display=DisplayConfig(title="Billing Address", help_text="Specific help"))
+        Address,
+        FieldConfig(display=DisplayConfig(title="Billing Address", help_text="Specific help")),
     ]
 
 

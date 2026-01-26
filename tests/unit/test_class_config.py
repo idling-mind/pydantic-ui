@@ -27,7 +27,9 @@ class User(BaseModel):
     address: Address
     email: Email
     # Override class config with Annotated
-    backup_email: Annotated[Email, FieldConfig(renderer=Renderer.TEXT_INPUT, display=DisplayConfig(title="Backup"))]
+    backup_email: Annotated[
+        Email, FieldConfig(renderer=Renderer.TEXT_INPUT, display=DisplayConfig(title="Backup"))
+    ]
     favorite_color: Color
     tags: Annotated[list[str], FieldConfig(renderer="tag_input")]
 
@@ -36,7 +38,9 @@ def test_class_config_priority():
     """Test that class configs are applied and respected with correct priority."""
     # Define class config for Address
     class_configs = {
-        "Address": FieldConfig(renderer="custom_address_renderer", display=DisplayConfig(title="Residential Address")),
+        "Address": FieldConfig(
+            renderer="custom_address_renderer", display=DisplayConfig(title="Residential Address")
+        ),
         "Email": FieldConfig(renderer=Renderer.EMAIL, placeholder="example@example.com"),
         "Color": FieldConfig(renderer=Renderer.SELECT, display=DisplayConfig(title="Pick a color")),
     }

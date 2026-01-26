@@ -36,6 +36,9 @@ interface TreeNodeProps {
   // For array items - parent array path and index for delete functionality
   parentArrayPath?: string;
   arrayIndex?: number;
+  // Search highlighting
+  matchedPaths?: Set<string>;
+  searchQuery?: string;
 }
 
 interface ConnectedTreeNodeProps {
@@ -56,6 +59,9 @@ interface ConnectedTreeNodeProps {
   multiSelectedPaths?: Set<string>;
   onMultiSelect?: (path: string, additive: boolean) => void;
   onMultiPaste?: (paths: string[], data: unknown) => void;
+  // Search highlighting
+  matchedPaths?: Set<string>;
+  searchQuery?: string;
 }
 
 // Helper to get value at a path that may include array indices
@@ -420,8 +426,42 @@ export function TreeNode({
   onMultiPaste,
   parentArrayPath,
   arrayIndex,
+  matchedPaths,
+  searchQuery,
 }: TreeNodeProps) {
   const { data, variantSelections } = useData();
+  
+  // Check if this node is a direct match (not just a parent of a match)
+  const isDirectMatch = matchedPaths && searchQuery && matchedPaths.has(path);
+  
+  // Helper to highlight matched text
+  const highlightText = (text: string): React.ReactNode => {
+    if (!searchQuery || !isDirectMatch) {
+      return text;
+    }
+    
+    const lowerText = text.toLowerCase();
+    const lowerQuery = searchQuery.toLowerCase();
+    const index = lowerText.indexOf(lowerQuery);
+    
+    if (index === -1) {
+      return text;
+    }
+    
+    const before = text.slice(0, index);
+    const match = text.slice(index, index + searchQuery.length);
+    const after = text.slice(index + searchQuery.length);
+    
+    return (
+      <>
+        {before}
+        <mark className="bg-yellow-300 dark:bg-yellow-600 font-medium px-0.5 rounded">
+          {match}
+        </mark>
+        {highlightText(after)}
+      </>
+    );
+  };
   const isArray = schema.type === 'array';
   const isUnion = schema.type === 'union' && schema.variants;
   
@@ -599,7 +639,7 @@ export function TreeNode({
       )}
       <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
       <span className="truncate flex-1 flex items-center gap-2">
-        <span className="truncate flex-1">{getNodeLabel(name, schema, path)}</span>
+        <span className="truncate flex-1">{highlightText(getNodeLabel(name, schema, path))}</span>
         {resolveDisplay({ schema, view: 'tree', name }).helpText && (
           <FieldHelp helpText={resolveDisplay({ schema, view: 'tree', name }).helpText!} />
         )}
@@ -681,7 +721,7 @@ export function TreeNode({
           )}
         </button>
         <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
-        <span className="truncate flex-1">{getNodeLabel(name, schema, path)}</span>
+        <span className="truncate flex-1">{highlightText(getNodeLabel(name, schema, path))}</span>
         {/* Show detected variant badge for unions */}
         {isUnion && detectedVariant && (
           <Badge 
@@ -736,7 +776,16 @@ export function TreeNode({
             style={{ left: `${depth * 16 + 18}px` }}
           />
           {/* Render object children (including union variant fields) */}
-          {children.map(([childName, childSchema]) => {
+          {children
+            .filter(([childName]) => {
+              // If searching, only show children that are in matchedPaths
+              if (searchQuery && matchedPaths && matchedPaths.size > 0) {
+                const childPath = `${path}.${childName}`;
+                return matchedPaths.has(childPath);
+              }
+              return true;
+            })
+            .map(([childName, childSchema]) => {
             const childPath = `${path}.${childName}`;
             const childErrorCount = getErrorCountForPath(childPath);
             return (
@@ -759,11 +808,23 @@ export function TreeNode({
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiSelect={onMultiSelect}
                 onMultiPaste={onMultiPaste}
+                matchedPaths={matchedPaths}
+                searchQuery={searchQuery}
               />
             );
           })}
           {/* Render array items as sub-nodes */}
-          {isArray && Array.isArray(arrayData) && arrayData.map((item, index) => {
+          {isArray && Array.isArray(arrayData) && arrayData
+            .map((item, index) => ({ item, index }))
+            .filter(({ index }) => {
+              // If searching, only show array items that are in matchedPaths
+              if (searchQuery && matchedPaths && matchedPaths.size > 0) {
+                const itemPath = `${path}[${index}]`;
+                return matchedPaths.has(itemPath);
+              }
+              return true;
+            })
+            .map(({ item, index }) => {
             const itemPath = `${path}[${index}]`;
             const itemSchema = schema.items || { type: 'object' };
             const itemLabel = getArrayItemLabel(item, index, itemSchema);
@@ -798,6 +859,8 @@ export function TreeNode({
                   onMultiPaste={onMultiPaste}
                   parentArrayPath={path}
                   arrayIndex={index}
+                  matchedPaths={matchedPaths}
+                  searchQuery={searchQuery}
                 />
               );
             }
@@ -836,6 +899,8 @@ export function TreeNode({
                   onMultiPaste={onMultiPaste}
                   parentArrayPath={path}
                   arrayIndex={index}
+                  matchedPaths={matchedPaths}
+                  searchQuery={searchQuery}
                 />
               );
             }
@@ -1071,6 +1136,9 @@ interface UnionArrayItemNodeProps {
   onMultiPaste?: (paths: string[], data: unknown) => void;
   parentArrayPath?: string;
   arrayIndex?: number;
+  // Search highlighting
+  matchedPaths?: Set<string>;
+  searchQuery?: string;
 }
 
 function UnionArrayItemNode({
@@ -1094,6 +1162,8 @@ function UnionArrayItemNode({
   onMultiPaste,
   parentArrayPath,
   arrayIndex,
+  matchedPaths,
+  searchQuery,
 }: UnionArrayItemNodeProps) {
   const { data, variantSelections } = useData();
   const isMultiSelected = multiSelectedPaths.has(path);
@@ -1262,7 +1332,16 @@ function UnionArrayItemNode({
             style={{ left: `${depth * 16 + 18}px` }}
           />
           {/* Render union variant's object children */}
-          {children.map(([childName, childSchema]) => {
+          {children
+            .filter(([childName]) => {
+              // If searching, only show children that are in matchedPaths
+              if (searchQuery && matchedPaths && matchedPaths.size > 0) {
+                const childPath = `${path}.${childName}`;
+                return matchedPaths.has(childPath);
+              }
+              return true;
+            })
+            .map(([childName, childSchema]) => {
             const childPath = `${path}.${childName}`;
             const childErrorCount = getErrorCountForPath(childPath);
             return (
@@ -1285,12 +1364,24 @@ function UnionArrayItemNode({
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiSelect={onMultiSelect}
                 onMultiPaste={onMultiPaste}
+                matchedPaths={matchedPaths}
+                searchQuery={searchQuery}
               />
             );
           })}
           {/* Render union variant's array items */}
           {detectedVariant?.variant.type === 'array' && 
-           Array.isArray(variantArrayData) && (variantArrayData as unknown[]).map((arrayItem, index) => {
+           Array.isArray(variantArrayData) && (variantArrayData as unknown[])
+            .map((arrayItem, index) => ({ arrayItem, index }))
+            .filter(({ index }) => {
+              // If searching, only show array items that are in matchedPaths
+              if (searchQuery && matchedPaths && matchedPaths.size > 0) {
+                const itemPath = `${path}[${index}]`;
+                return matchedPaths.has(itemPath);
+              }
+              return true;
+            })
+            .map(({ arrayItem, index }) => {
             const itemPath = `${path}[${index}]`;
             const variantItemSchema = detectedVariant.variant.items || { type: 'object' };
             const itemLabel = getArrayItemLabel(arrayItem, index, variantItemSchema);
@@ -1323,6 +1414,8 @@ function UnionArrayItemNode({
                   onMultiPaste={onMultiPaste}
                   parentArrayPath={path}
                   arrayIndex={index}
+                  matchedPaths={matchedPaths}
+                  searchQuery={searchQuery}
                 />
               );
             }
@@ -1376,6 +1469,8 @@ export function ConnectedTreeNode({
   multiSelectedPaths = new Set(),
   onMultiSelect,
   onMultiPaste,
+  matchedPaths,
+  searchQuery,
 }: ConnectedTreeNodeProps) {
   const errorCount = getErrorCountForPath(path);
   
@@ -1399,6 +1494,8 @@ export function ConnectedTreeNode({
       multiSelectedPaths={multiSelectedPaths}
       onMultiSelect={onMultiSelect}
       onMultiPaste={onMultiPaste}
+      matchedPaths={matchedPaths}
+      searchQuery={searchQuery}
     />
   );
 }

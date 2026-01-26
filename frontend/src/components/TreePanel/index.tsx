@@ -1,6 +1,7 @@
 import React from 'react';
-import { Search, Eye, EyeOff, Filter, FilterX, ChevronsDown, ChevronsUp, ArrowUp } from 'lucide-react';
+import { Search, Eye, EyeOff, Filter, FilterX, ChevronsDown, ChevronsUp, ArrowUp, X } from 'lucide-react';
 import { cn, isFieldVisible } from '@/lib/utils';
+import { resolveDisplay } from '@/lib/displayUtils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -132,66 +133,230 @@ export function TreePanel({ className }: TreePanelProps) {
     return true;
   }, []);
 
-  // Filter function for search and hiding simple fields
-  const filterSchema = React.useCallback(
-    (field: SchemaField, name: string): boolean => {
+  // Helper to get value at a path
+  const getValueAtPath = React.useCallback((data: unknown, path: string): unknown => {
+    if (!path || !data) return data;
+    
+    const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+    const parts: { key: string; isIndex: boolean }[] = [];
+    let match;
+    while ((match = pathRegex.exec(path)) !== null) {
+      if (match[1] !== undefined) {
+        parts.push({ key: match[1], isIndex: false });
+      } else if (match[2] !== undefined) {
+        parts.push({ key: match[2], isIndex: true });
+      }
+    }
+
+    let current: unknown = data;
+    for (const part of parts) {
+      if (current === null || current === undefined) return undefined;
+      
+      if (part.isIndex) {
+        const index = parseInt(part.key, 10);
+        if (Array.isArray(current)) {
+          current = current[index];
+        } else {
+          return undefined;
+        }
+      } else {
+        current = (current as Record<string, unknown>)[part.key];
+      }
+    }
+    
+    return current;
+  }, []);
+
+  // Build a map of paths to their rendered titles and check for matches
+  const buildSearchIndex = React.useCallback(
+    (field: SchemaField, name: string, path: string, matches: Set<string>): void => {
+      const query = searchQuery.toLowerCase();
+      if (!query) return;
+
+      // Get the value at this path
+      const fieldValue = getValueAtPath(data, path);
+
+      // Get the rendered title for this node
+      const display = resolveDisplay({ 
+        schema: field, 
+        view: 'tree', 
+        name,
+        data: fieldValue 
+      });
+      
+      // Check if this node matches
+      const titleMatches = display.title.toLowerCase().includes(query);
+      const descMatches = field.description?.toLowerCase().includes(query);
+      const helpMatches = display.helpText?.toLowerCase().includes(query);
+      
+      if (titleMatches || descMatches || helpMatches) {
+        matches.add(path);
+      }
+
+      // Recursively check children
+      if (field.type === 'object' && field.fields) {
+        Object.entries(field.fields).forEach(([childName, childField]) => {
+          const childPath = path ? `${path}.${childName}` : childName;
+          buildSearchIndex(childField, childName, childPath, matches);
+        });
+      }
+
+      // Check array items
+      if (field.type === 'array' && Array.isArray(fieldValue)) {
+        fieldValue.forEach((item, index) => {
+          const itemPath = `${path}[${index}]`;
+          
+          // Check the array item's title
+          if (field.items) {
+            const itemDisplay = resolveDisplay({
+              schema: field.items,
+              view: 'tree',
+              name: `Item ${index + 1}`,
+              data: item
+            });
+            
+            if (itemDisplay.title.toLowerCase().includes(query)) {
+              matches.add(itemPath);
+            }
+            
+            // Check nested fields in object items
+            if (field.items.type === 'object' && field.items.fields) {
+              Object.entries(field.items.fields).forEach(([childName, childField]) => {
+                const childPath = `${itemPath}.${childName}`;
+                buildSearchIndex(childField, childName, childPath, matches);
+              });
+            }
+          }
+        });
+      }
+
+      // Check union variants
+      if (field.type === 'union' && field.variants) {
+        field.variants.forEach(variant => {
+          if (variant.variant_name?.toLowerCase().includes(query)) {
+            matches.add(path);
+          }
+          if (variant.type === 'object' && variant.fields) {
+            Object.entries(variant.fields).forEach(([childName, childField]) => {
+              const childPath = path ? `${path}.${childName}` : childName;
+              buildSearchIndex(childField, childName, childPath, matches);
+            });
+          }
+        });
+      }
+    },
+    [searchQuery, data, getValueAtPath]
+  );
+
+  // Get all paths that match the search, including parent paths
+  const { matchedPaths, directMatches } = React.useMemo(() => {
+    const directMatches = new Set<string>();
+    const matches = new Set<string>();
+    
+    if (!searchQuery || !schema || schema.type !== 'object' || !schema.fields) {
+      return { matchedPaths: matches, directMatches };
+    }
+
+    // Build index of all matching paths (direct matches only)
+    Object.entries(schema.fields).forEach(([name, field]) => {
+      buildSearchIndex(field, name, name, directMatches);
+    });
+
+    // Add all parent paths of matched paths
+    directMatches.forEach(path => {
+      matches.add(path);
+      
+      // Add all parent paths
+      const parts = path.split(/[\.\[]/).filter(p => p && p !== ']');
+      for (let i = 1; i < parts.length; i++) {
+        // Reconstruct path up to this point
+        let parentPath = '';
+        for (let j = 0; j < i; j++) {
+          if (j > 0) {
+            // Check if next part is a number (array index)
+            if (/^\d+$/.test(parts[j])) {
+              parentPath += `[${parts[j]}]`;
+            } else {
+              parentPath += `.${parts[j]}`;
+            }
+          } else {
+            parentPath = parts[j];
+          }
+        }
+        if (parentPath) {
+          matches.add(parentPath);
+        }
+      }
+    });
+
+    return { matchedPaths: matches, directMatches };
+  }, [searchQuery, schema, buildSearchIndex]);
+
+  // Auto-expand parents of matched paths when searching
+  React.useEffect(() => {
+    if (searchQuery && matchedPaths.size > 0) {
+      // Expand all parent paths of matched items
+      matchedPaths.forEach(path => {
+        if (!directMatches.has(path)) {
+          // This is a parent path, expand it
+          if (!expandedPaths.has(path)) {
+            toggleExpanded(path);
+          }
+        } else {
+          // This is a direct match, expand its parents
+          const parts = path.split(/[\.\[]/).filter(p => p && p !== ']');
+          for (let i = 1; i < parts.length; i++) {
+            let parentPath = '';
+            for (let j = 0; j < i; j++) {
+              if (j > 0) {
+                if (/^\d+$/.test(parts[j])) {
+                  parentPath += `[${parts[j]}]`;
+                } else {
+                  parentPath += `.${parts[j]}`;
+                }
+              } else {
+                parentPath = parts[j];
+              }
+            }
+            if (parentPath && !expandedPaths.has(parentPath)) {
+              toggleExpanded(parentPath);
+            }
+          }
+        }
+      });
+    }
+  }, [searchQuery, matchedPaths, directMatches]);
+
+  // Filter function for visibility and simple fields
+  const shouldShowField = React.useCallback(
+    (field: SchemaField, _name: string, path: string): boolean => {
       // First check if we should hide simple fields
       if (hideSimpleFields && isSimpleField(field)) {
         return false;
       }
 
       // Check visibility based on hidden and visible_when conditions
-      const fieldValue = data?.[name];
+      const fieldValue = getValueAtPath(data, path);
       if (!isFieldVisible(field, data || {}, fieldValue)) {
         return false;
       }
 
       // Filter out optional fields that are not initialized (null/undefined)
-      // Note: This is separate from visible_when - optional fields with null values are hidden
-      // unless they have a visible_when that explicitly makes them visible
       if (field.required === false && !field.ui_config?.visible_when) {
         if (fieldValue === null || fieldValue === undefined) {
           return false;
         }
       }
 
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
-      
-      // Check name, title, description
-      if (name.toLowerCase().includes(query)) return true;
-      if (field.title?.toLowerCase().includes(query)) return true;
-      if (field.description?.toLowerCase().includes(query)) return true;
-      if (field.ui_config?.display?.title?.toLowerCase().includes(query)) return true;
-      
-      // Check children
-      if (field.type === 'object' && field.fields) {
-        return Object.entries(field.fields).some(([childName, childField]) =>
-          filterSchema(childField, childName)
-        );
+      // If we have a search query, only show fields in matched paths
+      // This includes both direct matches and their parent paths
+      if (searchQuery && matchedPaths.size > 0) {
+        return matchedPaths.has(path);
       }
-      if (field.type === 'array' && field.items?.fields) {
-        return Object.entries(field.items.fields).some(([childName, childField]) =>
-          filterSchema(childField, childName)
-        );
-      }
-      // Check union variants for matches
-      if (field.type === 'union' && field.variants) {
-        return field.variants.some(variant => {
-          if (variant.variant_name?.toLowerCase().includes(query)) return true;
-          if (variant.title?.toLowerCase().includes(query)) return true;
-          if (variant.type === 'object' && variant.fields) {
-            return Object.entries(variant.fields).some(([childName, childField]) =>
-              filterSchema(childField, childName)
-            );
-          }
-          return false;
-        });
-      }
-      
-      return false;
+
+      return true;
     },
-    [searchQuery, hideSimpleFields, isSimpleField, data]
+    [hideSimpleFields, isSimpleField, data, searchQuery, matchedPaths, getValueAtPath]
   );
 
   if (!schema) {
@@ -204,7 +369,7 @@ export function TreePanel({ className }: TreePanelProps) {
 
   const rootFields = schema.type === 'object' && schema.fields
     ? Object.entries(schema.fields).filter(
-        ([name, field]) => filterSchema(field, name)
+        ([name, field]) => shouldShowField(field, name, name)
       )
     : [];
 
@@ -218,8 +383,17 @@ export function TreePanel({ className }: TreePanelProps) {
             placeholder="Search fields..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9"
+            className="pl-9 pr-9 h-9"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+              title="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -331,6 +505,8 @@ export function TreePanel({ className }: TreePanelProps) {
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiSelect={handleMultiSelect}
                 onMultiPaste={handleMultiPaste}
+                matchedPaths={matchedPaths}
+                searchQuery={searchQuery}
               />
               {/* Child fields when root is expanded */}
               {expandedPaths.has('') && rootFields.map(([name, field]) => (
@@ -350,6 +526,8 @@ export function TreePanel({ className }: TreePanelProps) {
                   multiSelectedPaths={multiSelectedPaths}
                   onMultiSelect={handleMultiSelect}
                   onMultiPaste={handleMultiPaste}
+                  matchedPaths={matchedPaths}
+                  searchQuery={searchQuery}
                 />
               ))}
               {searchQuery && rootFields.length === 0 && (

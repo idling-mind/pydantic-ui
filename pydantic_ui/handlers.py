@@ -133,12 +133,22 @@ class DataHandler:
                             if hasattr(variant_config, "hidden"):
                                 ui_config["hidden"] = variant_config.hidden
 
-                        # Recurse into variant's fields with the variant path as prefix
-                        # e.g., "optional_complex_with_list.Person." so we can match "optional_complex_with_list.Person.name"
+                        # Recurse into variant's fields with BOTH:
+                        # 1. Variant-specific path (e.g., "data.ObjVariant.prop")
+                        # 2. Base path without variant name (e.g., "data.prop")
+                        # This allows configs like "data.prop" to match fields in any variant
                         if variant.get("fields"):
+                            # First apply variant-specific configs
                             self._apply_field_configs(variant["fields"], f"{variant_path}.")
+                            # Then apply base path configs (without variant name)
+                            self._apply_field_configs(variant["fields"], f"{full_path}.")
                         if variant.get("items"):
-                            self._apply_field_configs_to_items(variant["items"], f"{variant_path}.[].")
+                            # First apply variant-specific configs
+                            self._apply_field_configs_to_items(
+                                variant["items"], f"{variant_path}.[]."
+                            )
+                            # Then apply base path configs (without variant name)
+                            self._apply_field_configs_to_items(variant["items"], f"{full_path}.[].")
                     else:
                         # No variant name, use the base field path
                         if variant.get("fields"):
@@ -148,7 +158,7 @@ class DataHandler:
 
     def _apply_field_configs_to_items(self, item_schema: dict[str, Any], prefix: str) -> None:
         """Apply field configurations to array item schema.
-        
+
         The prefix should end with ".[]." (e.g., "users.[].").
         We first check for a config matching the array items path (e.g., "users.[]")
         and apply it to the item_schema itself, then recurse into its fields.

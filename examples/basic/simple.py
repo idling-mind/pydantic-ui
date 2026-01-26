@@ -107,7 +107,11 @@ attr_configs = {
             subtitle="List of users",
             help_text="List of users in the system",
             tree=ViewDisplay(title="Users - tree", subtitle="This is the users tree view"),
-            card=ViewDisplay(title="Users - card", subtitle="This is the users card view", help_text="Card view help text"),
+            card=ViewDisplay(
+                title="Users - card",
+                subtitle="This is the users card view",
+                help_text="Card view help text",
+            ),
             detail=ViewDisplay(title="Users - detail", subtitle="This is the users detail view"),
         ),
     ),
@@ -125,7 +129,7 @@ attr_configs = {
             title="User Age",
             subtitle="User's age in years",
             help_text="Specify the age in years",
-        )
+        ),
     ),
     "optional_color": FieldConfig(
         renderer=Renderer.COLOR_PICKER,
@@ -186,7 +190,7 @@ attr_configs = {
 # Configure UI
 ui_config = UIConfig(
     title="My Model Editor",
-    subtitle="Edit the fields of MyModel below.",
+    description="Edit the fields of MyModel below.",
     collapsible_tree=True,
     show_validation=True,
     show_save_reset=True,
@@ -228,7 +232,7 @@ comp = Compensation(amount=100000, currency=Currency.SEK)
 ```
 """,
             ),
-        )
+        ),
     },
     attr_configs=attr_configs,
     actions=[

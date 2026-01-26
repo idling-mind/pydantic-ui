@@ -400,15 +400,21 @@ def extract_field_config(
 def _merge_display_configs(base: DisplayConfig, override: DisplayConfig) -> DisplayConfig:
     """Merge two DisplayConfig objects, with override taking precedence."""
 
-    def merge_view(base_view: ViewDisplay | None, override_view: ViewDisplay | None) -> ViewDisplay | None:
+    def merge_view(
+        base_view: ViewDisplay | None, override_view: ViewDisplay | None
+    ) -> ViewDisplay | None:
         if override_view is None:
             return base_view
         if base_view is None:
             return override_view
         return ViewDisplay(
             title=override_view.title if override_view.title is not None else base_view.title,
-            subtitle=override_view.subtitle if override_view.subtitle is not None else base_view.subtitle,
-            help_text=override_view.help_text if override_view.help_text is not None else base_view.help_text,
+            subtitle=override_view.subtitle
+            if override_view.subtitle is not None
+            else base_view.subtitle,
+            help_text=override_view.help_text
+            if override_view.help_text is not None
+            else base_view.help_text,
             icon=override_view.icon if override_view.icon is not None else base_view.icon,
         )
 

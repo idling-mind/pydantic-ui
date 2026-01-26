@@ -2,8 +2,7 @@
 
 from dataclasses import asdict
 
-import pytest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from pydantic_ui.config import DisplayConfig, FieldConfig, ViewDisplay
 
