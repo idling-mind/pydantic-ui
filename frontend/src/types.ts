@@ -5,7 +5,6 @@ export interface ViewDisplay {
   title?: string | null;
   subtitle?: string | null;
   help_text?: string | null;
-  icon?: string | null;
 }
 
 // Unified display configuration
@@ -13,7 +12,6 @@ export interface DisplayConfig {
   title?: string | null;
   subtitle?: string | null;
   help_text?: string | null;
-  icon?: string | null;
   // Per-view overrides
   tree?: ViewDisplay | null;
   detail?: ViewDisplay | null;

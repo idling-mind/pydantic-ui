@@ -16,7 +16,6 @@ class TestViewDisplay:
         assert vd.title is None
         assert vd.subtitle is None
         assert vd.help_text is None
-        assert vd.icon is None
 
     def test_with_title(self):
         """ViewDisplay can be created with title."""
@@ -30,12 +29,10 @@ class TestViewDisplay:
             title="Title",
             subtitle="Subtitle",
             help_text="Help",
-            icon="icon-name",
         )
         assert vd.title == "Title"
         assert vd.subtitle == "Subtitle"
         assert vd.help_text == "Help"
-        assert vd.icon == "icon-name"
 
     def test_asdict(self):
         """ViewDisplay can be converted to dict."""
@@ -45,7 +42,6 @@ class TestViewDisplay:
             "title": "Title",
             "subtitle": "Sub",
             "help_text": None,
-            "icon": None,
         }
 
 
@@ -58,7 +54,6 @@ class TestDisplayConfig:
         assert dc.title is None
         assert dc.subtitle is None
         assert dc.help_text is None
-        assert dc.icon is None
         assert dc.tree is None
         assert dc.detail is None
         assert dc.table is None

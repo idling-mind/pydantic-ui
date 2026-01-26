@@ -16,14 +16,12 @@ class ViewDisplay:
     Example:
         ViewDisplay(
             title="Port",  # Shorter title for tree view
-            icon="network"
         )
     """
 
     title: str | None = None
     subtitle: str | None = None
     help_text: str | None = None
-    icon: str | None = None
 
     def model_dump(self) -> dict[str, Any]:
         """Return a dict representation."""
@@ -31,7 +29,6 @@ class ViewDisplay:
             "title": self.title,
             "subtitle": self.subtitle,
             "help_text": self.help_text,
-            "icon": self.icon,
         }
 
 
@@ -52,7 +49,6 @@ class DisplayConfig:
             title="Server Configuration",
             subtitle="Primary application server",
             help_text="Configure the main server settings here.",
-            icon="server",
             tree=ViewDisplay(title="Server"),  # Shorter in tree view
         )
 
@@ -66,7 +62,6 @@ class DisplayConfig:
     title: str | None = None
     subtitle: str | None = None
     help_text: str | None = None
-    icon: str | None = None
 
     # Per-view overrides
     tree: ViewDisplay | None = None
@@ -80,7 +75,6 @@ class DisplayConfig:
             "title": self.title,
             "subtitle": self.subtitle,
             "help_text": self.help_text,
-            "icon": self.icon,
             "tree": self.tree.model_dump() if self.tree else None,
             "detail": self.detail.model_dump() if self.detail else None,
             "table": self.table.model_dump() if self.table else None,

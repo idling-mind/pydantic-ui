@@ -1,7 +1,7 @@
 /**
  * Display resolution utilities.
  *
- * Provides a unified way to resolve display properties (title, subtitle, help_text, icon)
+ * Provides a unified way to resolve display properties (title, subtitle, help_text)
  * for schema fields across all views. Supports template syntax for data-driven titles.
  *
  * Template Syntax:
@@ -20,7 +20,6 @@ export interface ResolvedDisplay {
   title: string;
   subtitle: string | null;
   helpText: string | null;
-  icon: string | null;
 }
 
 /**
@@ -209,14 +208,6 @@ export function resolveDisplay(options: ResolveDisplayOptions): ResolvedDisplay 
     null
   );
 
-  const icon = resolveProperty<string | null>(
-    viewOverride,
-    display,
-    'icon',
-    null,
-    null
-  );
-
   // Apply template resolution if data is provided
   if (data !== undefined) {
     if (rawTitle && isTemplate(rawTitle)) {
@@ -238,7 +229,6 @@ export function resolveDisplay(options: ResolveDisplayOptions): ResolvedDisplay 
     title: rawTitle,
     subtitle: rawSubtitle,
     helpText,
-    icon,
   };
 }
 
