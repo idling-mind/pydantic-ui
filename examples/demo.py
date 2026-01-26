@@ -4,17 +4,19 @@ from datetime import datetime, timedelta
 
 import uvicorn
 from fastapi import FastAPI
-from nested import DeepNestedModel
+from models import DeepNestedModel
 from pydantic_core import ValidationError
 
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
 from pydantic_ui import (
     ActionButton,
+    DisplayConfig,
     FieldConfig,
     PydanticUIController,
     Renderer,
     UIConfig,
+    ViewDisplay,
     create_pydantic_ui,
 )
 
@@ -53,18 +55,25 @@ ui_config = UIConfig(
     ],
     attr_configs={
         "created_at": FieldConfig(
-            label="Created Date",
             placeholder="Select a date",
             renderer=Renderer.DATE_PICKER,
+            display=DisplayConfig(
+                title="Creation Date",
+                subtitle="The date when this configuration was created",
+            ),
         ),
         "contacts.[].value": FieldConfig(
-            label="Value of the type",
-            description="The value associated with the contact type",
+            display=DisplayConfig(
+                title="Value of the type",
+                subtitle="The value associated with the contact type",
+            ),
         ),
         "contacts.[].photo": FieldConfig(
-            label="Photo",
-            description="Path to the contact's photo",
             renderer=Renderer.FILE_UPLOAD,
+            display=DisplayConfig(
+                title="Contact Photo",
+                subtitle="Upload a photo for this contact",
+            ),
         ),
     },
 )

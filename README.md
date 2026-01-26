@@ -40,7 +40,7 @@ pip install pydantic-ui
 ```python
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
-from pydantic_ui import create_pydantic_ui, FieldConfig, Renderer, UIConfig
+from pydantic_ui import create_pydantic_ui, DisplayConfig, FieldConfig, Renderer, UIConfig
 
 
 # Define your Pydantic model
@@ -70,8 +70,10 @@ app.include_router(
             show_save_reset=True,
             attr_configs={
                 "age": FieldConfig(
-                    label="User Age",
                     renderer=Renderer.SLIDER,
+                    display=DisplayConfig(
+                        title="User Age",
+                    )
                 )
             },
         ),
@@ -145,7 +147,7 @@ ui_config = UIConfig(
     # Custom Actions (see Action Buttons section)
     actions=[],                       # List of ActionButton configurations
 
-    # Control the label, description and the control used to fill in specific field
+    # Control the display properties (title/subtitle) and renderer for specific fields
     # either based on class name or full path to the attribute. Look into examples to understand more.
     class_configs={},                  # Map[class_name, FieldConfig] - global per-class FieldConfig
     attr_configs={},                   # Map[path, FieldConfig] - per-field configs by path (e.g., 'users.[].age')
@@ -172,8 +174,10 @@ class Settings(BaseModel):
     # Slider for numeric values
     volume: Annotated[int, FieldConfig(
         renderer=Renderer.SLIDER,
-        label="Volume Level",          # Custom label (defaults to field name)
-        help_text="Adjust the volume", # Help text below field (alias: description)
+        display=DisplayConfig(
+            title="Volume Level",      # Custom label (defaults to field name)
+            subtitle="Adjust the volume",  # Help text below field
+        ),
         placeholder="Enter value",     # Placeholder text
         props={"min": 0, "max": 100, "step": 5}  # Renderer-specific props
     )] = 50
@@ -229,11 +233,15 @@ ui_config = UIConfig(
         "Email": FieldConfig(
             renderer=Renderer.EMAIL,
             placeholder="user@example.com",
-            help_text="Enter a valid email address"
+            display=DisplayConfig(
+                subtitle="Enter a valid email address"
+            )
         ),
         "Color": FieldConfig(
             renderer=Renderer.SELECT,
-            label="Pick a color"
+            display=DisplayConfig(
+                title="Pick a color"
+            )
         )
     }
 )
@@ -245,7 +253,7 @@ class User(BaseModel):
     favorite_color: Color # Uses global Color config
     
     # You can still override specific instances using Annotated
-    admin_email: Annotated[Email, FieldConfig(label="Admin Contact")]
+    admin_email: Annotated[Email, FieldConfig(display=DisplayConfig(title="Admin Contact"))]
 ```
 
 ### Attr Configs via Path (Alternative Method)
@@ -257,20 +265,26 @@ ui_config = UIConfig(
     attr_configs={
         # Direct field path
         "server.name": FieldConfig(
-            label="Application Name",
+            display=DisplayConfig(
+                title="Application Name",
+            ),
             placeholder="Enter your app name",
         ),
         
         # Array item fields using [] syntax
         "users.[].age": FieldConfig(
-            label="User Age",
+            display=DisplayConfig(
+                title="User Age",
+            ),
             renderer=Renderer.SLIDER,
             props={"min": 0, "max": 120, "step": 1},
         ),
         
         # Nested paths
         "database.password": FieldConfig(
-            label="Database Password",
+            display=DisplayConfig(
+                title="Database Password",
+            ),
             props={"type": "password"},
         ),
     }

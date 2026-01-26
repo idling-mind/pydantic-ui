@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 # Add the project root to the path so we can import pydantic_ui
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
-from pydantic_ui import FieldConfig, UIConfig, create_pydantic_ui
+from pydantic_ui import DisplayConfig, FieldConfig, UIConfig, create_pydantic_ui
 
 
 class UserProfile(BaseModel):
@@ -26,7 +26,9 @@ class UserProfile(BaseModel):
         str | None,
         FieldConfig(
             visible_when="data.has_nickname === true",
-            help_text="This field is only visible when 'Do you have a nickname?' is checked.",
+            display=DisplayConfig(
+                subtitle="This field is only visible when 'Do you have a nickname?' is checked.",
+            ),
         ),
     ] = None
 
@@ -52,7 +54,10 @@ class UserProfile(BaseModel):
 
     guardian_name: Annotated[
         str | None,
-        FieldConfig(visible_when="data.age < 18", label="Guardian Name (Required for minors)"),
+        FieldConfig(
+            visible_when="data.age < 18",
+            display=DisplayConfig(title="Guardian Name (Required for minors)"),
+        ),
     ] = None
 
     # Complex logic (multiple conditions)
@@ -65,7 +70,7 @@ class UserProfile(BaseModel):
         Literal["Tech", "Business", "Lifestyle"],
         FieldConfig(
             visible_when="(data.subscription_type === 'Pro' || data.subscription_type === 'Enterprise') && data.wants_newsletter",
-            label="Premium Newsletter Topic",
+            display=DisplayConfig(title="Premium Newsletter Topic"),
         ),
     ] = "Tech"
 
