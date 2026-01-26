@@ -105,7 +105,7 @@ export interface ActionButton {
 // UI Config types
 export interface UIConfig {
   title: string;
-  description: string;
+  subtitle: string;
   logo_text: string | null;
   logo_url: string | null;
   theme: 'light' | 'dark' | 'system';
@@ -118,8 +118,6 @@ export interface UIConfig {
   actions: ActionButton[];
   show_save_reset: boolean;
   responsive_columns: Record<number, number>;
-  footer_text: string;
-  footer_url: string;
 }
 
 // SSE Event types

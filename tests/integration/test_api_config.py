@@ -18,7 +18,7 @@ class TestGetConfig:
 
         # Check default values
         assert config["title"] == "Data Editor"
-        assert config["description"] == ""
+        assert config["subtitle"] == ""
         assert config["theme"] == "system"
         assert config["read_only"] is False
         assert config["show_validation"] is True
@@ -38,7 +38,7 @@ class TestGetConfig:
 
         # Check custom values
         assert config["title"] == "Custom Editor"
-        assert config["description"] == "A custom editor"
+        assert config["subtitle"] == "A custom editor"
         assert config["theme"] == "dark"
         assert config["auto_save"] is True
         assert config["auto_save_delay"] == 500
@@ -72,7 +72,7 @@ class TestGetConfig:
 
         required_fields = [
             "title",
-            "description",
+            "subtitle",
             "theme",
             "read_only",
             "show_validation",

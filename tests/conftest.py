@@ -285,7 +285,7 @@ def custom_ui_config() -> UIConfig:
     """Return custom UI configuration."""
     return UIConfig(
         title="Custom Editor",
-        description="A custom editor",
+        subtitle="A custom editor",
         theme="dark",
         show_validation=True,
         auto_save=True,

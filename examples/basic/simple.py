@@ -186,7 +186,7 @@ attr_configs = {
 # Configure UI
 ui_config = UIConfig(
     title="My Model Editor",
-    description="Edit the fields of MyModel below.",
+    subtitle="Edit the fields of MyModel below.",
     collapsible_tree=True,
     show_validation=True,
     show_save_reset=True,

@@ -48,6 +48,10 @@ class DataHandler:
         # Apply field configs
         self._apply_field_configs(schema.get("fields", {}))
 
+        # Override root schema description with subtitle if provided
+        if self.ui_config.subtitle:
+            schema["description"] = self.ui_config.subtitle
+
         return schema
 
     def _match_field_config(self, path: str) -> FieldConfig | None:
@@ -287,7 +291,7 @@ class DataHandler:
 
         return ConfigResponse(
             title=self.ui_config.title,
-            description=self.ui_config.description,
+            subtitle=self.ui_config.subtitle,
             theme=self.ui_config.theme,
             read_only=self.ui_config.read_only,
             show_validation=self.ui_config.show_validation,
