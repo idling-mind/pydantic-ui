@@ -16,7 +16,6 @@ from pydantic_ui import (
     PydanticUIController,
     Renderer,
     UIConfig,
-    ViewDisplay,
     create_pydantic_ui,
 )
 

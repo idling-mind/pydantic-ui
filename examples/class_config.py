@@ -18,7 +18,10 @@ class User(BaseModel):
     address: Address
     # This one overrides class config
     billing_address: Annotated[
-        Address, FieldConfig(display=DisplayConfig(title="Billing Address", subtitle="Where to send the bill"))
+        Address,
+        FieldConfig(
+            display=DisplayConfig(title="Billing Address", subtitle="Where to send the bill")
+        ),
     ]
 
 
