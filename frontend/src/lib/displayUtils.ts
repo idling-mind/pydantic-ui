@@ -72,16 +72,29 @@ export function isTemplate(str: string): boolean {
 }
 
 /**
+ * Result of template resolution.
+ */
+export interface TemplateResult {
+  /** The resolved string */
+  result: string;
+  /** Whether any template variables were successfully resolved */
+  hasResolvedValues: boolean;
+}
+
+/**
  * Resolve template syntax in a string using data values.
  *
  * Examples:
- * - resolveTemplate("{name}", {name: "John"}) → "John"
- * - resolveTemplate("{address.city}", {address: {city: "NYC"}}) → "NYC"
- * - resolveTemplate("User: {name}", {name: "John"}) → "User: John"
- * - resolveTemplate("{{literal}}", {}) → "{literal}"
+ * - resolveTemplate("{name}", {name: "John"}) → {result: "John", hasResolvedValues: true}
+ * - resolveTemplate("{address.city}", {address: {city: "NYC"}}) → {result: "NYC", hasResolvedValues: true}
+ * - resolveTemplate("User: {name}", {name: "John"}) → {result: "User: John", hasResolvedValues: true}
+ * - resolveTemplate("{{literal}}", {}) → {result: "{literal}", hasResolvedValues: true}
+ * - resolveTemplate("{missing}", {}) → {result: "", hasResolvedValues: false}
  */
-export function resolveTemplate(template: string, data: unknown): string {
-  if (!template) return '';
+export function resolveTemplate(template: string, data: unknown): TemplateResult {
+  if (!template) return { result: '', hasResolvedValues: false };
+
+  let hasResolvedValues = false;
 
   // First, handle escaped braces - replace {{ with a placeholder
   let result = template.replace(/\{\{/g, '\x00OPEN\x00').replace(/\}\}/g, '\x00CLOSE\x00');
@@ -92,6 +105,7 @@ export function resolveTemplate(template: string, data: unknown): string {
     if (value === undefined || value === null) {
       return ''; // Return empty string for missing values
     }
+    hasResolvedValues = true;
     // Convert to string
     if (typeof value === 'object') {
       return JSON.stringify(value);
@@ -99,10 +113,15 @@ export function resolveTemplate(template: string, data: unknown): string {
     return String(value);
   });
 
-  // Restore escaped braces
+  // Replace escaped braces back
   result = result.replace(/\x00OPEN\x00/g, '{').replace(/\x00CLOSE\x00/g, '}');
 
-  return result;
+  // If we have escaped braces, we consider that as having resolved values
+  if (template.includes('{{')) {
+    hasResolvedValues = true;
+  }
+
+  return { result, hasResolvedValues };
 }
 
 /**
@@ -211,14 +230,18 @@ export function resolveDisplay(options: ResolveDisplayOptions): ResolvedDisplay 
   // Apply template resolution if data is provided
   if (data !== undefined) {
     if (rawTitle && isTemplate(rawTitle)) {
-      const resolved = resolveTemplate(rawTitle, data);
-      // If template resolves to empty, use fallback
-      rawTitle = resolved || (index !== undefined ? `Item ${index + 1}` : nameToTitle(name));
+      const templateResult = resolveTemplate(rawTitle, data);
+      // If no template variables were successfully resolved, use fallback
+      if (!templateResult.hasResolvedValues) {
+        rawTitle = index !== undefined ? `Item ${index + 1}` : nameToTitle(name);
+      } else {
+        rawTitle = templateResult.result;
+      }
     }
 
     if (rawSubtitle && isTemplate(rawSubtitle)) {
-      const resolved = resolveTemplate(rawSubtitle, data);
-      rawSubtitle = resolved || null;
+      const templateResult = resolveTemplate(rawSubtitle, data);
+      rawSubtitle = templateResult.hasResolvedValues ? templateResult.result : null;
     }
   } else if (rawTitle && isTemplate(rawTitle) && index !== undefined) {
     // No data but we have an index - use "Item N" as fallback for template titles
@@ -254,7 +277,18 @@ export function getFieldHelpText(schema: SchemaField, view: ViewType = 'detail')
 }
 
 /**
+ * Check if a schema represents a simple (non-complex) type that can be displayed as a value.
+ */
+function isSimpleType(schema: SchemaField): boolean {
+  return schema.type === 'string' || 
+         schema.type === 'number' || 
+         schema.type === 'integer' || 
+         schema.type === 'boolean';
+}
+
+/**
  * Resolve display for an array item, using item data for template resolution.
+ * For simple types without custom display config, shows the value directly.
  */
 export function resolveArrayItemDisplay(
   itemSchema: SchemaField,
@@ -262,11 +296,35 @@ export function resolveArrayItemDisplay(
   index: number,
   view: ViewType = 'tree'
 ): ResolvedDisplay {
+  // Check if this is a simple type with no custom display configuration
+  const hasCustomDisplay = itemSchema.ui_config?.display?.title || 
+                          itemSchema.ui_config?.display?.[view]?.title;
+  
+  if (isSimpleType(itemSchema) && !hasCustomDisplay) {
+    // For simple types, show the value directly as the title
+    const valueAsString = itemData === null || itemData === undefined 
+      ? `Item ${index + 1}` 
+      : String(itemData);
+    
+    return {
+      title: valueAsString,
+      subtitle: null,
+      helpText: null,
+    };
+  }
+  
+  // For complex types or types with custom display, use the standard resolution
+  // For simple types with templates, wrap the value in an object with a 'value' property
+  let templateData = itemData;
+  if (isSimpleType(itemSchema) && hasCustomDisplay) {
+    templateData = { value: itemData };
+  }
+  
   return resolveDisplay({
     schema: itemSchema,
     view,
     name: `Item ${index + 1}`,
-    data: itemData,
+    data: templateData,
     index,
   });
 }

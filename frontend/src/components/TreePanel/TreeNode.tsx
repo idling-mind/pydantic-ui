@@ -394,14 +394,20 @@ function unionHasExpandableVariants(schema: SchemaField): boolean {
 // Get the display label for a node
 // For array items, prefer the computed name from data (e.g., "Weld A")
 // For regular fields, use the unified display resolver
-function getNodeLabel(name: string, schema: SchemaField, path: string): string {
+function getNodeLabel(name: string, schema: SchemaField, path: string, fieldData?: unknown): string {
   // For array items, the 'name' prop already contains the computed label from getArrayItemLabel
   // which uses the display resolver with template support.
   if (isArrayItemPath(path)) {
     return name;
   }
   // For regular fields, use the display resolver for tree view
-  const display = resolveDisplay({ schema, view: 'tree', name });
+  // Pass the field data to enable template resolution for complex objects
+  const display = resolveDisplay({ 
+    schema, 
+    view: 'tree', 
+    name, 
+    data: fieldData 
+  });
   return display.title;
 }
 
@@ -639,9 +645,9 @@ export function TreeNode({
       )}
       <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
       <span className="truncate flex-1 flex items-center gap-2">
-        <span className="truncate flex-1">{highlightText(getNodeLabel(name, schema, path))}</span>
-        {resolveDisplay({ schema, view: 'tree', name }).helpText && (
-          <FieldHelp helpText={resolveDisplay({ schema, view: 'tree', name }).helpText!} />
+        <span className="truncate flex-1">{highlightText(getNodeLabel(name, schema, path, currentNodeValue))}</span>
+        {resolveDisplay({ schema, view: 'tree', name, data: currentNodeValue }).helpText && (
+          <FieldHelp helpText={resolveDisplay({ schema, view: 'tree', name, data: currentNodeValue }).helpText!} />
         )}
       </span>
       {/* Show detected variant badge for unions */}
@@ -721,7 +727,7 @@ export function TreeNode({
           )}
         </button>
         <span className="shrink-0">{getTypeIcon(schema.type, isExpanded)}</span>
-        <span className="truncate flex-1">{highlightText(getNodeLabel(name, schema, path))}</span>
+        <span className="truncate flex-1">{highlightText(getNodeLabel(name, schema, path, currentNodeValue))}</span>
         {/* Show detected variant badge for unions */}
         {isUnion && detectedVariant && (
           <Badge 
