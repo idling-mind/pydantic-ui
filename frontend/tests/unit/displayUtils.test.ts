@@ -10,52 +10,52 @@ import type { SchemaField, ViewType } from '@/types';
 
 describe('resolveTemplate', () => {
   it('returns empty string if template has placeholders but no data', () => {
-    expect(resolveTemplate('Hello {name}', undefined)).toBe('Hello ');
+    expect(resolveTemplate('Hello {name}', undefined)).toEqual({ result: 'Hello ', hasResolvedValues: false });
   });
 
   it('replaces single field placeholder', () => {
-    expect(resolveTemplate('{name}', { name: 'John' })).toBe('John');
+    expect(resolveTemplate('{name}', { name: 'John' })).toEqual({ result: 'John', hasResolvedValues: true });
   });
 
   it('replaces multiple placeholders', () => {
-    expect(resolveTemplate('{first} {last}', { first: 'John', last: 'Doe' })).toBe('John Doe');
+    expect(resolveTemplate('{first} {last}', { first: 'John', last: 'Doe' })).toEqual({ result: 'John Doe', hasResolvedValues: true });
   });
 
   it('handles nested path placeholders', () => {
-    expect(resolveTemplate('{user.name}', { user: { name: 'Jane' } })).toBe('Jane');
+    expect(resolveTemplate('{user.name}', { user: { name: 'Jane' } })).toEqual({ result: 'Jane', hasResolvedValues: true });
   });
 
   it('handles deeply nested paths', () => {
-    expect(resolveTemplate('{a.b.c}', { a: { b: { c: 'deep' } } })).toBe('deep');
+    expect(resolveTemplate('{a.b.c}', { a: { b: { c: 'deep' } } })).toEqual({ result: 'deep', hasResolvedValues: true });
   });
 
   it('preserves escaped braces', () => {
-    expect(resolveTemplate('{{literal}}', { literal: 'value' })).toBe('{literal}');
+    expect(resolveTemplate('{{literal}}', { literal: 'value' })).toEqual({ result: '{literal}', hasResolvedValues: true });
   });
 
   it('returns empty string for unmatched placeholders', () => {
-    expect(resolveTemplate('{missing}', { other: 'value' })).toBe('');
+    expect(resolveTemplate('{missing}', { other: 'value' })).toEqual({ result: '', hasResolvedValues: false });
   });
 
   it('returns empty string for null values in data', () => {
-    expect(resolveTemplate('{name}', { name: null })).toBe('');
+    expect(resolveTemplate('{name}', { name: null })).toEqual({ result: '', hasResolvedValues: false });
   });
 
   it('returns empty string for undefined nested paths', () => {
-    expect(resolveTemplate('{user.name}', { user: {} })).toBe('');
+    expect(resolveTemplate('{user.name}', { user: {} })).toEqual({ result: '', hasResolvedValues: false });
   });
 
   it('converts numbers to strings', () => {
-    expect(resolveTemplate('{age}', { age: 25 })).toBe('25');
+    expect(resolveTemplate('{age}', { age: 25 })).toEqual({ result: '25', hasResolvedValues: true });
   });
 
   it('handles boolean values', () => {
-    expect(resolveTemplate('{active}', { active: true })).toBe('true');
+    expect(resolveTemplate('{active}', { active: true })).toEqual({ result: 'true', hasResolvedValues: true });
   });
 
   it('handles mixed content', () => {
     expect(resolveTemplate('User: {name} (ID: {id})', { name: 'Alice', id: 42 }))
-      .toBe('User: Alice (ID: 42)');
+      .toEqual({ result: 'User: Alice (ID: 42)', hasResolvedValues: true });
   });
 });
 
@@ -159,6 +159,44 @@ describe('resolveDisplay', () => {
     });
     expect(result.title).toBe('Alice (123)');
   });
+
+  it('resolves templates for complex objects when data is provided', () => {
+    const schema: SchemaField = {
+      type: 'object',
+      fields: {
+        name: { type: 'string' },
+        version: { type: 'string' },
+      },
+      ui_config: {
+        display: {
+          title: 'Server - {name}',
+        },
+      },
+    };
+    const result = resolveDisplay({
+      schema,
+      name: 'server',
+      data: { name: 'MainServer', version: '1.0.0' },
+    });
+    expect(result.title).toBe('Server - MainServer');
+  });
+
+  it('falls back to name when template cannot be resolved', () => {
+    const schema: SchemaField = {
+      type: 'object',
+      ui_config: {
+        display: {
+          title: 'Server - {name}',
+        },
+      },
+    };
+    const result = resolveDisplay({
+      schema,
+      name: 'server',
+      data: { other: 'value' }, // missing 'name' field
+    });
+    expect(result.title).toBe('Server'); // nameToTitle('server') -> 'Server'
+  });
 });
 
 describe('resolveArrayItemDisplay', () => {
@@ -248,6 +286,93 @@ describe('resolveArrayItemDisplay', () => {
       0
     );
     expect(result.subtitle).toBe('alice@test.com');
+  });
+
+  it('shows string value directly for simple string type without custom display', () => {
+    const stringSchema: SchemaField = {
+      type: 'string',
+    };
+    const result = resolveArrayItemDisplay(
+      stringSchema,
+      'Hello World',
+      0
+    );
+    expect(result.title).toBe('Hello World');
+  });
+
+  it('shows number value directly for simple number type without custom display', () => {
+    const numberSchema: SchemaField = {
+      type: 'number',
+    };
+    const result = resolveArrayItemDisplay(
+      numberSchema,
+      42,
+      0
+    );
+    expect(result.title).toBe('42');
+  });
+
+  it('shows boolean value directly for simple boolean type without custom display', () => {
+    const booleanSchema: SchemaField = {
+      type: 'boolean',
+    };
+    const result = resolveArrayItemDisplay(
+      booleanSchema,
+      true,
+      0
+    );
+    expect(result.title).toBe('true');
+  });
+
+  it('uses custom display template even for simple types', () => {
+    const stringSchema: SchemaField = {
+      type: 'string',
+      ui_config: {
+        display: {
+          title: 'Value: {value}',
+        },
+      },
+    };
+    const result = resolveArrayItemDisplay(
+      stringSchema,
+      'test',
+      0
+    );
+    // When custom display is configured, it should use the template with the item value
+    expect(result.title).toBe('Value: test');
+  });
+
+  it('falls back to Item N for null/undefined simple values', () => {
+    const stringSchema: SchemaField = {
+      type: 'string',
+    };
+    const result1 = resolveArrayItemDisplay(
+      stringSchema,
+      null,
+      2
+    );
+    const result2 = resolveArrayItemDisplay(
+      stringSchema,
+      undefined,
+      2
+    );
+    expect(result1.title).toBe('Item 3');
+    expect(result2.title).toBe('Item 3');
+  });
+
+  it('still uses Item N for complex types without custom display', () => {
+    const complexSchema: SchemaField = {
+      type: 'object',
+      fields: {
+        name: { type: 'string' },
+      },
+    };
+    const result = resolveArrayItemDisplay(
+      complexSchema,
+      { name: 'Alice' },
+      0
+    );
+    expect(result.title).toBe('Item 1');
   });
 });
 

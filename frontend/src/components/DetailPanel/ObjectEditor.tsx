@@ -340,7 +340,7 @@ export function ArrayEditor({
 }: ArrayEditorProps) {
   const [isExpanded, setIsExpanded] = React.useState(true);
   
-  const items = value || [];
+  const items = Array.isArray(value) ? value : [];
   const itemSchema = schema.items;
   const label = getFieldLabel(schema, name);
   const minItems = schema.min_items;
@@ -699,7 +699,7 @@ export function ArrayListEditor({
   const { setSelectedPath, toggleExpanded, expandedPaths } = useData();
   const [viewMode, setViewMode] = React.useState<'list' | 'table'>('list');
   
-  const items = value || [];
+  const items = Array.isArray(value) ? value : [];
   const itemSchema = schema.items;
   const minItems = schema.min_items;
   const maxItems = schema.max_items;

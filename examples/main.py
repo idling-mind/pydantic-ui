@@ -14,7 +14,14 @@ from pydantic import BaseModel, Field
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
 # Import pydantic_ui components
-from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui
+from pydantic_ui import (
+    DisplayConfig,
+    FieldConfig,
+    Renderer,
+    UIConfig,
+    ViewDisplay,
+    create_pydantic_ui,
+)
 
 
 # Define your Pydantic models
@@ -103,6 +110,13 @@ class NotificationConfig(BaseModel):
     slack_webhook: str | None = Field(default=None, description="Slack webhook URL")
 
 
+class FeatureFlags(BaseModel):
+    """Feature flag"""
+
+    flag: str
+    enabled: bool
+
+
 class AppConfig(BaseModel):
     """
     Application Configuration
@@ -123,12 +137,8 @@ class AppConfig(BaseModel):
     notifications: NotificationConfig = Field(
         default_factory=NotificationConfig, description="Notification settings"
     )
-    feature_flags: dict[str, bool] = Field(
-        default={
-            "new_dashboard": False,
-            "beta_features": False,
-            "analytics": True,
-        },
+    feature_flags: list[FeatureFlags] = Field(
+        default_factory=list,
         description="Feature flags",
     )
     metadata: Annotated[
@@ -146,13 +156,34 @@ ui_config = UIConfig(
     collapsible_tree=True,
     show_validation=True,
     attr_configs={
+        "server": FieldConfig(
+            display=DisplayConfig(
+                title="Server - {name}",
+            ),
+        ),
+        "feature_flags.[]": FieldConfig(
+            display=DisplayConfig(
+                title="Feature Flag - {flag}",
+            ),
+        ),
         "server.name": FieldConfig(
-            label="Application Name",
             placeholder="Enter your app name",
+            display=DisplayConfig(
+                title="Application Name",
+            ),
         ),
         "database.password": FieldConfig(
-            label="Database Password",
-            props={"type": "password"},
+            renderer=Renderer.PASSWORD,
+            display=DisplayConfig(
+                title="Database Password",
+            ),
+        ),
+        "server.allowed_hosts.[]": FieldConfig(
+            placeholder="Add allowed host",
+            display=DisplayConfig(
+                subtitle="Address of the allowed host",
+                detail=ViewDisplay(title="Host address"),
+            ),
         ),
     },
 )
