@@ -109,10 +109,13 @@ class NotificationConfig(BaseModel):
     slack_enabled: bool = Field(default=False, description="Enable Slack notifications")
     slack_webhook: str | None = Field(default=None, description="Slack webhook URL")
 
+
 class FeatureFlags(BaseModel):
     """Feature flag"""
+
     flag: str
     enabled: bool
+
 
 class AppConfig(BaseModel):
     """
@@ -167,7 +170,7 @@ ui_config = UIConfig(
             placeholder="Enter your app name",
             display=DisplayConfig(
                 title="Application Name",
-            )
+            ),
         ),
         "database.password": FieldConfig(
             renderer=Renderer.PASSWORD,
