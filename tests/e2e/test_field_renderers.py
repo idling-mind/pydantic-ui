@@ -1,5 +1,4 @@
-"""
-E2E tests for field renderers.
+"""E2E tests for field renderers.
 
 Tests different input types and custom renderers:
 - Text inputs (single and multi-line)
@@ -25,6 +24,8 @@ from .helpers import (
     get_field_by_type,
     wait_for_app_load,
 )
+
+pytestmark = pytest.mark.e2e
 
 
 class TestTextInputRenderers:

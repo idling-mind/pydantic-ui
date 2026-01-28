@@ -16,6 +16,7 @@ Requires the e2e_test_app.py example to be running at http://localhost:8000
 
 import re
 
+import pytest
 from playwright.sync_api import Page, expect
 
 from .helpers import (
@@ -25,6 +26,8 @@ from .helpers import (
     wait_for_app_load,
     wait_for_tree_loaded,
 )
+
+pytestmark = pytest.mark.e2e
 
 
 class TestApplicationLoading:

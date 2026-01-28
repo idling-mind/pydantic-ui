@@ -8,7 +8,7 @@ on:
 
 jobs:
   e2e-tests:
-    name: Playwright E2E Tests
+    name: Python Playwright E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
     
@@ -16,6 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, firefox]
+        python-version: ['3.11']
     
     steps:
       - name: Checkout code
@@ -31,7 +32,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
       
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -41,6 +42,11 @@ jobs:
       - name: Install Python dependencies
         run: uv sync
       
+      - name: Install Playwright for Python
+        run: |
+          uv pip install pytest-playwright
+          uv run playwright install --with-deps ${{ matrix.browser }}
+      
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
@@ -49,13 +55,17 @@ jobs:
         working-directory: frontend
         run: npm run build:package
       
-      - name: Install Playwright browsers
-        working-directory: frontend
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Start E2E test application
+        run: |
+          uv run python examples/e2e_test_app.py &
+          sleep 5
+          # Wait for server to be ready
+          timeout 30 bash -c 'until curl -f http://localhost:8000/config > /dev/null 2>&1; do sleep 1; done'
+        env:
+          PYTHONUNBUFFERED: 1
       
-      - name: Run Playwright tests
-        working-directory: frontend
-        run: npx playwright test --project=${{ matrix.browser }}
+      - name: Run E2E tests with pytest
+        run: uv run pytest tests/e2e/ -v --browser ${{ matrix.browser }} --headed=false -m e2e
         env:
           CI: true
       
@@ -63,19 +73,16 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results-${{ matrix.browser }}
+          name: e2e-test-results-${{ matrix.browser }}-py${{ matrix.python-version }}
           path: |
-            frontend/test-results/
-            frontend/playwright-report/
+            test-results/
+            .pytest_cache/
           retention-days: 7
       
-      - name: Upload test report
+      - name: Stop E2E test application
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-${{ matrix.browser }}
-          path: frontend/playwright-report/
-          retention-days: 7
+        run: |
+          pkill -f "python examples/e2e_test_app.py" || true
   
   e2e-summary:
     name: E2E Test Summary

@@ -1,5 +1,4 @@
-"""
-E2E tests for UI configuration and theming.
+"""E2E tests for UI configuration and theming.
 
 Tests UI customization features:
 - Theme switching (light/dark/system)
@@ -16,6 +15,7 @@ Requires the e2e_test_app.py example to be running at http://localhost:8000
 
 import re
 
+import pytest
 from playwright.sync_api import Page, expect
 
 from .helpers import (
@@ -24,6 +24,8 @@ from .helpers import (
     switch_theme,
     wait_for_app_load,
 )
+
+pytestmark = pytest.mark.e2e
 
 
 class TestThemeSwitching:

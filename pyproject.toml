@@ -118,6 +118,10 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+markers = [
+    "e2e: end-to-end tests (deselect with '-m \"not e2e\"')",
+]
+addopts = "-m 'not e2e'"
 
 [tool.coverage.run]
 source = ["pydantic_ui"]
