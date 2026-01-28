@@ -29,6 +29,7 @@ export function TreePanel({ className }: TreePanelProps) {
   } = useData();
 
   const [searchQuery, setSearchQuery] = React.useState('');
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null);
   const [showTypes, setShowTypes] = React.useState(true);
   const [hideSimpleFields, setHideSimpleFields] = React.useState(false);
   const [multiSelectedPaths, setMultiSelectedPaths] = React.useState<Set<string>>(new Set());
@@ -327,6 +328,22 @@ export function TreePanel({ className }: TreePanelProps) {
     }
   }, [searchQuery, matchedPaths, directMatches]);
 
+  // Keyboard shortcut: Ctrl/Cmd+K focuses the tree search input
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+K (or Cmd+K on mac)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        // select existing text for quick replace
+        searchInputRef.current?.select();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   // Filter function for visibility and simple fields
   const shouldShowField = React.useCallback(
     (field: SchemaField, _name: string, path: string): boolean => {
@@ -380,7 +397,9 @@ export function TreePanel({ className }: TreePanelProps) {
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search fields..."
+            ref={searchInputRef}
+            placeholder="Search fields... (Ctrl+K)"
+            aria-label="Search fields"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-9 h-9"
