@@ -25,10 +25,10 @@ export function SliderInput({ name, path, schema, value, errors, disabled, onCha
   const currentValue = typeof effectiveValue === 'number' ? effectiveValue : min;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-pydantic-ui="field" data-pydantic-ui-field-type="slider" data-pydantic-ui-path={path}>
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
-          <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
+          <Label htmlFor={path} className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
             <span className="inline-flex items-center gap-2">
               <span className="truncate">{label}</span>
               {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -36,7 +36,7 @@ export function SliderInput({ name, path, schema, value, errors, disabled, onCha
             </span>
           </Label>
           {subtitle && (
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
           )}
         </div>
         {showValue && (
@@ -58,6 +58,7 @@ export function SliderInput({ name, path, schema, value, errors, disabled, onCha
         onValueChange={([val]) => onChange(val)}
         min={min}
         max={max}
+        data-pydantic-ui="field-control"
         step={step}
         disabled={isReadOnly}
         className={cn(hasError && '[&_[role=slider]]:border-destructive', isReadOnly && 'opacity-50 cursor-not-allowed')}

@@ -17,7 +17,7 @@ export function CheckboxInput({ name, path, schema, value, errors, disabled, onC
   const effectiveValue = getValueWithDefault<boolean>(value, schema, false);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="checkbox" data-pydantic-ui-path={path}>
       <div className="flex items-center space-x-2">
         <Checkbox
           id={path}
@@ -25,6 +25,7 @@ export function CheckboxInput({ name, path, schema, value, errors, disabled, onC
           onCheckedChange={(checked) => onChange(checked === true)}
           disabled={isReadOnly}
           className={cn(hasError && 'border-destructive', isReadOnly && 'cursor-not-allowed')}
+          data-pydantic-ui="field-control"
         />
         <Label
           htmlFor={path}
@@ -41,7 +42,7 @@ export function CheckboxInput({ name, path, schema, value, errors, disabled, onC
         </Label>
       </div>
       {subtitle && (
-        <p className="text-xs text-muted-foreground ml-6">{subtitle}</p>
+        <p className="text-xs text-muted-foreground ml-6" data-pydantic-ui="field-subtitle">{subtitle}</p>
       )}
       {/* help_text now shown via FieldHelp next to title */}
       {hasError && (

@@ -50,9 +50,9 @@ export function SegmentedControlInput({ name, path, schema, value, errors, disab
   }, [schema.enum, schema.literal_values, props.options, schema.ui_config?.options_from, data]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="segmented-control" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label className={cn(hasError && 'text-destructive')}>
+        <Label className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -60,7 +60,7 @@ export function SegmentedControlInput({ name, path, schema, value, errors, disab
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       <ClearResetButtons
@@ -75,6 +75,7 @@ export function SegmentedControlInput({ name, path, schema, value, errors, disab
         value={effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : ''}
         onValueChange={(val) => !isReadOnly && onChange(val)}
         className="w-full"
+        data-pydantic-ui="field-control"
       >
         <TabsList className="w-full justify-start h-auto flex-wrap">
           {options.map((opt) => (

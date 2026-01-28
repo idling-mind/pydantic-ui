@@ -49,9 +49,9 @@ export function FileSelectInput({ name, path, schema, value, errors, disabled, o
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="file-select" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
+        <Label htmlFor={path} className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -59,7 +59,7 @@ export function FileSelectInput({ name, path, schema, value, errors, disabled, o
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       <div className="flex gap-2">
@@ -77,6 +77,7 @@ export function FileSelectInput({ name, path, schema, value, errors, disabled, o
             hasError && 'border-destructive focus-visible:ring-destructive',
             isReadOnly && 'bg-muted cursor-not-allowed'
           )}
+          data-pydantic-ui="field-control"
         />
         <input
           ref={fileInputRef}

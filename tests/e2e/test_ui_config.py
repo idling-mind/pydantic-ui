@@ -1,0 +1,288 @@
+"""
+E2E tests for UI configuration and theming.
+
+Tests UI customization features:
+- Theme switching (light/dark/system)
+- Custom titles and descriptions
+- Action buttons
+- UI layout
+- Responsive design
+
+Run these tests with:
+    uv run pytest tests/e2e/test_ui_config.py -v
+
+Requires the e2e_test_app.py example to be running at http://localhost:8000
+"""
+
+import re
+
+from playwright.sync_api import Page, expect
+
+from .helpers import (
+    SELECTORS,
+    is_dark_mode,
+    switch_theme,
+    wait_for_app_load,
+)
+
+
+class TestThemeSwitching:
+    """Tests for theme switching."""
+
+    def test_theme_toggle_is_visible(self, page: Page, base_url: str):
+        """Test that theme toggle is visible."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        theme_toggle = page.locator(SELECTORS["theme_toggle"])
+        expect(theme_toggle).to_be_visible()
+
+    def test_can_open_theme_menu(self, page: Page, base_url: str):
+        """Test that theme menu can be opened."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        theme_toggle = page.locator(SELECTORS["theme_toggle"])
+        theme_toggle.click()
+        page.wait_for_timeout(300)
+
+        # Menu items should appear
+        menu_items = page.get_by_text(re.compile(r"light|dark|system", re.I))
+        expect(menu_items.first).to_be_visible(timeout=3000)
+
+    def test_can_switch_to_dark_theme(self, page: Page, base_url: str):
+        """Test switching to dark theme."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        switch_theme(page, "dark")
+
+        # HTML should have dark class
+        assert is_dark_mode(page), "Should be in dark mode"
+
+    def test_can_switch_to_light_theme(self, page: Page, base_url: str):
+        """Test switching to light theme."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        switch_theme(page, "light")
+
+        # Should not be in dark mode
+        assert not is_dark_mode(page), "Should not be in dark mode"
+
+    def test_theme_persists_across_page_reloads(self, page: Page, base_url: str):
+        """Test that theme persists across page reloads."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        # Set dark theme
+        switch_theme(page, "dark")
+        assert is_dark_mode(page)
+
+        # Reload page
+        page.reload()
+        wait_for_app_load(page)
+
+        # Theme should still be dark
+        assert is_dark_mode(page), "Theme should persist after reload"
+
+    def test_theme_affects_component_styling(self, page: Page, base_url: str):
+        """Test that theme affects component styling."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        # Get initial background color in light mode
+        switch_theme(page, "light")
+        body = page.locator("body")
+        light_bg = body.evaluate("(el) => window.getComputedStyle(el).backgroundColor")
+
+        # Switch to dark theme
+        switch_theme(page, "dark")
+        dark_bg = body.evaluate("(el) => window.getComputedStyle(el).backgroundColor")
+
+        # Colors should differ
+        assert light_bg != dark_bg, "Background should change with theme"
+
+
+class TestUIConfiguration:
+    """Tests for UI configuration."""
+
+    def test_displays_title_from_config(self, page: Page, base_url: str):
+        """Test that title from config is displayed."""
+        with page.expect_response(
+            lambda response: "/api/config" in response.url and response.status == 200
+        ) as response_info:
+            page.goto(f"{base_url}/config")
+
+        response = response_info.value
+        config = response.json()
+
+        wait_for_app_load(page)
+
+        if config.get("title"):
+            header_title = page.locator(SELECTORS["header_title"])
+            expect(header_title).to_contain_text(config["title"])
+
+    def test_header_is_visible(self, page: Page, base_url: str):
+        """Test that header is visible."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        header = page.locator(SELECTORS["header"])
+        expect(header).to_be_visible()
+
+    def test_detail_footer_is_visible(self, page: Page, base_url: str):
+        """Test that detail footer is visible."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        footer = page.locator(SELECTORS["detail_footer"])
+        expect(footer).to_be_visible()
+
+
+class TestActionButtons:
+    """Tests for action buttons."""
+
+    def test_action_buttons_visible_if_configured(self, page: Page, base_url: str):
+        """Test that action buttons are visible if configured."""
+        with page.expect_response(
+            lambda response: "/api/config" in response.url and response.status == 200
+        ) as response_info:
+            page.goto(f"{base_url}/config")
+
+        response = response_info.value
+        config = response.json()
+
+        wait_for_app_load(page)
+
+        if config.get("actions") and len(config["actions"]) > 0:
+            # Action buttons should be in the footer area
+            for action in config["actions"]:
+                button = page.get_by_role("button", name=re.compile(action["label"], re.I))
+                if button.count() > 0:
+                    expect(button.first).to_be_visible()
+
+    def test_action_button_is_clickable(self, page: Page, base_url: str):
+        """Test that action buttons are clickable."""
+        with page.expect_response(
+            lambda response: "/api/config" in response.url and response.status == 200
+        ) as response_info:
+            page.goto(f"{base_url}/config")
+
+        response = response_info.value
+        config = response.json()
+
+        wait_for_app_load(page)
+
+        if config.get("actions") and len(config["actions"]) > 0:
+            first_action = config["actions"][0]
+            button = page.get_by_role("button", name=re.compile(first_action["label"], re.I))
+
+            if button.count() > 0 and button.first.is_visible():
+                # Button should be enabled
+                assert not button.first.is_disabled(), "Action button should be enabled"
+
+
+class TestLayoutAndResponsiveness:
+    """Tests for layout and responsiveness."""
+
+    def test_desktop_layout_shows_panels_side_by_side(self, page: Page, base_url: str):
+        """Test that desktop layout shows panels side-by-side."""
+        page.set_viewport_size({"width": 1280, "height": 720})
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        # Both panels should be visible
+        tree_panel = page.locator(SELECTORS["tree_panel"])
+        detail_panel = page.locator(SELECTORS["detail_panel"])
+
+        expect(tree_panel).to_be_visible()
+        expect(detail_panel).to_be_visible()
+
+    def test_mobile_layout_works(self, page: Page, base_url: str):
+        """Test that mobile layout works."""
+        page.set_viewport_size({"width": 375, "height": 667})
+        page.goto(f"{base_url}/config")
+
+        # Wait for app container to be visible
+        app_container = page.locator(SELECTORS["app_container"])
+        app_container.wait_for(state="visible", timeout=15000)
+
+        expect(app_container).to_be_visible()
+
+    def test_tablet_layout_works(self, page: Page, base_url: str):
+        """Test that tablet layout works."""
+        page.set_viewport_size({"width": 768, "height": 1024})
+        page.goto(f"{base_url}/config")
+
+        # Wait for app container to be visible
+        app_container = page.locator(SELECTORS["app_container"])
+        app_container.wait_for(state="visible", timeout=15000)
+
+        expect(app_container).to_be_visible()
+
+    def test_handles_window_resize(self, page: Page, base_url: str):
+        """Test that window resize is handled."""
+        page.set_viewport_size({"width": 1280, "height": 720})
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        # Resize to mobile
+        page.set_viewport_size({"width": 375, "height": 667})
+        page.wait_for_timeout(500)
+
+        # Should still work
+        expect(page.locator(SELECTORS["app_container"])).to_be_visible()
+
+        # Resize back to desktop
+        page.set_viewport_size({"width": 1280, "height": 720})
+        page.wait_for_timeout(500)
+
+        expect(page.locator(SELECTORS["app_container"])).to_be_visible()
+
+
+class TestHeaderComponents:
+    """Tests for header components."""
+
+    def test_header_logo_title_visible(self, page: Page, base_url: str):
+        """Test that header logo title area is visible."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        header_logo_title = page.locator(SELECTORS["header_logo_title"])
+        expect(header_logo_title).to_be_visible()
+
+    def test_header_title_visible(self, page: Page, base_url: str):
+        """Test that header title is visible."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        header_title = page.locator(SELECTORS["header_title"])
+        expect(header_title).to_be_visible()
+
+
+class TestLoadingStates:
+    """Tests for loading states."""
+
+    def test_app_loads_completely(self, page: Page, base_url: str):
+        """Test that app loads completely."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        # All main components should be visible
+        expect(page.locator(SELECTORS["app_container"])).to_be_visible()
+        expect(page.locator(SELECTORS["header"])).to_be_visible()
+        expect(page.locator(SELECTORS["tree_panel"])).to_be_visible()
+        expect(page.locator(SELECTORS["detail_panel"])).to_be_visible()
+
+
+class TestErrorStates:
+    """Tests for error states."""
+
+    def test_handles_invalid_path_gracefully(self, page: Page, base_url: str):
+        """Test that invalid paths are handled gracefully."""
+        page.goto(f"{base_url}/config/invalid-path-that-does-not-exist")
+        page.wait_for_timeout(1000)
+
+        # Should show error or redirect, but not crash
+        expect(page.locator("body")).to_be_visible()

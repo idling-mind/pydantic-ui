@@ -52,17 +52,27 @@ export function Header({ title = 'Pydantic UI', logoText, logoUrl, className }: 
   };
 
   return (
-    <header className={cn('border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60', className)}>
+    <header 
+      className={cn('border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60', className)}
+      data-pydantic-ui="header"
+    >
       <div className="flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          {renderLogo()}
-          <h1 className="text-lg font-semibold">{title}</h1>
+        <div className="flex items-center gap-2" data-pydantic-ui="header-logo-title">
+          <div data-pydantic-ui="header-logo">
+            {renderLogo()}
+          </div>
+          <h1 className="text-lg font-semibold" data-pydantic-ui="header-title">{title}</h1>
         </div>
 
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9"
+                data-pydantic-ui="theme-toggle"
+              >
                 {resolvedTheme === 'dark' ? (
                   <Moon className="h-4 w-4" />
                 ) : (

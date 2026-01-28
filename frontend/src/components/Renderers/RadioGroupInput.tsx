@@ -50,9 +50,9 @@ export function RadioGroupInput({ name, path, schema, value, errors, disabled, o
   }, [schema.enum, schema.literal_values, props.options, schema.ui_config?.options_from, data]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-pydantic-ui="field" data-pydantic-ui-field-type="radio-group" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label className={cn(hasError && 'text-destructive')}>
+        <Label className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -60,7 +60,7 @@ export function RadioGroupInput({ name, path, schema, value, errors, disabled, o
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       <ClearResetButtons
@@ -76,6 +76,7 @@ export function RadioGroupInput({ name, path, schema, value, errors, disabled, o
         onValueChange={(val) => onChange(val)}
         disabled={isReadOnly}
         className="flex flex-col space-y-1"
+        data-pydantic-ui="field-control"
       >
         {options.map((opt) => (
           <div key={opt.value} className="flex items-center space-x-2">

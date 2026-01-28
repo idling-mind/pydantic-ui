@@ -529,15 +529,15 @@ export function UnionInput({
   const showPrimitiveEditor = selectedVariant && !isComplexVariant(selectedVariant);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-pydantic-ui="field" data-pydantic-ui-field-type="union" data-pydantic-ui-path={path}>
       {/* Label */}
       <div className="space-y-0.5">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-muted-foreground" />
-          <Label className={cn(hasError && 'text-destructive')}>
+          <Label className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
             <span className="inline-flex items-center gap-2">
               <span className="truncate">{label}</span>
-              {schema.required && <span className="text-destructive">*</span>}
+              {schema.required !== false && <span className="text-destructive ml-1">*</span>}
               <FieldHelp helpText={helpText} />
             </span>
           </Label>
@@ -546,7 +546,7 @@ export function UnionInput({
           </Badge>
         </div>
         {subtitle && (
-          <p className="text-xs text-muted-foreground ml-6">{subtitle}</p>
+          <p className="text-xs text-muted-foreground ml-6" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
 
@@ -581,7 +581,7 @@ export function UnionInput({
       )}
 
       {/* Variant cards */}
-      <div className="grid gap-2">
+      <div className="grid gap-2" data-pydantic-ui="field-control">
         {variants.map((variant, idx) => {
           const isSelected = selectedVariantIndex === idx;
           const variantLabel = variant.discriminator_values?.length

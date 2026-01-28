@@ -119,9 +119,9 @@ export function FileUploadInput({ name, path, schema, value, errors, disabled, o
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="file-upload" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
+        <Label className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -129,7 +129,7 @@ export function FileUploadInput({ name, path, schema, value, errors, disabled, o
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       
@@ -146,6 +146,7 @@ export function FileUploadInput({ name, path, schema, value, errors, disabled, o
           isReadOnly && 'opacity-50 cursor-not-allowed',
           hasError && 'border-destructive'
         )}
+        data-pydantic-ui="field-control"
       >
         <Upload className={cn('h-8 w-8', isDragging ? 'text-primary' : 'text-muted-foreground')} />
         <div className="text-center">

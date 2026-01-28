@@ -16,8 +16,12 @@ This document provides specific instructions for AI coding agents working on the
 The package exports the following from `pydantic_ui/__init__.py`:
 - `create_pydantic_ui` - Factory function to create a FastAPI router for a Pydantic model
 - `UIConfig` - Global UI configuration class
-- `FieldConfig` - Per-field UI configuration class  
+- `FieldConfig` - Per-field UI configuration class
+- `DisplayConfig` - Display configuration for fields (title, subtitle, help_text, view overrides)
+- `ViewDisplay` - Per-view display overrides (tree, detail, table, card)
 - `Renderer` - Enum of available field renderers
+- `ActionButton` - Configuration for custom action buttons
+- `PydanticUIController` - Controller for programmatic UI interaction
 
 ### UI Framework Stack
 - **shadcn/ui**: Primary component library (built on Radix UI primitives)
@@ -179,10 +183,10 @@ import { cn } from '@/lib/utils';
 
 ```
 pydantic_ui/
-├── __init__.py          # Public exports: create_pydantic_ui, UIConfig, FieldConfig, Renderer
+├── __init__.py          # Public exports: create_pydantic_ui, UIConfig, FieldConfig, DisplayConfig, ViewDisplay, Renderer, ActionButton, PydanticUIController
 ├── app.py               # Router factory (create_pydantic_ui) - serves API endpoints and static files
 ├── schema.py            # Schema parsing: parse_model, parse_field, model_to_data
-├── config.py            # Configuration classes: UIConfig, FieldConfig, Renderer enum
+├── config.py            # Configuration classes: UIConfig, FieldConfig, DisplayConfig, ViewDisplay, Renderer enum, ActionButton
 ├── models.py            # Internal Pydantic models
 ├── handlers.py          # DataHandler class for data operations
 ├── utils.py             # Helper functions
@@ -1508,7 +1512,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('New Feature', () => {
   test('works end-to-end', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/config');
     
     // Wait for app to load
     await page.waitForResponse(response => 
@@ -1523,7 +1527,7 @@ test.describe('New Feature', () => {
   });
 
   test('handles errors gracefully', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/config');
     
     // Trigger error condition
     await page.getByRole('button', { name: 'Trigger Error' }).click();

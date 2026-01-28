@@ -49,7 +49,7 @@ export function Layout({}: LayoutProps) {
   }, [isDragging]);
 
   return (
-    <div className="h-screen flex flex-col bg-background relative">
+    <div className="h-screen flex flex-col bg-background relative" data-pydantic-ui="app-container">
       {progress !== null && (
         <div className="absolute top-0 left-0 right-0 h-1 bg-secondary z-50 overflow-hidden">
           <div 
@@ -71,6 +71,7 @@ export function Layout({}: LayoutProps) {
         <div
           style={{ width: panelWidth }}
           className="border-r bg-muted/30 flex-shrink-0 overflow-hidden"
+          data-pydantic-ui="tree-panel-container"
         >
           <TreePanel />
         </div>
@@ -82,12 +83,13 @@ export function Layout({}: LayoutProps) {
             isDragging && 'bg-primary/30'
           )}
           onMouseDown={handleMouseDown}
+          data-pydantic-ui="resize-handle"
         >
           <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 hover:opacity-100 transition-opacity" />
         </div>
 
         {/* Detail Panel */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden" data-pydantic-ui="detail-panel-container">
           <DetailPanel />
         </div>
       </div>

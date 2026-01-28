@@ -628,6 +628,11 @@ export function TreeNode({
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
       onClick={handleClick}
+      data-pydantic-ui="tree-node"
+      data-pydantic-ui-path={path}
+      data-pydantic-ui-type={schema.type}
+      data-pydantic-ui-selected={isSelected}
+      data-pydantic-ui-expanded={isExpanded}
     >
       {isExpandable && hasChildren ? (
         <button
@@ -1263,6 +1268,11 @@ function UnionArrayItemNode({
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
       onClick={handleClick}
+      data-pydantic-ui="tree-node"
+      data-pydantic-ui-path={path}
+      data-pydantic-ui-type="union"
+      data-pydantic-ui-selected={isSelected}
+      data-pydantic-ui-expanded={isExpanded}
     >
       {isExpandable && hasChildren ? (
         <button

@@ -78,9 +78,9 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="date" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
+        <Label htmlFor={path} className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -88,7 +88,7 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       <div className={cn('flex gap-2 items-center', includeTime ? 'flex-row' : 'flex-col')}>
@@ -112,6 +112,7 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
                   hasError && 'border-destructive focus-visible:ring-destructive',
                   isReadOnly && 'bg-muted cursor-not-allowed'
                 )}
+                data-pydantic-ui="field-control"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {date ? format(date, includeTime ? 'PPP' : 'PPP') : <span>{placeholder}</span>}

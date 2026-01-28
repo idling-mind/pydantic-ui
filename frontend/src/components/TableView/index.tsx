@@ -341,15 +341,16 @@ export function TableView({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" data-pydantic-ui="table-view" data-pydantic-ui-path={path}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2" data-pydantic-ui="table-toolbar">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={handleAddRow}
             disabled={disabled || !canAdd}
+            data-pydantic-ui="table-add-row"
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Row
@@ -361,6 +362,7 @@ export function TableView({
                 size="sm"
                 onClick={handleDuplicateSelected}
                 disabled={disabled || !canAdd}
+                data-pydantic-ui="table-duplicate-rows"
               >
                 <Copy className="h-4 w-4 mr-1" />
                 Duplicate ({selectedRows.length})
@@ -371,6 +373,7 @@ export function TableView({
                 onClick={handleDeleteSelected}
                 disabled={disabled || !canRemove}
                 className="text-destructive hover:text-destructive"
+                data-pydantic-ui="table-delete-rows"
               >
                 <Trash2 className="h-4 w-4 mr-1" />
                 Delete ({selectedRows.length})
@@ -395,6 +398,7 @@ export function TableView({
           isDark ? 'ag-theme-quartz-dark' : 'ag-theme-quartz'
         )}
         style={{ height: 'calc(100vh - 400px)', minHeight: '200px' }}
+        data-pydantic-ui="table-grid"
       >
         <AgGridReact
           ref={gridRef}
