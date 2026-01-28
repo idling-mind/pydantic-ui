@@ -63,7 +63,7 @@ jobs:
           PYTHONUNBUFFERED: 1
       
       - name: Run E2E tests with pytest
-        run: uv run pytest tests/e2e/ -v --browser ${{ matrix.browser }} --headed=false -m e2e
+        run: uv run pytest tests/e2e/ -v --browser ${{ matrix.browser }} -m e2e
         env:
           CI: true
       
