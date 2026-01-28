@@ -22,6 +22,7 @@ class ViewDisplay:
     title: str | None = None
     subtitle: str | None = None
     help_text: str | None = None
+    icon: str | None = None
 
     def model_dump(self) -> dict[str, Any]:
         """Return a dict representation."""
@@ -29,6 +30,7 @@ class ViewDisplay:
             "title": self.title,
             "subtitle": self.subtitle,
             "help_text": self.help_text,
+            "icon": self.icon,
         }
 
 

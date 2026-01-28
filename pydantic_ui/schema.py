@@ -185,9 +185,11 @@ def parse_union_field(
 
     # Single type + None = Optional, handle normally
     if len(non_none) == 1:
-        result = parse_field(name, field_info, non_none[0], max_depth, current_depth, class_configs)
-        result["required"] = not has_none
-        return result
+        single_result = parse_field(
+            name, field_info, non_none[0], max_depth, current_depth, class_configs
+        )
+        single_result["required"] = not has_none
+        return single_result
 
     # Check if all non-None types are primitive (not BaseModel)
     all_primitive = all(not is_pydantic_model(t) for t in non_none)
@@ -488,7 +490,7 @@ def get_constraints(field_info: FieldInfo, field_type: type) -> dict[str, Any]:
 def parse_field(
     name: str,
     field_info: FieldInfo,
-    field_type: type,
+    field_type: Any,
     max_depth: int = 10,
     current_depth: int = 0,
     class_configs: dict[str, FieldConfig] | None = None,
@@ -607,7 +609,7 @@ def parse_field(
                 FieldInfo(),
                 value_type,
                 max_depth,
-                current_depth + 1,  # type: ignore
+                current_depth + 1,
                 class_configs,
             ),
             "ui_config": ui_config,
