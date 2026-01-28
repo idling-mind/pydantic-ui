@@ -96,9 +96,9 @@ export function ColorInput({ name, path, schema, value, errors, disabled, onChan
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="color" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
+        <Label htmlFor={path} className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -106,7 +106,7 @@ export function ColorInput({ name, path, schema, value, errors, disabled, onChan
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       <div className="flex gap-2 items-center">
@@ -116,6 +116,7 @@ export function ColorInput({ name, path, schema, value, errors, disabled, onChan
           onChange={handleColorChange}
           disabled={isReadOnly}
           className={cn('w-12 h-10 p-1 cursor-pointer', isReadOnly && 'cursor-not-allowed')}
+          data-pydantic-ui="field-control"
         />
         <Input
           id={path}

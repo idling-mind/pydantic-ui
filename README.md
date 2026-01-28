@@ -96,9 +96,13 @@ The package exports the following from `pydantic_ui`:
 | `create_pydantic_ui` | Factory function to create a FastAPI router for a Pydantic model |
 | `UIConfig` | Global UI configuration class |
 | `FieldConfig` | Per-field UI configuration class |
+| `DisplayConfig` | Display configuration (title, subtitle, help_text, view overrides) |
+| `ViewDisplay` | Per-view display overrides (tree, detail, table, card) |
 | `Renderer` | Enum of available field renderers |
 | `ActionButton` | Configuration for custom action buttons |
 | `PydanticUIController` | Controller for programmatic UI interaction |
+
+> **Note**: If you're upgrading from an older version, see the [Migration Guide](docs/MIGRATION_GUIDE.md) for breaking changes in v0.4.0+.
 
 ## UI Configuration
 
@@ -704,13 +708,28 @@ npm install
 ### Running Tests
 
 ```bash
-# Backend tests
-pytest
+# Backend tests (unit and integration)
+uv run pytest
 
-# Frontend tests
+# Frontend unit tests
 cd frontend
 npm test
+
+# E2E tests with Playwright
+cd frontend
+npm run test:e2e          # Run all E2E tests
+npm run test:e2e:ui       # Interactive UI mode (recommended)
+npm run test:e2e:headed   # Watch tests run in browser
+npm run test:e2e:debug    # Debug mode with inspector
+
+# View E2E test report
+npx playwright show-report
 ```
+
+For detailed E2E testing documentation, see:
+- [E2E Testing Guide](docs/TESTING_E2E.md) - Comprehensive guide
+- [Playwright Quick Reference](PLAYWRIGHT_QUICKREF.md) - Quick reference card
+- [E2E Test README](frontend/e2e/README.md) - Test directory documentation
 
 ### Building
 
@@ -737,6 +756,201 @@ python -m build
 
 # Run specific example on different port
 ./scripts/build-test.ps1 -Example callbacks -Port 3000 -OpenBrowser
+```
+
+## Data Attributes for Testing & Automation
+
+Pydantic UI includes comprehensive `data-pydantic-ui-*` attributes on all major UI components for easy testing, automation, and integration with tools like Playwright, Selenium, and Cypress.
+
+### Application Structure
+
+| Attribute | Element | Description |
+|-----------|---------|-------------|
+| `data-pydantic-ui="app-container"` | Main app container | Root application container |
+| `data-pydantic-ui="header"` | Header component | Application header |
+| `data-pydantic-ui="header-logo-title"` | Logo/title container | Combined logo and title area |
+| `data-pydantic-ui="header-logo"` | Logo container | Application logo |
+| `data-pydantic-ui="header-title"` | Title text | Application title text |
+| `data-pydantic-ui="theme-toggle"` | Theme button | Light/dark theme toggle button |
+
+### Layout & Panels
+
+| Attribute | Element | Description |
+|-----------|---------|-------------|
+| `data-pydantic-ui="tree-panel-container"` | Tree panel container | Left sidebar container |
+| `data-pydantic-ui="detail-panel-container"` | Detail panel container | Right main content container |
+| `data-pydantic-ui="resize-handle"` | Resize handle | Draggable divider between panels |
+
+### Tree Panel
+
+| Attribute | Element | Description |
+|-----------|---------|-------------|
+| `data-pydantic-ui="tree-panel"` | Tree panel | Tree navigation panel |
+| `data-pydantic-ui="tree-search-container"` | Search container | Search field container |
+| `data-pydantic-ui="tree-search"` | Search input | Tree field search input |
+| `data-pydantic-ui="tree-toolbar"` | Toolbar | Tree toolbar with filter/type toggles |
+| `data-pydantic-ui="tree-filter-simple"` | Filter button | Toggle simple fields visibility |
+| `data-pydantic-ui="tree-toggle-types"` | Types button | Toggle type badges visibility |
+| `data-pydantic-ui="tree-actions"` | Actions container | Expand/collapse/up actions |
+| `data-pydantic-ui="tree-expand-all"` | Expand button | Expand all tree nodes |
+| `data-pydantic-ui="tree-collapse-all"` | Collapse button | Collapse all tree nodes |
+| `data-pydantic-ui="tree-up-level"` | Up button | Navigate up one level |
+| `data-pydantic-ui="tree-content"` | Content container | Tree nodes container |
+
+### Tree Nodes
+
+| Attribute | Element | Description | Additional Attributes |
+|-----------|---------|-------------|----------------------|
+| `data-pydantic-ui="tree-node"` | Tree node | Individual tree node | `data-pydantic-ui-path`: field path<br>`data-pydantic-ui-type`: field type<br>`data-pydantic-ui-selected`: "true"/"false"<br>`data-pydantic-ui-expanded`: "true"/"false" |
+
+**Example usage:**
+```typescript
+// Select a specific tree node by path
+await page.locator('[data-pydantic-ui="tree-node"][data-pydantic-ui-path="user.address"]').click();
+
+// Find all expanded nodes
+const expandedNodes = await page.locator('[data-pydantic-ui="tree-node"][data-pydantic-ui-expanded="true"]').all();
+
+// Find all object-type nodes
+const objectNodes = await page.locator('[data-pydantic-ui="tree-node"][data-pydantic-ui-type="object"]').all();
+```
+
+### Detail Panel
+
+| Attribute | Element | Description |
+|-----------|---------|-------------|
+| `data-pydantic-ui="detail-panel"` | Detail panel | Main editing panel |
+| `data-pydantic-ui="detail-header"` | Header | Detail panel header |
+| `data-pydantic-ui="detail-title"` | Title | Current field title |
+| `data-pydantic-ui="detail-subtitle"` | Subtitle | Current field subtitle |
+| `data-pydantic-ui="detail-path"` | Path display | Field path breadcrumb |
+| `data-pydantic-ui="detail-content"` | Content area | Main editing content |
+| `data-pydantic-ui="detail-footer"` | Footer | Action buttons footer |
+| `data-pydantic-ui="save-reset-buttons"` | Button group | Save/reset button container |
+| `data-pydantic-ui="save-button"` | Save button | Save changes button |
+| `data-pydantic-ui="reset-button"` | Reset button | Reset changes button |
+| `data-pydantic-ui="unsaved-indicator"` | Indicator | "Unsaved changes" text |
+
+### Nested Field Cards
+
+| Attribute | Element | Description | Additional Attributes |
+|-----------|---------|-------------|----------------------|
+| `data-pydantic-ui="nested-card"` | Card | Nested object/array card | `data-pydantic-ui-path`: field path<br>`data-pydantic-ui-type`: "object" or "array"<br>`data-pydantic-ui-enabled`: "true"/"false" |
+
+**Example usage:**
+```typescript
+// Click on a nested address card
+await page.locator('[data-pydantic-ui="nested-card"][data-pydantic-ui-path="user.address"]').click();
+
+// Find all enabled nested cards
+const enabledCards = await page.locator('[data-pydantic-ui="nested-card"][data-pydantic-ui-enabled="true"]').all();
+```
+
+### Field Renderers
+
+All field renderers include standard attributes for identification:
+
+| Attribute | Element | Description | Additional Attributes |
+|-----------|---------|-------------|----------------------|
+| `data-pydantic-ui="field"` | Field container | Field wrapper | `data-pydantic-ui-field-type`: renderer type<br>`data-pydantic-ui-path`: field path |
+| `data-pydantic-ui="field-label"` | Label | Field label/title | |
+| `data-pydantic-ui="field-subtitle"` | Subtitle | Field description | |
+| `data-pydantic-ui="field-control"` | Input/Control | Actual input element (input, textarea, select, slider, etc.) | |
+
+**Field Types:**
+- `text` - Single-line text input
+- `textarea` - Multi-line text input
+- `number` - Numeric input
+- `slider` - Range slider
+- `checkbox` - Checkbox input
+- `toggle` - Toggle switch
+- `select` - Dropdown select
+- `radio-group` - Radio button group
+- `color` - Color picker with hex input
+- `date` - Date/datetime picker
+- `checklist` - Multiple checkboxes for array of strings
+- `segmented-control` - Segmented control (tabs-style selection)
+- `json` - JSON editor (textarea)
+- `markdown` - Markdown editor with preview
+- `file-select` - File path selector
+- `file-upload` - File upload with drag-and-drop
+- `union` - Union type variant selector
+
+**Example usage:**
+```typescript
+// Find and fill a text field by path using field-control
+await page.locator('[data-pydantic-ui="field"][data-pydantic-ui-path="user.name"] [data-pydantic-ui="field-control"]').fill('John Doe');
+
+// Alternative: target the input directly
+await page.locator('[data-pydantic-ui="field"][data-pydantic-ui-path="user.name"] input').fill('John Doe');
+
+// Find all slider controls
+const sliders = await page.locator('[data-pydantic-ui="field-control"][role="slider"]').all();
+
+// Get field label text
+const label = await page.locator('[data-pydantic-ui="field"][data-pydantic-ui-path="age"] [data-pydantic-ui="field-label"]').textContent();
+
+// Check a checkbox
+await page.locator('[data-pydantic-ui="field"][data-pydantic-ui-field-type="checkbox"] [data-pydantic-ui="field-control"]').check();
+
+// Select from dropdown
+await page.locator('[data-pydantic-ui="field"][data-pydantic-ui-field-type="select"] [data-pydantic-ui="field-control"]').click();
+```
+
+### Table View
+
+| Attribute | Element | Description | Additional Attributes |
+|-----------|---------|-------------|----------------------|
+| `data-pydantic-ui="table-view"` | Container | Table view container | `data-pydantic-ui-path`: array path |
+| `data-pydantic-ui="table-toolbar"` | Toolbar | Table action toolbar | |
+| `data-pydantic-ui="table-add-row"` | Button | Add row button | |
+| `data-pydantic-ui="table-duplicate-rows"` | Button | Duplicate selected rows | |
+| `data-pydantic-ui="table-delete-rows"` | Button | Delete selected rows | |
+| `data-pydantic-ui="table-grid"` | Grid | AG Grid table element | |
+
+**Example usage:**
+```typescript
+// Add a row to a table
+await page.locator('[data-pydantic-ui="table-view"][data-pydantic-ui-path="users"] [data-pydantic-ui="table-add-row"]').click();
+
+// Delete selected rows
+await page.locator('[data-pydantic-ui="table-delete-rows"]').click();
+```
+
+### Complete Testing Example
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test('edit user profile', async ({ page }) => {
+  await page.goto('http://localhost:8000/editor');
+  
+  // Navigate to user.name field in tree
+  await page.locator('[data-pydantic-ui="tree-node"][data-pydantic-ui-path="user"]').click();
+  await page.locator('[data-pydantic-ui="tree-node"][data-pydantic-ui-path="user.name"]').click();
+  
+  // Edit the name field
+  await page.locator('[data-pydantic-ui="field"][data-pydantic-ui-path="user.name"] [data-pydantic-ui="field-control"]').fill('Jane Smith');
+  
+  // Navigate to age field using tree
+  await page.locator('[data-pydantic-ui="tree-node"][data-pydantic-ui-path="user.age"]').click();
+  
+  // Adjust age slider
+  const slider = page.locator('[data-pydantic-ui="field"][data-pydantic-ui-path="user.age"] [data-pydantic-ui="field-control"]');
+  await slider.fill('30');
+  
+  // Click nested address card
+  await page.locator('[data-pydantic-ui="nested-card"][data-pydantic-ui-path="user.address"]').click();
+  
+  // Verify we're editing the address
+  await expect(page.locator('[data-pydantic-ui="detail-title"]')).toContainText('Address');
+  
+  // Save changes
+  await page.locator('[data-pydantic-ui="save-button"]').click();
+  
+  // Verify save success
+  await expect(page.locator('[data-pydantic-ui="detail-footer"]')).toContainText('Saved');
+});
 ```
 
 ## License

@@ -18,7 +18,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
+    /* Base URL to use in actions like `await page.goto('/config')`. */
     baseURL: 'http://localhost:8000/config',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
@@ -49,7 +49,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'cd .. && python -m uvicorn examples.basic.main:app --host 0.0.0.0 --port 8000',
+    command: 'cd .. && uv run python -m uvicorn examples.main:app --host 127.0.0.1 --port 8000',
     url: 'http://localhost:8000/config',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

@@ -67,9 +67,9 @@ export function ChecklistInput({ name, path, schema, value, errors, disabled, on
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-pydantic-ui="field" data-pydantic-ui-field-type="checklist" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label className={cn(hasError && 'text-destructive')}>
+        <Label className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -77,7 +77,7 @@ export function ChecklistInput({ name, path, schema, value, errors, disabled, on
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       <ClearResetButtons
@@ -97,6 +97,7 @@ export function ChecklistInput({ name, path, schema, value, errors, disabled, on
                 checked={isChecked}
                 onCheckedChange={(checked) => handleCheckedChange(checked === true, opt.value)}
                 disabled={isReadOnly}
+                data-pydantic-ui="field-control"
               />
               <Label htmlFor={`${path}-${opt.value}`} className="font-normal cursor-pointer">
                 {opt.label}

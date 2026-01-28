@@ -57,9 +57,9 @@ export function SelectInput({ name, path, schema, value, errors, disabled, onCha
   }, [schema.enum, schema.literal_values, props.options, schema.ui_config?.options_from, data]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="select" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
+        <Label htmlFor={path} className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -67,7 +67,7 @@ export function SelectInput({ name, path, schema, value, errors, disabled, onCha
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       <div className="flex items-center gap-1">
@@ -78,6 +78,7 @@ export function SelectInput({ name, path, schema, value, errors, disabled, onCha
           disabled={isReadOnly}
         >
           <SelectTrigger
+            data-pydantic-ui="field-control"
             id={path}
             className={cn('flex-1', hasError && 'border-destructive focus:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
           >

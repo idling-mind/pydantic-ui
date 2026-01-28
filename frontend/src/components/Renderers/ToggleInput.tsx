@@ -18,12 +18,13 @@ export function ToggleInput({ name, path, schema, value, errors, disabled, onCha
   const effectiveValue = getValueWithDefault<boolean>(value, schema, false);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="toggle" data-pydantic-ui-path={path}>
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
           <Label
             htmlFor={path}
             className={cn('cursor-pointer', hasError && 'text-destructive')}
+            data-pydantic-ui="field-label"
           >
             <span className="inline-flex items-center gap-2">
               <span className="truncate">{label}</span>
@@ -32,7 +33,7 @@ export function ToggleInput({ name, path, schema, value, errors, disabled, onCha
             </span>
           </Label>
           {subtitle && (
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -42,6 +43,7 @@ export function ToggleInput({ name, path, schema, value, errors, disabled, onCha
             onCheckedChange={(checked) => onChange(checked)}
             disabled={isReadOnly}
             className={cn(hasError && 'data-[state=unchecked]:border-destructive', isReadOnly && 'cursor-not-allowed')}
+            data-pydantic-ui="field-control"
           />
           <ClearResetButtons
             schema={schema}

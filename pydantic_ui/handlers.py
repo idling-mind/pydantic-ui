@@ -58,7 +58,7 @@ class DataHandler:
         """Match a field path against field_configs, supporting [] wildcards."""
         # Direct match
         if path in self.field_configs:
-            return self.field_configs[path]  # type: ignore
+            return self.field_configs[path]
 
         # Try wildcard patterns - replace array indices with []
         # e.g., "users.0.age" should match "users.[].age"
@@ -70,7 +70,7 @@ class DataHandler:
                 regex_pattern = re.escape(pattern).replace(r"\[\]", r"\d+")
                 regex_pattern = f"^{regex_pattern}$"
                 if re.match(regex_pattern, path):
-                    return config  # type: ignore
+                    return config
 
         return None
 
@@ -302,6 +302,10 @@ class DataHandler:
         return ConfigResponse(
             title=self.ui_config.title,
             subtitle=self.ui_config.subtitle,
+            logo_text=self.ui_config.logo_text,
+            logo_url=self.ui_config.logo_url,
+            logo_url_dark=self.ui_config.logo_url_dark,
+            favicon_url=self.ui_config.favicon_url,
             theme=self.ui_config.theme,
             read_only=self.ui_config.read_only,
             show_validation=self.ui_config.show_validation,

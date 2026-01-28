@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,20 +15,35 @@ interface HeaderProps {
   title?: string;
   logoText?: string | null;
   logoUrl?: string | null;
+  logoUrlDark?: string | null;
   className?: string;
 }
 
 // Default logo path - bundled with the package
 const DEFAULT_LOGO_URL = './logo.png';
 
-export function Header({ title = 'Pydantic UI', logoText, logoUrl, className }: HeaderProps) {
+export function Header({ title = 'Pydantic UI', logoText, logoUrl, logoUrlDark, className }: HeaderProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [logoError, setLogoError] = useState(false);
 
+  // Reset logo error when logo URLs or theme changes
+  useEffect(() => {
+    setLogoError(false);
+  }, [logoUrl, logoUrlDark, resolvedTheme]);
+
   // Determine what to show in the logo area
   const renderLogo = () => {
-    // Use provided logoUrl, or fall back to default bundled logo
-    const effectiveLogoUrl = logoUrl ?? DEFAULT_LOGO_URL;
+    // Select logo based on current theme
+    // For dark mode, use logoUrlDark if available, otherwise fall back to logoUrl
+    // For light mode, use logoUrl
+    // If neither is provided, use the default bundled logo
+    let effectiveLogoUrl: string | null = null;
+    
+    if (resolvedTheme === 'dark') {
+      effectiveLogoUrl = logoUrlDark ?? logoUrl ?? DEFAULT_LOGO_URL;
+    } else {
+      effectiveLogoUrl = logoUrl ?? DEFAULT_LOGO_URL;
+    }
     
     if (effectiveLogoUrl && !logoError) {
       return (
@@ -37,6 +52,7 @@ export function Header({ title = 'Pydantic UI', logoText, logoUrl, className }: 
           alt={title} 
           className="h-8 w-8 rounded-md object-contain"
           onError={() => setLogoError(true)}
+          data-pydantic-ui="header-logo-img"
         />
       );
     }
@@ -52,17 +68,27 @@ export function Header({ title = 'Pydantic UI', logoText, logoUrl, className }: 
   };
 
   return (
-    <header className={cn('border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60', className)}>
+    <header 
+      className={cn('border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60', className)}
+      data-pydantic-ui="header"
+    >
       <div className="flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          {renderLogo()}
-          <h1 className="text-lg font-semibold">{title}</h1>
+        <div className="flex items-center gap-2" data-pydantic-ui="header-logo-title">
+          <div data-pydantic-ui="header-logo">
+            {renderLogo()}
+          </div>
+          <h1 className="text-lg font-semibold" data-pydantic-ui="header-title">{title}</h1>
         </div>
 
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9"
+                data-pydantic-ui="theme-toggle"
+              >
                 {resolvedTheme === 'dark' ? (
                   <Moon className="h-4 w-4" />
                 ) : (

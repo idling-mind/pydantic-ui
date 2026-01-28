@@ -22,6 +22,7 @@ class ViewDisplay:
     title: str | None = None
     subtitle: str | None = None
     help_text: str | None = None
+    icon: str | None = None
 
     def model_dump(self) -> dict[str, Any]:
         """Return a dict representation."""
@@ -29,6 +30,7 @@ class ViewDisplay:
             "title": self.title,
             "subtitle": self.subtitle,
             "help_text": self.help_text,
+            "icon": self.icon,
         }
 
 
@@ -232,7 +234,16 @@ class UIConfig(BaseModel):
     )
     logo_url: str | None = Field(
         default=None,
-        description="URL to a logo image. If set, overrides logo_text",
+        description="URL to a logo image for light mode. If set, overrides logo_text. "
+        "Use with logo_url_dark for theme-aware logos.",
+    )
+    logo_url_dark: str | None = Field(
+        default=None,
+        description="URL to a logo image for dark mode. Falls back to logo_url if not set.",
+    )
+    favicon_url: str | None = Field(
+        default=None,
+        description="URL to a favicon image. Falls back to logo_url or default if not set.",
     )
     theme: str = Field(
         default="system",

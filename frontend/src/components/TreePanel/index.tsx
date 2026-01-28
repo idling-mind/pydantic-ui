@@ -29,6 +29,7 @@ export function TreePanel({ className }: TreePanelProps) {
   } = useData();
 
   const [searchQuery, setSearchQuery] = React.useState('');
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null);
   const [showTypes, setShowTypes] = React.useState(true);
   const [hideSimpleFields, setHideSimpleFields] = React.useState(false);
   const [multiSelectedPaths, setMultiSelectedPaths] = React.useState<Set<string>>(new Set());
@@ -327,6 +328,22 @@ export function TreePanel({ className }: TreePanelProps) {
     }
   }, [searchQuery, matchedPaths, directMatches]);
 
+  // Keyboard shortcut: Ctrl/Cmd+K focuses the tree search input
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+K (or Cmd+K on mac)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        // select existing text for quick replace
+        searchInputRef.current?.select();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   // Filter function for visibility and simple fields
   const shouldShowField = React.useCallback(
     (field: SchemaField, _name: string, path: string): boolean => {
@@ -374,16 +391,19 @@ export function TreePanel({ className }: TreePanelProps) {
     : [];
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex flex-col h-full', className)} data-pydantic-ui="tree-panel">
       {/* Header */}
-      <div className="p-3 border-b">
+      <div className="p-3 border-b" data-pydantic-ui="tree-search-container">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search fields..."
+            ref={searchInputRef}
+            placeholder="Search fields... (Ctrl+K)"
+            aria-label="Search fields"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-9 h-9"
+            data-pydantic-ui="tree-search"
           />
           {searchQuery && (
             <button
@@ -398,7 +418,7 @@ export function TreePanel({ className }: TreePanelProps) {
       </div>
 
       {/* Toolbar */}
-      <div className="px-3 py-2 flex items-center justify-between border-b">
+      <div className="px-3 py-2 flex items-center justify-between border-b" data-pydantic-ui="tree-toolbar">
         <span className="text-xs text-muted-foreground">
           {rootFields.length} field{rootFields.length !== 1 ? 's' : ''}
         </span>
@@ -409,6 +429,7 @@ export function TreePanel({ className }: TreePanelProps) {
             onClick={() => setHideSimpleFields(!hideSimpleFields)}
             className="h-7 px-2 text-xs"
             title={hideSimpleFields ? 'Show simple fields' : 'Hide simple fields'}
+            data-pydantic-ui="tree-filter-simple"
           >
             {hideSimpleFields ? (
               <>
@@ -426,6 +447,7 @@ export function TreePanel({ className }: TreePanelProps) {
             onClick={() => setShowTypes(!showTypes)}
             className="h-7 px-2 text-xs"
             title={showTypes ? 'Hide type badges' : 'Show type badges'}
+            data-pydantic-ui="tree-toggle-types"
           >
             {showTypes ? (
               <>
@@ -441,13 +463,14 @@ export function TreePanel({ className }: TreePanelProps) {
       </div>
 
       {/* Tree Actions */}
-      <div className="px-3 py-2 flex items-center gap-1 border-b bg-muted/20">
+      <div className="px-3 py-2 flex items-center gap-1 border-b bg-muted/20" data-pydantic-ui="tree-actions">
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={expandAll} 
           title="Expand All"
           className="h-7 px-2 text-xs"
+          data-pydantic-ui="tree-expand-all"
         >
           <ChevronsDown className="h-3.5 w-3.5 mr-1" />
           Expand All
@@ -458,6 +481,7 @@ export function TreePanel({ className }: TreePanelProps) {
           onClick={collapseAll} 
           title="Collapse All"
           className="h-7 px-2 text-xs"
+          data-pydantic-ui="tree-collapse-all"
         >
           <ChevronsUp className="h-3.5 w-3.5 mr-1" />
           Collapse All
@@ -470,6 +494,7 @@ export function TreePanel({ className }: TreePanelProps) {
           disabled={!selectedPath || selectedPath === ''}
           title="Up One Level"
           className="h-7 px-2 text-xs"
+          data-pydantic-ui="tree-up-level"
         >
           <ArrowUp className="h-3.5 w-3.5 mr-1" />
           Up Level
@@ -480,7 +505,7 @@ export function TreePanel({ className }: TreePanelProps) {
 
       {/* Tree Content */}
       <ScrollArea className="flex-1">
-        <div className="py-2">
+        <div className="py-2" data-pydantic-ui="tree-content">
           {rootFields.length === 0 && !searchQuery ? (
             <div className="px-3 py-8 text-center text-sm text-muted-foreground">
               No fields available

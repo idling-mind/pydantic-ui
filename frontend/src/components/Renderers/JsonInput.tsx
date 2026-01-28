@@ -60,9 +60,9 @@ export function JsonInput({ name, path, schema, value, errors, disabled, onChang
   const hasErrors = combinedErrors.length > 0;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="json" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label htmlFor={path} className={cn(hasErrors && 'text-destructive')}>
+        <Label htmlFor={path} className={cn(hasErrors && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -70,7 +70,7 @@ export function JsonInput({ name, path, schema, value, errors, disabled, onChang
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       <Textarea
@@ -86,6 +86,7 @@ export function JsonInput({ name, path, schema, value, errors, disabled, onChang
           hasErrors && 'border-destructive focus-visible:ring-destructive',
           isReadOnly && 'bg-muted cursor-not-allowed'
         )}
+        data-pydantic-ui="field-control"
       />
       {/* help_text now shown via FieldHelp next to title */}
       {hasErrors && (

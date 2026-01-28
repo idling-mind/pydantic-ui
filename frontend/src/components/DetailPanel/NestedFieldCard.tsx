@@ -113,6 +113,10 @@ export function NestedFieldCard({
           'hover:border-primary/50',
           'group'
         )}
+        data-pydantic-ui="nested-card"
+        data-pydantic-ui-path={path}
+        data-pydantic-ui-type={schema.type}
+        data-pydantic-ui-enabled="false"
       >
         <CardContent className="flex items-center gap-3 p-4">
           <div className="flex-shrink-0 opacity-50">{info.icon}</div>
@@ -162,6 +166,10 @@ export function NestedFieldCard({
           hasError && 'border-destructive'
         )}
         onClick={handleClick}
+        data-pydantic-ui="nested-card"
+        data-pydantic-ui-path={path}
+        data-pydantic-ui-type={schema.type}
+        data-pydantic-ui-enabled="true"
       >
         <CardContent className="flex items-center gap-3 p-4">
           <div className="flex-shrink-0">{info.icon}</div>

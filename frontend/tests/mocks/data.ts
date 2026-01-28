@@ -157,6 +157,8 @@ export const testConfig: UIConfig = {
   description: 'Testing the pydantic-ui',
   logo_text: null,
   logo_url: null,
+  logo_url_dark: null,
+  favicon_url: null,
   theme: 'system',
   read_only: false,
   show_validation: true,

@@ -206,6 +206,8 @@ class TestUIConfig:
         assert config.subtitle == ""
         assert config.logo_text is None
         assert config.logo_url is None
+        assert config.logo_url_dark is None
+        assert config.favicon_url is None
         assert config.theme == "system"
         assert config.read_only is False
         assert config.show_validation is True
@@ -227,6 +229,8 @@ class TestUIConfig:
             subtitle="A custom configuration editor",
             logo_text="CE",
             logo_url="https://example.com/logo.png",
+            logo_url_dark="https://example.com/logo-dark.png",
+            favicon_url="https://example.com/favicon.ico",
             theme="dark",
             read_only=True,
             show_validation=False,
@@ -241,6 +245,8 @@ class TestUIConfig:
         assert config.subtitle == "A custom configuration editor"
         assert config.logo_text == "CE"
         assert config.logo_url == "https://example.com/logo.png"
+        assert config.logo_url_dark == "https://example.com/logo-dark.png"
+        assert config.favicon_url == "https://example.com/favicon.ico"
         assert config.theme == "dark"
         assert config.read_only is True
         assert config.show_validation is False
@@ -250,6 +256,22 @@ class TestUIConfig:
         assert config.show_types is False
         assert len(config.actions) == 2
         assert config.show_save_reset is True
+
+    def test_theme_aware_logos(self):
+        """Test UIConfig with theme-aware logos."""
+        config = UIConfig(
+            logo_url="https://example.com/logo-light.png",
+            logo_url_dark="https://example.com/logo-dark.png",
+        )
+        assert config.logo_url == "https://example.com/logo-light.png"
+        assert config.logo_url_dark == "https://example.com/logo-dark.png"
+
+    def test_favicon_url(self):
+        """Test UIConfig with favicon_url."""
+        config = UIConfig(
+            favicon_url="https://example.com/custom-favicon.ico",
+        )
+        assert config.favicon_url == "https://example.com/custom-favicon.ico"
 
     def test_with_actions(self):
         """Test UIConfig with action buttons."""

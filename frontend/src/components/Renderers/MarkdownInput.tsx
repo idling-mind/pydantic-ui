@@ -22,9 +22,9 @@ export function MarkdownInput({ name, path, schema, value, errors, disabled, onC
   const stringValue = effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : '';
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="markdown" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
+        <Label htmlFor={path} className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -32,11 +32,11 @@ export function MarkdownInput({ name, path, schema, value, errors, disabled, onC
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       
-      <Tabs defaultValue="write" className="w-full">
+      <Tabs defaultValue="write" className="w-full" data-pydantic-ui="field-control">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="write">Write</TabsTrigger>
           <TabsTrigger value="preview">Preview</TabsTrigger>

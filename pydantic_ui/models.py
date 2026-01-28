@@ -86,6 +86,10 @@ class ConfigResponse(BaseModel):
 
     title: str
     subtitle: str
+    logo_text: str | None = None
+    logo_url: str | None = None
+    logo_url_dark: str | None = None
+    favicon_url: str | None = None
     theme: str
     read_only: bool
     show_validation: bool

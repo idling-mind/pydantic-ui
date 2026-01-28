@@ -546,11 +546,11 @@ export function DetailPanel({ className }: DetailPanelProps) {
   };
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex flex-col h-full', className)} data-pydantic-ui="detail-panel">
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b" data-pydantic-ui="detail-header">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2" data-pydantic-ui="detail-title">
             {displayInfo.title}
             {/* show help icon if selected schema has help text */}
             {displayInfo.helpText && (
@@ -573,12 +573,12 @@ export function DetailPanel({ className }: DetailPanelProps) {
           </div>
         </div>
         {displayInfo.subtitle && (
-          <p className="text-sm text-muted-foreground truncate">
+          <p className="text-sm text-muted-foreground truncate" data-pydantic-ui="detail-subtitle">
             {displayInfo.subtitle}
           </p>
         )}
         {basePath && (
-          <p className="text-xs text-muted-foreground font-mono mt-1">{basePath}</p>
+          <p className="text-xs text-muted-foreground font-mono mt-1" data-pydantic-ui="detail-path">{basePath}</p>
         )}
         {/* Show orphaned errors (errors for paths not found in schema) */}
         {selectedSchema && relevantErrors && relevantErrors.length > 0 && (
@@ -595,7 +595,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
 
       {/* Content */}
       <ScrollArea className="flex-1">
-        <div className="p-4">
+        <div className="p-4" data-pydantic-ui="detail-content">
           {renderContent()}
         </div>
       </ScrollArea>
@@ -603,25 +603,26 @@ export function DetailPanel({ className }: DetailPanelProps) {
       <Separator />
 
       {/* Footer Actions */}
-      <div className="p-4 flex items-center justify-between bg-muted/30">
+      <div className="p-4 flex items-center justify-between bg-muted/30" data-pydantic-ui="detail-footer">
         <div className="flex items-center gap-2">
           {/* Custom Action Buttons */}
           {config?.actions && config.actions.length > 0 && (
             <ActionButtons actions={config.actions} />
           )}
           {dirty && (
-            <span className="text-xs text-amber-600 dark:text-amber-400">
+            <span className="text-xs text-amber-600 dark:text-amber-400" data-pydantic-ui="unsaved-indicator">
               Unsaved changes
             </span>
           )}
         </div>
         {config?.show_save_reset && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-pydantic-ui="save-reset-buttons">
             <Button
               variant="outline"
               size="sm"
               onClick={handleReset}
               disabled={loading || saving || !dirty}
+              data-pydantic-ui="reset-button"
             >
               <RotateCcw className="h-4 w-4 mr-2" />
               Reset
@@ -630,6 +631,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
               size="sm"
               onClick={handleSave}
               disabled={loading || saving || !dirty}
+              data-pydantic-ui="save-button"
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

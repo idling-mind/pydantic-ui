@@ -25,9 +25,9 @@ export function TextareaInput({ name, path, schema, value, errors, disabled, onC
     : getValueWithDefault<string>(value, schema, '');
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-pydantic-ui="field" data-pydantic-ui-field-type="textarea" data-pydantic-ui-path={path}>
       <div className="space-y-0.5">
-        <Label htmlFor={path} className={cn(hasError && 'text-destructive')}>
+        <Label htmlFor={path} className={cn(hasError && 'text-destructive')} data-pydantic-ui="field-label">
           <span className="inline-flex items-center gap-2">
             <span className="truncate">{label}</span>
             {schema.required !== false && <span className="text-destructive ml-1">*</span>}
@@ -35,7 +35,7 @@ export function TextareaInput({ name, path, schema, value, errors, disabled, onC
           </span>
         </Label>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground" data-pydantic-ui="field-subtitle">{subtitle}</p>
         )}
       </div>
       <ClearResetButtons
@@ -55,6 +55,7 @@ export function TextareaInput({ name, path, schema, value, errors, disabled, onC
         rows={rows}
         maxLength={maxLength}
         className={cn(hasError && 'border-destructive focus-visible:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
+        data-pydantic-ui="field-control"
       />
       {/* description now shown as subtitle above, help_text shown via FieldHelp */}
       {hasError && (

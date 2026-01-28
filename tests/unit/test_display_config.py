@@ -16,6 +16,7 @@ class TestViewDisplay:
         assert vd.title is None
         assert vd.subtitle is None
         assert vd.help_text is None
+        assert vd.icon is None
 
     def test_with_title(self):
         """ViewDisplay can be created with title."""
@@ -42,6 +43,7 @@ class TestViewDisplay:
             "title": "Title",
             "subtitle": "Sub",
             "help_text": None,
+            "icon": None,
         }
 
 

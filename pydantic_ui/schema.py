@@ -12,6 +12,30 @@ from pydantic_core import PydanticUndefined
 from pydantic_ui.config import DisplayConfig, FieldConfig, Renderer, ViewDisplay
 
 
+def is_optional_type(annotation: Any) -> bool:
+    """Check if the type annotation is Optional (Union with None).
+
+    This determines if a field can accept None as a value, which is different
+    from whether it has a default value. Fields with defaults but non-Optional
+    types should still show as "required" in the UI.
+    """
+    if annotation is None:
+        return True
+
+    # Unwrap Annotated types first
+    origin = get_origin(annotation)
+    if origin is Annotated:
+        annotation = get_args(annotation)[0]
+        origin = get_origin(annotation)
+
+    # Check for Union types (including Python 3.10+ X | Y syntax)
+    if origin is Union or origin is types.UnionType:
+        args = get_args(annotation)
+        return type(None) in args
+
+    return False
+
+
 def build_ui_config(field_config: FieldConfig) -> dict[str, Any]:
     """Build the ui_config dict from a FieldConfig."""
     return {
@@ -161,9 +185,11 @@ def parse_union_field(
 
     # Single type + None = Optional, handle normally
     if len(non_none) == 1:
-        result = parse_field(name, field_info, non_none[0], max_depth, current_depth, class_configs)
-        result["required"] = not has_none
-        return result
+        single_result = parse_field(
+            name, field_info, non_none[0], max_depth, current_depth, class_configs
+        )
+        single_result["required"] = not has_none
+        return single_result
 
     # Check if all non-None types are primitive (not BaseModel)
     all_primitive = all(not is_pydantic_model(t) for t in non_none)
@@ -464,7 +490,7 @@ def get_constraints(field_info: FieldInfo, field_type: type) -> dict[str, Any]:
 def parse_field(
     name: str,
     field_info: FieldInfo,
-    field_type: type,
+    field_type: Any,
     max_depth: int = 10,
     current_depth: int = 0,
     class_configs: dict[str, FieldConfig] | None = None,
@@ -512,7 +538,7 @@ def parse_field(
             "python_type": python_type_str,
             "title": field_info.title or name.replace("_", " ").title(),
             "description": field_info.description,
-            "required": field_info.is_required(),
+            "required": not is_optional_type(field_info.annotation),
             "default": field_info.default if field_info.default is not PydanticUndefined else None,
             "literal_values": literal_values,
             "ui_config": ui_config,
@@ -538,7 +564,7 @@ def parse_field(
             "python_type": field_type.__name__,
             "title": field_info.title or name.replace("_", " ").title(),
             "description": field_info.description,
-            "required": field_info.is_required(),
+            "required": not is_optional_type(field_info.annotation),
             "default": default_value,
             "enum": enum_values,
             "ui_config": ui_config,
@@ -583,7 +609,7 @@ def parse_field(
                 FieldInfo(),
                 value_type,
                 max_depth,
-                current_depth + 1,  # type: ignore
+                current_depth + 1,
                 class_configs,
             ),
             "ui_config": ui_config,
@@ -595,7 +621,7 @@ def parse_field(
         # Add title from field_info if available, otherwise use field name (not model name)
         result["title"] = field_info.title or name.replace("_", " ").title()
         # Nested models are required by default unless wrapped in Optional
-        result["required"] = field_info.is_required()
+        result["required"] = not is_optional_type(field_info.annotation)
         result["python_type"] = field_type.__name__
         # Add description from field_info
         if field_info.description:
@@ -634,7 +660,7 @@ def parse_field(
         "python_type": get_python_type_name(field_type),
         "title": field_info.title or name.replace("_", " ").title(),
         "description": field_info.description,
-        "required": field_info.is_required(),
+        "required": not is_optional_type(field_info.annotation),
         "default": default_value,
         "constraints": get_constraints(field_info, field_type),
         "ui_config": ui_config,
@@ -685,6 +711,21 @@ def parse_model(
     }
 
 
+def _serialize_value(val: Any) -> Any:
+    """Serialize a value to a JSON-safe format."""
+    if isinstance(val, BaseModel):
+        return val.model_dump(mode="json", warnings=False)
+    elif isinstance(val, (datetime.datetime, datetime.date, datetime.time)):
+        return val.isoformat()
+    elif isinstance(val, list):
+        return [_serialize_value(item) for item in val]
+    elif isinstance(val, dict):
+        return {k: _serialize_value(v) for k, v in val.items()}
+    elif isinstance(val, Enum):
+        return val.value
+    return val
+
+
 def model_to_data(model: type[BaseModel], instance: BaseModel | None = None) -> dict[str, Any]:
     """Convert a Pydantic model instance to the nested data format for the UI."""
     if instance is not None:
@@ -700,27 +741,11 @@ def model_to_data(model: type[BaseModel], instance: BaseModel | None = None) -> 
         for field_name, field_info in model.model_fields.items():
             if field_info.default is not PydanticUndefined:
                 default_val = field_info.default
-                # Serialize Pydantic models to dict
-                if isinstance(default_val, BaseModel):
-                    data[field_name] = default_val.model_dump(mode="json", warnings=False)
-                else:
-                    data[field_name] = default_val
+                data[field_name] = _serialize_value(default_val)
             elif field_info.default_factory is not None:
                 try:
                     factory_val = field_info.default_factory()  # type: ignore
-                    # Serialize Pydantic models to dict
-                    if isinstance(factory_val, BaseModel):
-                        data[field_name] = factory_val.model_dump(mode="json", warnings=False)
-                    elif isinstance(factory_val, list):
-                        # Handle lists that may contain Pydantic models
-                        data[field_name] = [
-                            item.model_dump(mode="json", warnings=False)
-                            if isinstance(item, BaseModel)
-                            else item
-                            for item in factory_val
-                        ]
-                    else:
-                        data[field_name] = factory_val
+                    data[field_name] = _serialize_value(factory_val)
                 except Exception:
                     data[field_name] = _get_type_default(field_info.annotation)
             else:
