@@ -64,6 +64,7 @@ export function Layout({}: LayoutProps) {
         title={config?.title} 
         logoText={config?.logo_text}
         logoUrl={config?.logo_url}
+        logoUrlDark={config?.logo_url_dark}
       />
       
       <div ref={containerRef} className="flex-1 flex overflow-hidden">

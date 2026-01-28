@@ -302,6 +302,10 @@ class DataHandler:
         return ConfigResponse(
             title=self.ui_config.title,
             subtitle=self.ui_config.subtitle,
+            logo_text=self.ui_config.logo_text,
+            logo_url=self.ui_config.logo_url,
+            logo_url_dark=self.ui_config.logo_url_dark,
+            favicon_url=self.ui_config.favicon_url,
             theme=self.ui_config.theme,
             read_only=self.ui_config.read_only,
             show_validation=self.ui_config.show_validation,

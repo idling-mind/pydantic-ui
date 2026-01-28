@@ -106,6 +106,8 @@ export interface UIConfig {
   subtitle: string;
   logo_text: string | null;
   logo_url: string | null;
+  logo_url_dark: string | null;
+  favicon_url: string | null;
   theme: 'light' | 'dark' | 'system';
   read_only: boolean;
   show_validation: boolean;

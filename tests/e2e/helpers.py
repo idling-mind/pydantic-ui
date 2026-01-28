@@ -28,6 +28,7 @@ SELECTORS = {
     "header": '[data-pydantic-ui="header"]',
     "header_logo_title": '[data-pydantic-ui="header-logo-title"]',
     "header_logo": '[data-pydantic-ui="header-logo"]',
+    "header_logo_img": '[data-pydantic-ui="header-logo-img"]',
     "header_title": '[data-pydantic-ui="header-title"]',
     "theme_toggle": '[data-pydantic-ui="theme-toggle"]',
     # Tree Panel

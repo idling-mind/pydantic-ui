@@ -30,14 +30,14 @@ function AppContent() {
     }
   }, [config?.title]);
 
-  // Set favicon based on logo_url config (or use default bundled logo)
+  // Set favicon based on favicon_url config (falls back to logo_url, then default)
   useEffect(() => {
-    const faviconUrl = config?.logo_url || './logo.png';
+    const faviconUrl = config?.favicon_url || config?.logo_url || './logo.png';
     const link = document.querySelector<HTMLLinkElement>("link[rel*='icon']");
     if (link) {
       link.href = faviconUrl;
     }
-  }, [config?.logo_url]);
+  }, [config?.favicon_url, config?.logo_url]);
 
   return (
     <EventProvider

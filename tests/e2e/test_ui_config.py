@@ -104,6 +104,158 @@ class TestThemeSwitching:
         assert light_bg != dark_bg, "Background should change with theme"
 
 
+class TestThemeAwareLogos:
+    """Tests for theme-aware logo switching."""
+
+    def test_logo_image_is_visible(self, page: Page, base_url: str):
+        """Test that logo image is visible."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        logo_img = page.locator(SELECTORS["header_logo_img"])
+        expect(logo_img).to_be_visible(timeout=10000)
+
+    def test_logo_has_src_attribute(self, page: Page, base_url: str):
+        """Test that logo image has a src attribute."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        logo_img = page.locator(SELECTORS["header_logo_img"])
+        expect(logo_img).to_be_visible(timeout=10000)
+
+        src = logo_img.get_attribute("src")
+        assert src is not None and len(src) > 0, "Logo should have a src attribute"
+
+    def test_logo_changes_on_theme_switch(self, page: Page, base_url: str):
+        """Test that logo changes when theme is switched."""
+        # Load config to check if theme-aware logos are configured
+        with page.expect_response(
+            lambda response: "/api/config" in response.url and response.status == 200
+        ) as response_info:
+            page.goto(f"{base_url}/config")
+
+        response = response_info.value
+        config = response.json()
+
+        wait_for_app_load(page)
+
+        # Only run this test if both logo_url and logo_url_dark are configured
+        logo_url = config.get("logo_url")
+        logo_url_dark = config.get("logo_url_dark")
+
+        if not logo_url or not logo_url_dark:
+            # Skip if theme-aware logos are not configured
+            return
+
+        # Switch to light theme and get logo src
+        switch_theme(page, "light")
+        page.wait_for_timeout(500)  # Allow logo to update
+
+        logo_img = page.locator(SELECTORS["header_logo_img"])
+        expect(logo_img).to_be_visible(timeout=10000)
+        light_logo_src = logo_img.get_attribute("src")
+
+        # Switch to dark theme and get logo src
+        switch_theme(page, "dark")
+        page.wait_for_timeout(500)  # Allow logo to update
+
+        logo_img = page.locator(SELECTORS["header_logo_img"])
+        expect(logo_img).to_be_visible(timeout=10000)
+        dark_logo_src = logo_img.get_attribute("src")
+
+        # Verify logos are different
+        assert light_logo_src != dark_logo_src, (
+            f"Logo should change between themes. Light: {light_logo_src}, Dark: {dark_logo_src}"
+        )
+
+    def test_light_theme_uses_logo_url(self, page: Page, base_url: str):
+        """Test that light theme uses logo_url."""
+        # Load config
+        with page.expect_response(
+            lambda response: "/api/config" in response.url and response.status == 200
+        ) as response_info:
+            page.goto(f"{base_url}/config")
+
+        response = response_info.value
+        config = response.json()
+
+        wait_for_app_load(page)
+
+        logo_url = config.get("logo_url")
+        if not logo_url:
+            return  # Skip if no logo_url configured
+
+        # Switch to light theme
+        switch_theme(page, "light")
+        page.wait_for_timeout(500)
+
+        logo_img = page.locator(SELECTORS["header_logo_img"])
+        expect(logo_img).to_be_visible(timeout=10000)
+        src = logo_img.get_attribute("src")
+
+        assert src == logo_url, f"Light theme should use logo_url. Expected: {logo_url}, Got: {src}"
+
+    def test_dark_theme_uses_logo_url_dark(self, page: Page, base_url: str):
+        """Test that dark theme uses logo_url_dark."""
+        # Load config
+        with page.expect_response(
+            lambda response: "/api/config" in response.url and response.status == 200
+        ) as response_info:
+            page.goto(f"{base_url}/config")
+
+        response = response_info.value
+        config = response.json()
+
+        wait_for_app_load(page)
+
+        logo_url_dark = config.get("logo_url_dark")
+        if not logo_url_dark:
+            return  # Skip if no logo_url_dark configured
+
+        # Switch to dark theme
+        switch_theme(page, "dark")
+        page.wait_for_timeout(500)
+
+        logo_img = page.locator(SELECTORS["header_logo_img"])
+        expect(logo_img).to_be_visible(timeout=10000)
+        src = logo_img.get_attribute("src")
+
+        assert src == logo_url_dark, (
+            f"Dark theme should use logo_url_dark. Expected: {logo_url_dark}, Got: {src}"
+        )
+
+    def test_dark_theme_falls_back_to_logo_url_if_no_dark_logo(self, page: Page, base_url: str):
+        """Test that dark theme falls back to logo_url if logo_url_dark is not set."""
+        # Load config
+        with page.expect_response(
+            lambda response: "/api/config" in response.url and response.status == 200
+        ) as response_info:
+            page.goto(f"{base_url}/config")
+
+        response = response_info.value
+        config = response.json()
+
+        wait_for_app_load(page)
+
+        logo_url = config.get("logo_url")
+        logo_url_dark = config.get("logo_url_dark")
+
+        # This test only applies when logo_url is set but logo_url_dark is not
+        if logo_url_dark or not logo_url:
+            return
+
+        # Switch to dark theme
+        switch_theme(page, "dark")
+        page.wait_for_timeout(500)
+
+        logo_img = page.locator(SELECTORS["header_logo_img"])
+        expect(logo_img).to_be_visible(timeout=10000)
+        src = logo_img.get_attribute("src")
+
+        # Should fall back to logo_url
+        assert src == logo_url, f"Should fall back to logo_url. Expected: {logo_url}, Got: {src}"
+
+
 class TestUIConfiguration:
     """Tests for UI configuration."""
 

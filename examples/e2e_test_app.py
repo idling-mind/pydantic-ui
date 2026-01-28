@@ -6,12 +6,14 @@ It includes various field types with known values for reliable testing.
 """
 
 import argparse
+import pathlib
 import sys
 from datetime import date
 from typing import Annotated, Literal
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
@@ -144,6 +146,10 @@ ui_config = UIConfig(
     collapsible_tree=True,
     show_validation=True,
     show_save_reset=True,
+    # Logo URLs for testing theme-aware logos
+    logo_url="/static/lightlogo.png",
+    logo_url_dark="/static/darklogo.png",
+    favicon_url="/static/lightlogo.png",
     actions=[
         ActionButton(
             id="test_action",
@@ -190,6 +196,7 @@ pydantic_ui_router = create_pydantic_ui(
 )
 
 app.include_router(pydantic_ui_router)
+app.mount("/static", StaticFiles(directory=pathlib.Path(__file__).parent / "static"), name="static")
 
 
 if __name__ == "__main__":

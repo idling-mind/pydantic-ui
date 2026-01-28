@@ -79,61 +79,6 @@ uv run pytest tests/e2e/ -v
 uv run pytest tests/e2e/ -s
 ```
 
-## Parallel Execution
-
-Run E2E tests in parallel using pytest-xdist. This significantly speeds up test execution:
-
-```bash
-# Run tests on auto-detected number of CPUs
-uv run pytest tests/e2e/ -n auto
-
-# Run tests on specific number of workers
-uv run pytest tests/e2e/ -n 4
-
-# Combine with other options
-uv run pytest tests/e2e/ -n auto --headed=false -v
-```
-
-### Requirements for Parallel Execution:
-
-1. **Multiple app instances:** When running tests in parallel, you need separate app instances for each worker:
-
-```bash
-# Terminal 1 - Start primary app (port 8000)
-uv run python examples/e2e_test_app.py
-
-# Terminal 2 - Start worker 1 (port 8100)
-uv run python examples/e2e_test_app.py --port 8100
-
-# Terminal 3 - Start worker 2 (port 8200)
-uv run python examples/e2e_test_app.py --port 8200
-
-# Terminal 4 - Run tests in parallel
-uv run pytest tests/e2e/ -n 3 --headed=false
-```
-
-Or use the provided script (if available):
-
-```bash
-# Start all app instances needed for N workers
-uv run python scripts/start_e2e_servers.py --workers 4
-
-# In another terminal, run tests
-uv run pytest tests/e2e/ -n 4 --headed=false
-```
-
-2. **Each worker automatically uses different ports** (8000, 8100, 8200, etc.) based on the `worker_id` fixture in `conftest.py`.
-
-### Example: Run all tests including E2E with some unit/integration tests in parallel
-
-```bash
-# Run with separate jobs for unit/integration (which don't need multiple servers)
-# and E2E tests separately
-uv run pytest tests/unit tests/integration -v
-uv run pytest tests/e2e/ -n 3 --headed=false -v
-```
-````
-
 ### Skip E2E tests:
 
 ```bash
