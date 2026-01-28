@@ -42,6 +42,9 @@ dev = [
     "pytest-mock>=3.12.0",
     "httpx>=0.27.0",
     
+    # E2E Testing
+    "pytest-playwright>=0.4.0",
+    
     # Code quality
     "ruff>=0.1.0",
     "mypy>=1.8.0",
@@ -58,10 +61,6 @@ Homepage = "https://github.com/idling-mind/pydantic-ui"
 Documentation = "https://github.com/idling-mind/pydantic-ui#readme"
 Repository = "https://github.com/idling-mind/pydantic-ui"
 Issues = "https://github.com/idling-mind/pydantic-ui/issues"
-
-[dependency-groups]
-dev = []
-
 
 [tool.hatch.build]
 artifacts = [

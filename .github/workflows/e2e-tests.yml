@@ -38,12 +38,10 @@ jobs:
         uses: astral-sh/setup-uv@v3
       
       - name: Install Python dependencies
-        run: uv sync
+        run: uv sync --extra dev
       
-      - name: Install Playwright for Python
-        run: |
-          uv pip install pytest-playwright
-          uv run playwright install --with-deps ${{ matrix.browser }}
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps ${{ matrix.browser }}
       
       - name: Install frontend dependencies
         working-directory: frontend
