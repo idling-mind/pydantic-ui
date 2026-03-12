@@ -2,12 +2,12 @@ import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui
+from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui, DisplayConfig
 
 
 class Subclass(BaseModel):
     id: int
-    name: str
+    name: list[str]
 
 
 class User(BaseModel):
@@ -77,6 +77,9 @@ attr_configs = {
     "active_project.tasks.[].other_field.[].name": FieldConfig(
         renderer=Renderer.MULTI_SELECT,
         options_from="hr_data.staff.[].name",
+    ),
+    "hr_data.staff.[]": FieldConfig(
+        display=DisplayConfig(title="{name} ({role})"),
     ),
 }
 
