@@ -315,4 +315,6 @@ class DataHandler:
             show_types=self.ui_config.show_types,
             actions=actions,
             show_save_reset=self.ui_config.show_save_reset,
+            responsive_columns=self.ui_config.responsive_columns,
+            max_visible_errors=self.ui_config.max_visible_errors,
         )

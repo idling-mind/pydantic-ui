@@ -99,6 +99,8 @@ class ConfigResponse(BaseModel):
     show_types: bool
     actions: list[ActionButtonResponse] = Field(default_factory=list)
     show_save_reset: bool = False
+    responsive_columns: dict[int, int] = Field(default_factory=dict)
+    max_visible_errors: int = 5
 
 
 # Update forward references

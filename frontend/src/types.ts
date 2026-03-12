@@ -118,6 +118,7 @@ export interface UIConfig {
   actions: ActionButton[];
   show_save_reset: boolean;
   responsive_columns: Record<number, number>;
+  max_visible_errors: number;
 }
 
 // SSE Event types
