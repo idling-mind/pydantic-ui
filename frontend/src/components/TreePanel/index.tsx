@@ -58,6 +58,7 @@ export function TreePanel({ className }: TreePanelProps) {
   const [showTypes, setShowTypes] = React.useState(true);
   const [hideSimpleFields, setHideSimpleFields] = React.useState(false);
   const [multiSelectedPaths, setMultiSelectedPaths] = React.useState<Set<string>>(new Set());
+  const lastClickedPathRef = React.useRef<string | null>(null);
   
   // Dialog state for keyboard shortcuts
   const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
@@ -71,6 +72,8 @@ export function TreePanel({ className }: TreePanelProps) {
       setSelectedPath(path);
       // Clear multi-select when doing single select
       setMultiSelectedPaths(new Set());
+      // Track anchor for shift+click range selection
+      lastClickedPathRef.current = path;
       // Auto-expand parent paths
       const parts = path.split('.');
       for (let i = 1; i < parts.length; i++) {
@@ -99,6 +102,51 @@ export function TreePanel({ className }: TreePanelProps) {
         }
         return next;
       });
+      // Track anchor for shift+click range selection
+      lastClickedPathRef.current = path;
+    },
+    []
+  );
+
+  const handleShiftSelect = React.useCallback(
+    (path: string, additive: boolean) => {
+      const anchor = lastClickedPathRef.current;
+      if (anchor === null) {
+        // No anchor yet, treat as single select and set anchor
+        setMultiSelectedPaths(new Set([path]));
+        lastClickedPathRef.current = path;
+        return;
+      }
+
+      // Get all visible tree node paths from the DOM in render order
+      const treeContent = document.querySelector('[data-pydantic-ui="tree-content"]');
+      if (!treeContent) return;
+      const nodes = treeContent.querySelectorAll('[data-tree-path]');
+      const visiblePaths = Array.from(nodes).map(el => el.getAttribute('data-tree-path') || '');
+
+      const anchorIdx = visiblePaths.indexOf(anchor);
+      const clickedIdx = visiblePaths.indexOf(path);
+
+      if (anchorIdx === -1 || clickedIdx === -1) {
+        // Fallback: treat as single multi-select
+        setMultiSelectedPaths(new Set([path]));
+        lastClickedPathRef.current = path;
+        return;
+      }
+
+      const startIdx = Math.min(anchorIdx, clickedIdx);
+      const endIdx = Math.max(anchorIdx, clickedIdx);
+      const rangePaths = visiblePaths.slice(startIdx, endIdx + 1);
+
+      setMultiSelectedPaths(prev => {
+        // Ctrl+Shift: add range to existing selection; Shift only: replace with range
+        const next = additive ? new Set(prev) : new Set<string>();
+        for (const p of rangePaths) {
+          next.add(p);
+        }
+        return next;
+      });
+      // Don't update anchor on shift+click (standard range selection behavior)
     },
     []
   );
@@ -655,6 +703,7 @@ export function TreePanel({ className }: TreePanelProps) {
                 isRoot
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiSelect={handleMultiSelect}
+                onShiftSelect={handleShiftSelect}
                 onMultiPaste={handleMultiPaste}
                 matchedPaths={matchedPaths}
                 searchQuery={searchQuery}
@@ -676,6 +725,7 @@ export function TreePanel({ className }: TreePanelProps) {
                   getErrorCountForPath={getErrorCountForPath}
                   multiSelectedPaths={multiSelectedPaths}
                   onMultiSelect={handleMultiSelect}
+                  onShiftSelect={handleShiftSelect}
                   onMultiPaste={handleMultiPaste}
                   matchedPaths={matchedPaths}
                   searchQuery={searchQuery}

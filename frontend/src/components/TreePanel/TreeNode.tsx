@@ -32,6 +32,7 @@ interface TreeNodeProps {
   // Multi-select support
   multiSelectedPaths?: Set<string>;
   onMultiSelect?: (path: string, additive: boolean) => void;
+  onShiftSelect?: (path: string, additive: boolean) => void;
   onMultiPaste?: (paths: string[], data: unknown) => void;
   // For array items - parent array path and index for delete functionality
   parentArrayPath?: string;
@@ -58,6 +59,7 @@ interface ConnectedTreeNodeProps {
   // Multi-select support
   multiSelectedPaths?: Set<string>;
   onMultiSelect?: (path: string, additive: boolean) => void;
+  onShiftSelect?: (path: string, additive: boolean) => void;
   onMultiPaste?: (paths: string[], data: unknown) => void;
   // Search highlighting
   matchedPaths?: Set<string>;
@@ -429,6 +431,7 @@ export function TreeNode({
   isRoot = false,
   multiSelectedPaths = new Set(),
   onMultiSelect,
+  onShiftSelect,
   onMultiPaste,
   parentArrayPath,
   arrayIndex,
@@ -516,8 +519,9 @@ export function TreeNode({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Ctrl/Cmd+click for multi-select
-    if ((e.ctrlKey || e.metaKey) && onMultiSelect) {
+    if (e.shiftKey && onShiftSelect) {
+      onShiftSelect(path, e.ctrlKey || e.metaKey);
+    } else if ((e.ctrlKey || e.metaKey) && onMultiSelect) {
       onMultiSelect(path, true);
     } else {
       onSelect(path);
@@ -628,6 +632,7 @@ export function TreeNode({
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
       onClick={handleClick}
+      data-tree-path={path}
       data-pydantic-ui="tree-node"
       data-pydantic-ui-path={path}
       data-pydantic-ui-type={schema.type}
@@ -720,6 +725,7 @@ export function TreeNode({
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={handleClick}
+        data-tree-path={path}
       >
         <button
           onClick={handleToggle}
@@ -818,6 +824,7 @@ export function TreeNode({
                 getErrorCountForPath={getErrorCountForPath}
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiSelect={onMultiSelect}
+                onShiftSelect={onShiftSelect}
                 onMultiPaste={onMultiPaste}
                 matchedPaths={matchedPaths}
                 searchQuery={searchQuery}
@@ -867,6 +874,7 @@ export function TreeNode({
                   getErrorCountForPath={getErrorCountForPath}
                   multiSelectedPaths={multiSelectedPaths}
                   onMultiSelect={onMultiSelect}
+                  onShiftSelect={onShiftSelect}
                   onMultiPaste={onMultiPaste}
                   parentArrayPath={path}
                   arrayIndex={index}
@@ -907,6 +915,7 @@ export function TreeNode({
                   getErrorCountForPath={getErrorCountForPath}
                   multiSelectedPaths={multiSelectedPaths}
                   onMultiSelect={onMultiSelect}
+                  onShiftSelect={onShiftSelect}
                   onMultiPaste={onMultiPaste}
                   parentArrayPath={path}
                   arrayIndex={index}
@@ -935,6 +944,7 @@ export function TreeNode({
                 itemType={itemSchema.type}
                 onSelect={onSelect}
                 onMultiSelect={onMultiSelect}
+                onShiftSelect={onShiftSelect}
                 errorCount={itemErrorCount}
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiPaste={onMultiPaste}
@@ -976,6 +986,7 @@ export function TreeNode({
                   getErrorCountForPath={getErrorCountForPath}
                   multiSelectedPaths={multiSelectedPaths}
                   onMultiSelect={onMultiSelect}
+                  onShiftSelect={onShiftSelect}
                   onMultiPaste={onMultiPaste}
                   parentArrayPath={path}
                   arrayIndex={index}
@@ -1002,6 +1013,7 @@ export function TreeNode({
                 itemType={variantItemSchema.type}
                 onSelect={onSelect}
                 onMultiSelect={onMultiSelect}
+                onShiftSelect={onShiftSelect}
                 errorCount={itemErrorCount}
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiPaste={onMultiPaste}
@@ -1028,6 +1040,7 @@ interface ArrayItemNodeProps {
   itemType: string;
   onSelect: (path: string) => void;
   onMultiSelect?: (path: string, additive: boolean) => void;
+  onShiftSelect?: (path: string, additive: boolean) => void;
   errorCount?: number;
   multiSelectedPaths?: Set<string>;
   onMultiPaste?: (paths: string[], data: unknown) => void;
@@ -1047,6 +1060,7 @@ function ArrayItemNode({
   itemType,
   onSelect,
   onMultiSelect,
+  onShiftSelect,
   errorCount = 0,
   multiSelectedPaths = new Set(),
   onMultiPaste,
@@ -1055,8 +1069,9 @@ function ArrayItemNode({
 }: ArrayItemNodeProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Ctrl/Cmd+click for multi-select
-    if ((e.ctrlKey || e.metaKey) && onMultiSelect) {
+    if (e.shiftKey && onShiftSelect) {
+      onShiftSelect(path, e.ctrlKey || e.metaKey);
+    } else if ((e.ctrlKey || e.metaKey) && onMultiSelect) {
       onMultiSelect(path, true);
     } else {
       onSelect(path);
@@ -1083,6 +1098,7 @@ function ArrayItemNode({
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
       onClick={handleClick}
+      data-tree-path={path}
     >
       <span className="w-5 shrink-0" />
       <span className="shrink-0">{getTypeIcon(itemType, false)}</span>
@@ -1144,6 +1160,7 @@ interface UnionArrayItemNodeProps {
   getErrorCountForPath: (path: string) => number;
   multiSelectedPaths?: Set<string>;
   onMultiSelect?: (path: string, additive: boolean) => void;
+  onShiftSelect?: (path: string, additive: boolean) => void;
   onMultiPaste?: (paths: string[], data: unknown) => void;
   parentArrayPath?: string;
   arrayIndex?: number;
@@ -1170,6 +1187,7 @@ function UnionArrayItemNode({
   getErrorCountForPath,
   multiSelectedPaths = new Set(),
   onMultiSelect,
+  onShiftSelect,
   onMultiPaste,
   parentArrayPath,
   arrayIndex,
@@ -1235,7 +1253,9 @@ function UnionArrayItemNode({
   
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if ((e.ctrlKey || e.metaKey) && onMultiSelect) {
+    if (e.shiftKey && onShiftSelect) {
+      onShiftSelect(path, e.ctrlKey || e.metaKey);
+    } else if ((e.ctrlKey || e.metaKey) && onMultiSelect) {
       onMultiSelect(path, true);
     } else {
       onSelect(path);
@@ -1268,6 +1288,7 @@ function UnionArrayItemNode({
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
       onClick={handleClick}
+      data-tree-path={path}
       data-pydantic-ui="tree-node"
       data-pydantic-ui-path={path}
       data-pydantic-ui-type="union"
@@ -1379,6 +1400,7 @@ function UnionArrayItemNode({
                 getErrorCountForPath={getErrorCountForPath}
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiSelect={onMultiSelect}
+                onShiftSelect={onShiftSelect}
                 onMultiPaste={onMultiPaste}
                 matchedPaths={matchedPaths}
                 searchQuery={searchQuery}
@@ -1427,6 +1449,7 @@ function UnionArrayItemNode({
                   getErrorCountForPath={getErrorCountForPath}
                   multiSelectedPaths={multiSelectedPaths}
                   onMultiSelect={onMultiSelect}
+                  onShiftSelect={onShiftSelect}
                   onMultiPaste={onMultiPaste}
                   parentArrayPath={path}
                   arrayIndex={index}
@@ -1454,6 +1477,7 @@ function UnionArrayItemNode({
                 itemType={variantItemSchema.type}
                 onSelect={onSelect}
                 onMultiSelect={onMultiSelect}
+                onShiftSelect={onShiftSelect}
                 errorCount={itemErrorCount}
                 multiSelectedPaths={multiSelectedPaths}
                 onMultiPaste={onMultiPaste}
@@ -1484,6 +1508,7 @@ export function ConnectedTreeNode({
   isRoot = false,
   multiSelectedPaths = new Set(),
   onMultiSelect,
+  onShiftSelect,
   onMultiPaste,
   matchedPaths,
   searchQuery,
@@ -1509,6 +1534,7 @@ export function ConnectedTreeNode({
       isRoot={isRoot}
       multiSelectedPaths={multiSelectedPaths}
       onMultiSelect={onMultiSelect}
+      onShiftSelect={onShiftSelect}
       onMultiPaste={onMultiPaste}
       matchedPaths={matchedPaths}
       searchQuery={searchQuery}
