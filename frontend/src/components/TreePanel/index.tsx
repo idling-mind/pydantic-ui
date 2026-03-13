@@ -22,6 +22,7 @@ import { useEvents } from '@/context/EventContext';
 import { TreeNode, ConnectedTreeNode } from './TreeNode';
 import { PasteSelectedDialog } from './PasteSelectedDialog';
 import { PasteArrayDialog } from './PasteArrayDialog';
+import { DuplicateDialog } from './DuplicateDialog';
 import { 
   useTreeActions, 
   getValueAtPath, 
@@ -66,6 +67,7 @@ export function TreePanel({ className }: TreePanelProps) {
   const [pasteOverwriteDialogOpen, setPasteOverwriteDialogOpen] = React.useState(false);
   const [pasteSelectedDialogOpen, setPasteSelectedDialogOpen] = React.useState(false);
   const [pasteArrayDialogOpen, setPasteArrayDialogOpen] = React.useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = React.useState(false);
 
   const handleSelect = React.useCallback(
     (path: string) => {
@@ -461,11 +463,25 @@ export function TreePanel({ className }: TreePanelProps) {
         }
         return;
       }
+
+      // Ctrl+D - Duplicate array item(s)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'd') {
+        // Check if selected path or any multi-selected path is an array item
+        const pathsToCheck = multiSelectedPaths.size > 0
+          ? Array.from(multiSelectedPaths)
+          : (selectedPath !== null ? [selectedPath] : []);
+        const arrayItemPaths = pathsToCheck.filter(p => parseParentArrayInfo(p) !== null);
+        if (arrayItemPaths.length > 0) {
+          e.preventDefault();
+          setDuplicateDialogOpen(true);
+        }
+        return;
+      }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [selectedPath, schema, data, clipboard, copy, canPaste, addToast]);
+  }, [selectedPath, schema, data, clipboard, copy, canPaste, addToast, multiSelectedPaths]);
 
   // Filter function for visibility and simple fields
   const shouldShowField = React.useCallback(
@@ -549,6 +565,27 @@ export function TreePanel({ className }: TreePanelProps) {
     treeActions.handlePasteArray(mode);
     setPasteArrayDialogOpen(false);
   }, [treeActions]);
+
+  // Handle duplicate action
+  const duplicatePaths = React.useMemo(() => {
+    const paths = multiSelectedPaths.size > 0
+      ? Array.from(multiSelectedPaths)
+      : (selectedPath !== null ? [selectedPath] : []);
+    return paths.filter(p => parseParentArrayInfo(p) !== null);
+  }, [multiSelectedPaths, selectedPath]);
+
+  const handleDuplicateConfirm = React.useCallback((count: number, placement: 'after-each' | 'at-end') => {
+    treeActions.handleDuplicate(count, placement, duplicatePaths.length > 1 ? duplicatePaths : undefined);
+    setDuplicateDialogOpen(false);
+    setMultiSelectedPaths(new Set());
+  }, [treeActions, duplicatePaths]);
+
+  // Listen for clear-selection events dispatched by context menu after duplicate
+  React.useEffect(() => {
+    const handler = () => setMultiSelectedPaths(new Set());
+    document.addEventListener('pydantic-ui:clear-selection', handler);
+    return () => document.removeEventListener('pydantic-ui:clear-selection', handler);
+  }, []);
 
   if (!schema) {
     return (
@@ -830,6 +867,14 @@ export function TreePanel({ className }: TreePanelProps) {
           onPaste={handlePasteArray}
         />
       )}
+
+      {/* Duplicate Dialog */}
+      <DuplicateDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+        itemCount={duplicatePaths.length}
+        onDuplicate={handleDuplicateConfirm}
+      />
     </div>
   );
 }

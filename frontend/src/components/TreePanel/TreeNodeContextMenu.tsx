@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Copy, ClipboardPaste, ClipboardList, Trash2, Plus } from 'lucide-react';
+import { Copy, ClipboardPaste, ClipboardList, Trash2, Plus, CopyPlus } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -20,6 +20,7 @@ import {
 import { useData } from '@/context/DataContext';
 import { PasteSelectedDialog } from './PasteSelectedDialog';
 import { PasteArrayDialog } from './PasteArrayDialog';
+import { DuplicateDialog } from './DuplicateDialog';
 import { useTreeActions, getValueAtPath } from './useTreeActions';
 import type { SchemaField } from '@/types';
 
@@ -53,6 +54,7 @@ export function TreeNodeContextMenu({
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [pasteOverwriteDialogOpen, setPasteOverwriteDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   // Get the current value at this path
   const currentValue = React.useMemo(() => {
@@ -74,6 +76,8 @@ export function TreeNodeContextMenu({
     handlePasteAsNewItem,
     handleClear,
     handleDelete: deleteFromArray,
+    handleDuplicate,
+    canDuplicate,
   } = useTreeActions({
     path,
     schema,
@@ -110,6 +114,15 @@ export function TreeNodeContextMenu({
   const targetCount = selectedPaths.length > 1 ? selectedPaths.length : 1;
   // Can delete if this is an array item (has parent array path and index)
   const canDelete = parentArrayPath !== undefined && arrayIndex !== undefined;
+  // For duplicate, count how many selected items are array items
+  const duplicateItemCount = selectedPaths.length > 1
+    ? selectedPaths.filter(p => /\[\d+\]$/.test(p)).length
+    : (canDuplicate ? 1 : 0);
+
+  const handleDuplicateConfirm = useCallback((count: number, placement: 'after-each' | 'at-end') => {
+    handleDuplicate(count, placement, selectedPaths.length > 1 ? selectedPaths : undefined);
+    document.dispatchEvent(new CustomEvent('pydantic-ui:clear-selection'));
+  }, [handleDuplicate, selectedPaths]);
 
   return (
     <>
@@ -156,6 +169,21 @@ export function TreeNodeContextMenu({
             <Plus className="mr-2 h-4 w-4" />
             Paste as New Item
           </ContextMenuItem>
+          
+          {/* Duplicate array item */}
+          {duplicateItemCount > 0 && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                onClick={() => setDuplicateDialogOpen(true)}
+                data-pydantic-ui="context-menu-duplicate"
+              >
+                <CopyPlus className="mr-2 h-4 w-4" />
+                Duplicate{duplicateItemCount > 1 ? ` (${duplicateItemCount} items)` : ''}
+                <ContextMenuShortcut>Ctrl+D</ContextMenuShortcut>
+              </ContextMenuItem>
+            </>
+          )}
           
           <ContextMenuSeparator />
           
@@ -272,6 +300,14 @@ export function TreeNodeContextMenu({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Duplicate dialog */}
+      <DuplicateDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+        itemCount={duplicateItemCount}
+        onDuplicate={handleDuplicateConfirm}
+      />
 
       {/* Paste array dialog with append/prepend/overwrite options */}
       {clipboard && (

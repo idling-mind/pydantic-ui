@@ -348,10 +348,71 @@ export function useTreeActions({ path, schema, currentValue, selectedPaths = [] 
     setSelectedPath(parentArrayPath);
   }, [path, data, updateValue, setSelectedPath]);
 
+  // Duplicate array item(s)
+  const handleDuplicate = useCallback((count: number, placement: 'after-each' | 'at-end', paths?: string[]) => {
+    // Collect all target paths (multi-select or single)
+    const targetPaths = (paths && paths.length > 0) ? paths : [path];
+
+    // Parse and group by parent array
+    const items: { parentArrayPath: string; arrayIndex: number }[] = [];
+    for (const p of targetPaths) {
+      const info = parseParentArrayInfo(p);
+      if (info) items.push(info);
+    }
+
+    if (items.length === 0) return;
+
+    // Group by parent array
+    const byParent = new Map<string, number[]>();
+    for (const { parentArrayPath: pap, arrayIndex: ai } of items) {
+      const existing = byParent.get(pap);
+      if (existing) {
+        existing.push(ai);
+      } else {
+        byParent.set(pap, [ai]);
+      }
+    }
+
+    for (const [parentPath, indices] of byParent) {
+      const parentArray = getValueAtPath(data, parentPath);
+      if (!Array.isArray(parentArray)) continue;
+
+      const newArray = [...parentArray];
+
+      if (placement === 'at-end') {
+        // Append all clones at the end of the array
+        const sortedIndices = [...indices].sort((a, b) => a - b);
+        for (const idx of sortedIndices) {
+          if (idx < 0 || idx >= parentArray.length) continue;
+          const clones = Array.from({ length: count }, () =>
+            JSON.parse(JSON.stringify(parentArray[idx]))
+          );
+          newArray.push(...clones);
+        }
+      } else {
+        // Insert after each original item (sort descending so inserts don't shift pending indices)
+        const sortedIndices = [...indices].sort((a, b) => b - a);
+        for (const idx of sortedIndices) {
+          if (idx < 0 || idx >= newArray.length) continue;
+          const clones = Array.from({ length: count }, () =>
+            JSON.parse(JSON.stringify(newArray[idx]))
+          );
+          newArray.splice(idx + 1, 0, ...clones);
+        }
+      }
+
+      updateValue(parentPath, newArray);
+    }
+  }, [path, data, updateValue]);
+
+  // Check if the current node is a duplicatable array item
+  const canDuplicate = parseParentArrayInfo(path) !== null;
+
   return {
     clipboard,
     canPaste: canPaste(schema),
     canPasteToArray: canPasteToArray(schema),
+    canDuplicate,
     handleCopy,
     executePaste,
     handlePasteSelected,
@@ -359,5 +420,6 @@ export function useTreeActions({ path, schema, currentValue, selectedPaths = [] 
     handlePasteAsNewItem,
     handleClear,
     handleDelete,
+    handleDuplicate,
   };
 }
