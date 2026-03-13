@@ -13,13 +13,12 @@ Requires the e2e_test_app.py example to be running at http://localhost:8000
 """
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 from .helpers import (
     SELECTORS,
     expand_all_tree_nodes,
     wait_for_app_load,
-    wait_for_tree_loaded,
 )
 
 pytestmark = pytest.mark.e2e
@@ -33,14 +32,12 @@ def get_visible_tree_nodes(page: Page):
 def get_multi_selected_nodes(page: Page):
     """Return nodes that have the multi-select ring style (ring-2 class)."""
     # Multi-selected nodes get ring-2 ring-primary ring-inset classes
-    return page.locator('[data-tree-path].ring-2')
+    return page.locator("[data-tree-path].ring-2")
 
 
 def get_selected_node(page: Page):
     """Return the single-selected node (bg-accent)."""
-    return page.locator(
-        '[data-pydantic-ui="tree-node"][data-pydantic-ui-selected="true"]'
-    )
+    return page.locator('[data-pydantic-ui="tree-node"][data-pydantic-ui-selected="true"]')
 
 
 class TestCtrlClickMultiSelect:

@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui, DisplayConfig
+from pydantic_ui import DisplayConfig, FieldConfig, Renderer, UIConfig, create_pydantic_ui
 
 
 class Subclass(BaseModel):
@@ -91,7 +91,7 @@ app.include_router(
             attr_configs=attr_configs,
             show_save_reset=True,
             max_visible_errors=3,
-        )
+        ),
     )
 )
 
