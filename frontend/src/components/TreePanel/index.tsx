@@ -6,8 +6,30 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useData } from '@/context/DataContext';
+import { useClipboard } from '@/context/ClipboardContext';
+import { useEvents } from '@/context/EventContext';
 import { TreeNode, ConnectedTreeNode } from './TreeNode';
+import { PasteSelectedDialog } from './PasteSelectedDialog';
+import { PasteArrayDialog } from './PasteArrayDialog';
+import { 
+  useTreeActions, 
+  getValueAtPath, 
+  getSchemaAtPath,
+  getNodeNameFromPath,
+  getDisplayName,
+  parseParentArrayInfo
+} from './useTreeActions';
 import type { SchemaField } from '@/types';
 
 interface TreePanelProps {
@@ -28,11 +50,21 @@ export function TreePanel({ className }: TreePanelProps) {
     collapseAll,
   } = useData();
 
+  const { clipboard, copy, canPaste } = useClipboard();
+  const { addToast } = useEvents();
+
   const [searchQuery, setSearchQuery] = React.useState('');
   const searchInputRef = React.useRef<HTMLInputElement | null>(null);
   const [showTypes, setShowTypes] = React.useState(true);
   const [hideSimpleFields, setHideSimpleFields] = React.useState(false);
   const [multiSelectedPaths, setMultiSelectedPaths] = React.useState<Set<string>>(new Set());
+  
+  // Dialog state for keyboard shortcuts
+  const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [pasteOverwriteDialogOpen, setPasteOverwriteDialogOpen] = React.useState(false);
+  const [pasteSelectedDialogOpen, setPasteSelectedDialogOpen] = React.useState(false);
+  const [pasteArrayDialogOpen, setPasteArrayDialogOpen] = React.useState(false);
 
   const handleSelect = React.useCallback(
     (path: string) => {
@@ -132,40 +164,6 @@ export function TreePanel({ className }: TreePanelProps) {
     }
     // Everything else (string, number, boolean, etc.) is simple
     return true;
-  }, []);
-
-  // Helper to get value at a path
-  const getValueAtPath = React.useCallback((data: unknown, path: string): unknown => {
-    if (!path || !data) return data;
-    
-    const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
-    const parts: { key: string; isIndex: boolean }[] = [];
-    let match;
-    while ((match = pathRegex.exec(path)) !== null) {
-      if (match[1] !== undefined) {
-        parts.push({ key: match[1], isIndex: false });
-      } else if (match[2] !== undefined) {
-        parts.push({ key: match[2], isIndex: true });
-      }
-    }
-
-    let current: unknown = data;
-    for (const part of parts) {
-      if (current === null || current === undefined) return undefined;
-      
-      if (part.isIndex) {
-        const index = parseInt(part.key, 10);
-        if (Array.isArray(current)) {
-          current = current[index];
-        } else {
-          return undefined;
-        }
-      } else {
-        current = (current as Record<string, unknown>)[part.key];
-      }
-    }
-    
-    return current;
   }, []);
 
   // Build a map of paths to their rendered titles and check for matches
@@ -328,21 +326,98 @@ export function TreePanel({ className }: TreePanelProps) {
     }
   }, [searchQuery, matchedPaths, directMatches]);
 
-  // Keyboard shortcut: Ctrl/Cmd+K focuses the tree search input
+  // Keyboard shortcuts
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      // Check for Ctrl+K (or Cmd+K on mac)
+      // Skip shortcuts when typing in an input field
+      const target = e.target as HTMLElement;
+      const isInputField = target instanceof HTMLInputElement || 
+                          target instanceof HTMLTextAreaElement ||
+                          target.isContentEditable;
+      
+      // Check for Ctrl+K (or Cmd+K on mac) - search focus
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         searchInputRef.current?.focus();
-        // select existing text for quick replace
         searchInputRef.current?.select();
+        return;
+      }
+      
+      // Don't process other shortcuts if typing in an input
+      if (isInputField) return;
+      
+      // Get current schema and value for the selected path
+      const currentSchema = selectedPath !== null ? getSchemaAtPath(schema, selectedPath) : null;
+      const currentValue = selectedPath !== null ? getValueAtPath(data, selectedPath) : null;
+      
+      // Ctrl+C - Copy
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'c') {
+        if (selectedPath !== null && currentSchema) {
+          e.preventDefault();
+          const displayName = getDisplayName(selectedPath, currentSchema, currentValue);
+          copy(selectedPath, currentValue, currentSchema, displayName);
+          addToast({
+            message: `Copied: ${displayName}`,
+            type: 'info',
+            duration: 2000,
+          });
+        }
+        return;
+      }
+      
+      // Ctrl+V - Paste (with overwrite confirmation)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'v') {
+        if (selectedPath !== null && clipboard && currentSchema && canPaste(currentSchema)) {
+          e.preventDefault();
+          setPasteOverwriteDialogOpen(true);
+        }
+        return;
+      }
+      
+      // Ctrl+Shift+V - Paste Selected (with dialog)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
+        if (selectedPath !== null && clipboard && currentSchema) {
+          const isCompatible = canPaste(currentSchema);
+          const isObjectType = currentSchema.type === 'object';
+          const isArrayType = currentSchema.type === 'array';
+          
+          if (isCompatible && (isObjectType || isArrayType)) {
+            e.preventDefault();
+            if (isArrayType) {
+              setPasteArrayDialogOpen(true);
+            } else {
+              setPasteSelectedDialogOpen(true);
+            }
+          }
+        }
+        return;
+      }
+      
+      // Delete - Delete array item (with confirmation)
+      if (e.key === 'Delete' && !e.shiftKey) {
+        if (selectedPath !== null && selectedPath !== '') {
+          const parentInfo = parseParentArrayInfo(selectedPath);
+          if (parentInfo) {
+            e.preventDefault();
+            setDeleteDialogOpen(true);
+          }
+        }
+        return;
+      }
+      
+      // Shift+Delete - Clear value (with confirmation)
+      if (e.key === 'Delete' && e.shiftKey) {
+        if (selectedPath !== null) {
+          e.preventDefault();
+          setClearDialogOpen(true);
+        }
+        return;
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [selectedPath, schema, data, clipboard, copy, canPaste, addToast]);
 
   // Filter function for visibility and simple fields
   const shouldShowField = React.useCallback(
@@ -373,8 +448,59 @@ export function TreePanel({ className }: TreePanelProps) {
 
       return true;
     },
-    [hideSimpleFields, isSimpleField, data, searchQuery, matchedPaths, getValueAtPath]
+    [hideSimpleFields, isSimpleField, data, searchQuery, matchedPaths]
   );
+
+  // Get current schema and value for the selected path (for dialog handlers)
+  const selectedSchema = React.useMemo(() => {
+    return selectedPath !== null ? getSchemaAtPath(schema, selectedPath) : null;
+  }, [schema, selectedPath]);
+
+  const selectedValue = React.useMemo(() => {
+    return selectedPath !== null ? getValueAtPath(data, selectedPath) : null;
+  }, [data, selectedPath]);
+
+  const selectedNodeName = React.useMemo(() => {
+    return getNodeNameFromPath(selectedPath || '', selectedSchema);
+  }, [selectedPath, selectedSchema]);
+
+  // Use shared tree actions for dialog handlers (only when we have a valid schema)
+  const treeActions = useTreeActions({
+    path: selectedPath || '',
+    schema: selectedSchema || { type: 'object' }, // Fallback schema
+    currentValue: selectedValue,
+    selectedPaths: [],
+  });
+
+  // Handle clear action
+  const handleClearConfirm = React.useCallback(() => {
+    treeActions.handleClear();
+    setClearDialogOpen(false);
+  }, [treeActions]);
+
+  // Handle delete action (array item)
+  const handleDeleteConfirm = React.useCallback(() => {
+    treeActions.handleDelete();
+    setDeleteDialogOpen(false);
+  }, [treeActions]);
+
+  // Handle paste action
+  const handlePasteConfirm = React.useCallback(() => {
+    treeActions.executePaste();
+    setPasteOverwriteDialogOpen(false);
+  }, [treeActions]);
+
+  // Handle paste selected action
+  const handlePasteSelected = React.useCallback((selections: import('./PasteSelectedDialog').PasteFieldSelection[]) => {
+    treeActions.handlePasteSelected(selections);
+    setPasteSelectedDialogOpen(false);
+  }, [treeActions]);
+
+  // Handle paste array with mode
+  const handlePasteArray = React.useCallback((mode: import('./PasteArrayDialog').PasteArrayMode) => {
+    treeActions.handlePasteArray(mode);
+    setPasteArrayDialogOpen(false);
+  }, [treeActions]);
 
   if (!schema) {
     return (
@@ -564,6 +690,96 @@ export function TreePanel({ className }: TreePanelProps) {
           )}
         </div>
       </ScrollArea>
+
+      {/* Clear Value Confirmation Dialog */}
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear "{selectedNodeName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear the value of "{selectedNodeName}" and set it to empty/null.
+              {selectedSchema?.type === 'array' && ' All items in the array will be removed.'}
+              {selectedSchema?.type === 'object' && ' All sub-fields will be cleared.'}
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Clear Value
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Array Item Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{selectedNodeName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove "{selectedNodeName}" from the list.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Paste Overwrite Confirmation Dialog */}
+      <AlertDialog open={pasteOverwriteDialogOpen} onOpenChange={setPasteOverwriteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Paste to "{selectedNodeName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will overwrite the current values in "{selectedNodeName}" with the data from the clipboard
+              {clipboard ? ` (${clipboard.schemaName})` : ''}.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePasteConfirm}>
+              Paste
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Paste Selected Dialog */}
+      {clipboard && selectedSchema && (
+        <PasteSelectedDialog
+          open={pasteSelectedDialogOpen}
+          onOpenChange={setPasteSelectedDialogOpen}
+          sourceData={clipboard.data}
+          sourceSchema={clipboard.schema}
+          targetPaths={[selectedPath || '']}
+          onPaste={handlePasteSelected}
+        />
+      )}
+
+      {/* Paste Array Dialog */}
+      {clipboard && (
+        <PasteArrayDialog
+          open={pasteArrayDialogOpen}
+          onOpenChange={setPasteArrayDialogOpen}
+          sourceItemCount={Array.isArray(clipboard.data) ? clipboard.data.length : 0}
+          targetItemCount={Array.isArray(selectedValue) ? selectedValue.length : 0}
+          targetName={selectedNodeName}
+          onPaste={handlePasteArray}
+        />
+      )}
     </div>
   );
 }
