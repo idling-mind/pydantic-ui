@@ -40,6 +40,20 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
 // Mock scrollIntoView
 Element.prototype.scrollIntoView = vi.fn();
 
+// Mock EventSource (not available in jsdom)
+global.EventSource = vi.fn().mockImplementation(() => ({
+  close: vi.fn(),
+  onmessage: null,
+  onerror: null,
+  onopen: null,
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  readyState: 0,
+  CONNECTING: 0,
+  OPEN: 1,
+  CLOSED: 2,
+})) as unknown as typeof EventSource;
+
 // Mock localStorage
 const localStorageMock = {
   getItem: vi.fn(),
