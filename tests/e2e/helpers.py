@@ -332,8 +332,9 @@ def save_data(page: Page, wait_for_response: bool = True) -> Response | None:
 
     if wait_for_response:
         with page.expect_response(
-            lambda response: "/api/data" in response.url
-            and response.request.method in ("POST", "PUT", "PATCH"),
+            lambda response: (
+                "/api/data" in response.url and response.request.method in ("POST", "PUT", "PATCH")
+            ),
             timeout=10000,
         ) as response_info:
             save_button.click()

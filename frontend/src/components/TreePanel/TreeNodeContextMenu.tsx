@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Copy, ClipboardPaste, ClipboardList, Trash2, Plus } from 'lucide-react';
+import { Copy, ClipboardPaste, ClipboardList, Trash2, Plus, CopyPlus } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -17,10 +17,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useClipboard } from '@/context/ClipboardContext';
 import { useData } from '@/context/DataContext';
-import { PasteSelectedDialog, type PasteFieldSelection } from './PasteSelectedDialog';
-import { PasteArrayDialog, type PasteArrayMode } from './PasteArrayDialog';
+import { PasteSelectedDialog } from './PasteSelectedDialog';
+import { PasteArrayDialog } from './PasteArrayDialog';
+import { DuplicateDialog } from './DuplicateDialog';
+import { useTreeActions, getValueAtPath } from './useTreeActions';
 import type { SchemaField } from '@/types';
 
 interface TreeNodeContextMenuProps {
@@ -37,91 +38,23 @@ interface TreeNodeContextMenuProps {
   arrayIndex?: number;
 }
 
-// Helper to get value at a path
-function getValueAtPath(data: unknown, path: string): unknown {
-  if (!path || !data) return data;
-  
-  const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
-  const parts: { key: string; isIndex: boolean }[] = [];
-  let match;
-  while ((match = pathRegex.exec(path)) !== null) {
-    if (match[1] !== undefined) {
-      parts.push({ key: match[1], isIndex: false });
-    } else if (match[2] !== undefined) {
-      parts.push({ key: match[2], isIndex: true });
-    }
-  }
-
-  let current: unknown = data;
-  for (const part of parts) {
-    if (current === null || current === undefined) return undefined;
-    
-    if (part.isIndex) {
-      const index = parseInt(part.key, 10);
-      if (Array.isArray(current)) {
-        current = current[index];
-      } else {
-        return undefined;
-      }
-    } else {
-      current = (current as Record<string, unknown>)[part.key];
-    }
-  }
-  
-  return current;
-}
-
-// Helper to get value at a nested path within an object
-function getNestedValue(data: unknown, path: string): unknown {
-  if (!path) return data;
-  const parts = path.split('.');
-  let current = data;
-  for (const part of parts) {
-    if (current === null || current === undefined) return undefined;
-    current = (current as Record<string, unknown>)[part];
-  }
-  return current;
-}
-
-// Helper to set value at a nested path within an object (returns new object)
-function setNestedValue(data: unknown, path: string, value: unknown): unknown {
-  if (!path) return value;
-  
-  const parts = path.split('.');
-  const result = JSON.parse(JSON.stringify(data || {})); // Deep clone
-  
-  let current = result;
-  for (let i = 0; i < parts.length - 1; i++) {
-    const part = parts[i];
-    if (current[part] === undefined || current[part] === null) {
-      current[part] = {};
-    }
-    current = current[part];
-  }
-  
-  const lastPart = parts[parts.length - 1];
-  current[lastPart] = value;
-  
-  return result;
-}
-
 export function TreeNodeContextMenu({
   children,
   path,
   schema,
   nodeName,
   selectedPaths = [],
-  onMultiPaste,
+  onMultiPaste: _onMultiPaste,
   parentArrayPath,
   arrayIndex,
 }: TreeNodeContextMenuProps) {
-  const { clipboard, copy, canPaste, canPasteToArray } = useClipboard();
-  const { data, updateValue } = useData();
+  const { data } = useData();
   const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
   const [pasteArrayDialogOpen, setPasteArrayDialogOpen] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [pasteOverwriteDialogOpen, setPasteOverwriteDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   // Get the current value at this path
   const currentValue = React.useMemo(() => {
@@ -131,37 +64,29 @@ export function TreeNodeContextMenu({
     return getValueAtPath(data, path);
   }, [data, path]);
 
-  const handleCopy = useCallback(() => {
-    const schemaName = schema.title || nodeName;
-    copy(path, currentValue, schema, schemaName);
-  }, [copy, path, currentValue, schema, nodeName]);
-
-  // Execute the paste operation
-  const executePaste = useCallback(() => {
-    if (!clipboard) return;
-
-    const valueToPaste = clipboard.data;
-    
-    // If we have multiple selected paths, paste to all of them
-    if (selectedPaths.length > 1 && onMultiPaste) {
-      onMultiPaste(selectedPaths, valueToPaste);
-    } else {
-      // Single paste
-      if (path === '') {
-        // Pasting to root - merge the data
-        const merged = { ...data, ...(valueToPaste as Record<string, unknown>) };
-        for (const key of Object.keys(merged)) {
-          updateValue(key, merged[key]);
-        }
-      } else {
-        updateValue(path, valueToPaste);
-      }
-    }
-  }, [clipboard, path, data, updateValue, selectedPaths, onMultiPaste]);
+  // Use shared tree actions hook
+  const {
+    clipboard,
+    canPaste: isCompatibleForPaste,
+    canPasteToArray: isCompatibleForPasteToArray,
+    handleCopy,
+    executePaste,
+    handlePasteSelected,
+    handlePasteArray,
+    handlePasteAsNewItem,
+    handleClear,
+    handleDelete: deleteFromArray,
+    handleDuplicate,
+    canDuplicate,
+  } = useTreeActions({
+    path,
+    schema,
+    currentValue,
+    selectedPaths,
+  });
 
   const handlePaste = useCallback(() => {
     if (!clipboard) return;
-    
     // Show confirmation dialog when overwriting existing data
     setPasteOverwriteDialogOpen(true);
   }, [clipboard]);
@@ -171,147 +96,16 @@ export function TreeNodeContextMenu({
     setPasteOverwriteDialogOpen(false);
   }, [executePaste]);
 
-  // Handle pasting an object as a new item in an array
-  const handlePasteAsNewItem = useCallback(() => {
-    if (!clipboard) return;
-
-    const valueToPaste = clipboard.data;
-    const currentArray = Array.isArray(currentValue) ? [...currentValue] : [];
-    currentArray.push(JSON.parse(JSON.stringify(valueToPaste)));
-    updateValue(path, currentArray);
-  }, [clipboard, currentValue, path, updateValue]);
-
-  // Handle deleting an item from its parent array
-  const handleDelete = useCallback(() => {
-    if (parentArrayPath === undefined || arrayIndex === undefined) return;
-    
-    const parentArray = getValueAtPath(data, parentArrayPath);
-    if (!Array.isArray(parentArray)) return;
-    
-    const newArray = [...parentArray];
-    newArray.splice(arrayIndex, 1);
-    updateValue(parentArrayPath, newArray);
-    setDeleteDialogOpen(false);
-  }, [parentArrayPath, arrayIndex, data, updateValue]);
-
-  const handlePasteSelected = useCallback((selections: PasteFieldSelection[]) => {
-    if (!clipboard) return;
-
-    const sourceData = clipboard.data;
-    
-    // Build the partial data to paste based on selected paths
-    const pastePartialData = (targetPath: string) => {
-      let targetValue = targetPath === '' ? { ...data } : JSON.parse(JSON.stringify(getValueAtPath(data, targetPath) || {}));
-      
-      for (const selection of selections) {
-        const fieldPath = selection.path;
-        const fieldValue = getNestedValue(sourceData, fieldPath);
-        
-        // Handle array fields with modes
-        if (selection.arrayMode && Array.isArray(fieldValue)) {
-          const existingArray = getNestedValue(targetValue, fieldPath);
-          const targetArray = Array.isArray(existingArray) ? existingArray : [];
-          const sourceArray = JSON.parse(JSON.stringify(fieldValue));
-          
-          let newArray: unknown[];
-          switch (selection.arrayMode) {
-            case 'append':
-              newArray = [...targetArray, ...sourceArray];
-              break;
-            case 'prepend':
-              newArray = [...sourceArray, ...targetArray];
-              break;
-            case 'overwrite':
-            default:
-              newArray = sourceArray;
-              break;
-          }
-          targetValue = setNestedValue(targetValue, fieldPath, newArray);
-        } else {
-          targetValue = setNestedValue(targetValue, fieldPath, fieldValue);
-        }
-      }
-      
-      return targetValue;
-    };
-
-    // If we have multiple selected paths, paste to all of them
-    if (selectedPaths.length > 1) {
-      for (const targetPath of selectedPaths) {
-        const newValue = pastePartialData(targetPath);
-        if (targetPath === '') {
-          for (const key of Object.keys(newValue)) {
-            updateValue(key, newValue[key]);
-          }
-        } else {
-          updateValue(targetPath, newValue);
-        }
-      }
-    } else {
-      // Single paste
-      const newValue = pastePartialData(path);
-      if (path === '') {
-        for (const key of Object.keys(newValue)) {
-          updateValue(key, newValue[key]);
-        }
-      } else {
-        updateValue(path, newValue);
-      }
-    }
-  }, [clipboard, path, data, updateValue, selectedPaths]);
-
-  // Handle pasting array with mode (append, prepend, overwrite)
-  const handlePasteArray = useCallback((mode: PasteArrayMode) => {
-    if (!clipboard) return;
-
-    const sourceArray = Array.isArray(clipboard.data) ? clipboard.data : [];
-    const targetArray = Array.isArray(currentValue) ? currentValue : [];
-    
-    let newArray: unknown[];
-    
-    switch (mode) {
-      case 'append':
-        newArray = [...targetArray, ...JSON.parse(JSON.stringify(sourceArray))];
-        break;
-      case 'prepend':
-        newArray = [...JSON.parse(JSON.stringify(sourceArray)), ...targetArray];
-        break;
-      case 'overwrite':
-        newArray = JSON.parse(JSON.stringify(sourceArray));
-        break;
-      default:
-        newArray = [...targetArray];
-    }
-    
-    updateValue(path, newArray);
-  }, [clipboard, currentValue, path, updateValue]);
-
-  // Helper to create a cleared value based on schema type
-  const createClearedValue = useCallback((_fieldSchema: SchemaField): unknown => {
-    // For clearing, we always set to null which represents "no value"
-    // This allows optional fields to be truly empty
-    // The backend will interpret null as None/undefined based on the field requirements
-    return null;
-  }, []);
-
-  const handleClear = useCallback(() => {
-    if (path === '') {
-      // Clearing root - update each top-level field based on schema
-      if (schema.fields) {
-        for (const [key, fieldSchema] of Object.entries(schema.fields)) {
-          updateValue(key, createClearedValue(fieldSchema));
-        }
-      }
-    } else {
-      const clearedValue = createClearedValue(schema);
-      updateValue(path, clearedValue);
-    }
-    
+  const handleClearWithDialog = useCallback(() => {
+    handleClear();
     setClearDialogOpen(false);
-  }, [path, schema, updateValue, createClearedValue]);
+  }, [handleClear]);
 
-  const isCompatibleForPaste = canPaste(schema);
-  const isCompatibleForPasteToArray = canPasteToArray(schema);
+  const handleDeleteWithDialog = useCallback(() => {
+    deleteFromArray();
+    setDeleteDialogOpen(false);
+  }, [deleteFromArray]);
+
   const hasClipboard = !!clipboard;
   const isObjectType = schema.type === 'object';
   const isArrayType = schema.type === 'array';
@@ -320,12 +114,21 @@ export function TreeNodeContextMenu({
   const targetCount = selectedPaths.length > 1 ? selectedPaths.length : 1;
   // Can delete if this is an array item (has parent array path and index)
   const canDelete = parentArrayPath !== undefined && arrayIndex !== undefined;
+  // For duplicate, count how many selected items are array items
+  const duplicateItemCount = selectedPaths.length > 1
+    ? selectedPaths.filter(p => /\[\d+\]$/.test(p)).length
+    : (canDuplicate ? 1 : 0);
+
+  const handleDuplicateConfirm = useCallback((count: number, placement: 'after-each' | 'at-end') => {
+    handleDuplicate(count, placement, selectedPaths.length > 1 ? selectedPaths : undefined);
+    document.dispatchEvent(new CustomEvent('pydantic-ui:clear-selection'));
+  }, [handleDuplicate, selectedPaths]);
 
   return (
     <>
       <ContextMenu>
         {children}
-        <ContextMenuContent className="w-56">
+        <ContextMenuContent className="w-64">
           <ContextMenuItem onClick={handleCopy}>
             <Copy className="mr-2 h-4 w-4" />
             Copy
@@ -354,7 +157,8 @@ export function TreeNodeContextMenu({
             disabled={!hasClipboard || !isCompatibleForPaste || (!isObjectType && !isArrayType)}
           >
             <ClipboardList className="mr-2 h-4 w-4" />
-            Paste Selected...
+            Paste Selected
+            <ContextMenuShortcut>Ctrl+Shift+V</ContextMenuShortcut>
           </ContextMenuItem>
 
           {/* Paste as new array item */}
@@ -366,6 +170,21 @@ export function TreeNodeContextMenu({
             Paste as New Item
           </ContextMenuItem>
           
+          {/* Duplicate array item */}
+          {duplicateItemCount > 0 && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                onClick={() => setDuplicateDialogOpen(true)}
+                data-pydantic-ui="context-menu-duplicate"
+              >
+                <CopyPlus className="mr-2 h-4 w-4" />
+                Duplicate{duplicateItemCount > 1 ? ` (${duplicateItemCount} items)` : ''}
+                <ContextMenuShortcut>Ctrl+D</ContextMenuShortcut>
+              </ContextMenuItem>
+            </>
+          )}
+          
           <ContextMenuSeparator />
           
           <ContextMenuItem
@@ -375,6 +194,7 @@ export function TreeNodeContextMenu({
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Clear Value
+            <ContextMenuShortcut>Shift+Del</ContextMenuShortcut>
           </ContextMenuItem>
 
           {/* Delete array item */}
@@ -385,6 +205,7 @@ export function TreeNodeContextMenu({
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Item
+              <ContextMenuShortcut>Del</ContextMenuShortcut>
             </ContextMenuItem>
           )}
           
@@ -429,7 +250,7 @@ export function TreeNodeContextMenu({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleClear}
+              onClick={handleClearWithDialog}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Clear Value
@@ -471,7 +292,7 @@ export function TreeNodeContextMenu({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={handleDeleteWithDialog}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
@@ -479,6 +300,14 @@ export function TreeNodeContextMenu({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Duplicate dialog */}
+      <DuplicateDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+        itemCount={duplicateItemCount}
+        onDuplicate={handleDuplicateConfirm}
+      />
 
       {/* Paste array dialog with append/prepend/overwrite options */}
       {clipboard && (

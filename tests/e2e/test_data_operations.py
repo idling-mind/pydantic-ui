@@ -112,8 +112,9 @@ class TestDataSaving:
         expect(save_button).to_be_enabled(timeout=3000)
 
         with page.expect_response(
-            lambda response: "/api/data" in response.url
-            and response.request.method in ("POST", "PUT", "PATCH"),
+            lambda response: (
+                "/api/data" in response.url and response.request.method in ("POST", "PUT", "PATCH")
+            ),
             timeout=5000,
         ) as response_info:
             save_button.click()

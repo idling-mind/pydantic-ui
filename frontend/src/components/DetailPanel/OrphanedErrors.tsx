@@ -1,13 +1,18 @@
-import { AlertCircle } from 'lucide-react';
+import React from 'react';
+import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { FieldError, SchemaField } from '@/types';
+
+const DEFAULT_MAX_VISIBLE_ERRORS = 5;
 
 interface OrphanedErrorsProps {
   errors: FieldError[];
   basePath: string;
   schema: SchemaField;
   className?: string;
+  maxVisibleErrors?: number;
 }
 
 /**
@@ -173,17 +178,26 @@ function formatErrorPath(errorPath: string, basePath: string): string {
  * This includes:
  * - Errors for the current path itself
  * - Errors for child paths that don't exist in the schema (orphaned)
+ * 
+ * If there are more than 5 errors, displays only the first 5 with an
+ * expandable "Show more" button.
  */
-export function OrphanedErrors({ errors, basePath, schema, className }: OrphanedErrorsProps) {
+export function OrphanedErrors({ errors, basePath, schema, className, maxVisibleErrors }: OrphanedErrorsProps) {
+  const [isExpanded, setIsExpanded] = React.useState(false);
   const orphanedErrors = getOrphanedErrors(errors, basePath, schema);
+  const maxVisible = maxVisibleErrors ?? DEFAULT_MAX_VISIBLE_ERRORS;
 
   if (orphanedErrors.length === 0) {
     return null;
   }
 
+  const hasMoreErrors = orphanedErrors.length > maxVisible;
+  const visibleErrors = isExpanded ? orphanedErrors : orphanedErrors.slice(0, maxVisible);
+  const hiddenCount = orphanedErrors.length - maxVisible;
+
   return (
     <div className={cn('space-y-2', className)}>
-      {orphanedErrors.map((error, index) => (
+      {visibleErrors.map((error, index) => (
         <Card 
           key={`${error.path}-${index}`} 
           className="border-destructive bg-destructive/5"
@@ -201,6 +215,26 @@ export function OrphanedErrors({ errors, basePath, schema, className }: Orphaned
           </CardContent>
         </Card>
       ))}
+      {hasMoreErrors && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-muted-foreground hover:text-foreground"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          {isExpanded ? (
+            <>
+              <ChevronUp className="h-4 w-4 mr-2" />
+              Show less
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-4 w-4 mr-2" />
+              Show {hiddenCount} more error{hiddenCount !== 1 ? 's' : ''}
+            </>
+          )}
+        </Button>
+      )}
     </div>
   );
 }

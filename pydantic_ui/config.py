@@ -293,3 +293,7 @@ class UIConfig(BaseModel):
         default_factory=dict,
         description="Per-field UI configurations keyed by field path (e.g., 'user.name', 'items.[].title').",
     )
+    max_visible_errors: int = Field(
+        default=5,
+        description="Maximum number of validation errors to show before collapsing with 'Show more' button.",
+    )

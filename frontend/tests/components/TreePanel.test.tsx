@@ -2,15 +2,18 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { DataProvider } from '@/context/DataContext';
 import { ClipboardProvider } from '@/context/ClipboardContext';
+import { EventProvider } from '@/context/EventContext';
 import { TreePanel } from '@/components/TreePanel';
 
 describe('TreePanel keyboard shortcuts', () => {
   it('focuses the search input when Ctrl+K (or Cmd+K) is pressed', async () => {
     render(
       <DataProvider apiBase="/api">
-        <ClipboardProvider>
-          <TreePanel />
-        </ClipboardProvider>
+        <EventProvider>
+          <ClipboardProvider>
+            <TreePanel />
+          </ClipboardProvider>
+        </EventProvider>
       </DataProvider>
     );
 

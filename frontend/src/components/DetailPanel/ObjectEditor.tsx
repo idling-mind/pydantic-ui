@@ -17,7 +17,6 @@ import { cn, createDefaultFromSchema, isFieldVisible } from '@/lib/utils';
 import { getFieldLabel, resolveArrayItemDisplay } from '@/lib/displayUtils';
 import { FieldRenderer } from '@/components/Renderers';
 import { NestedFieldCard } from './NestedFieldCard';
-import { OrphanedErrors } from './OrphanedErrors';
 import { TableView } from '@/components/TableView';
 import { useData } from '@/context/DataContext';
 import type { SchemaField, FieldError, UIConfig } from '@/types';
@@ -803,15 +802,6 @@ export function ArrayListEditor({
 
   return (
     <div className="space-y-4">
-      {/* Show orphaned errors (errors for paths not found in schema) */}
-      {errors && errors.length > 0 && (
-        <OrphanedErrors
-          errors={errors}
-          basePath={path || ''}
-          schema={schema}
-        />
-      )}
-      
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
           {items.length} item{items.length !== 1 ? 's' : ''}

@@ -547,8 +547,8 @@ export function DetailPanel({ className }: DetailPanelProps) {
 
   return (
     <div className={cn('flex flex-col h-full', className)} data-pydantic-ui="detail-panel">
-      {/* Header */}
-      <div className="p-4 border-b" data-pydantic-ui="detail-header">
+      {/* Fixed Header (outside scroll area) */}
+      <div className="p-4 border-b shrink-0" data-pydantic-ui="detail-header">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold flex items-center gap-2" data-pydantic-ui="detail-title">
             {displayInfo.title}
@@ -580,21 +580,23 @@ export function DetailPanel({ className }: DetailPanelProps) {
         {basePath && (
           <p className="text-xs text-muted-foreground font-mono mt-1" data-pydantic-ui="detail-path">{basePath}</p>
         )}
-        {/* Show orphaned errors (errors for paths not found in schema) */}
-        {selectedSchema && relevantErrors && relevantErrors.length > 0 && (
-          <OrphanedErrors
-            errors={relevantErrors}
-            basePath={basePath || ''}
-            schema={selectedSchema}
-            className="mt-3"
-          />
-        )}
       </div>
 
-      <Separator />
-
-      {/* Content */}
+      {/* Scrollable content area */}
       <ScrollArea className="flex-1">
+        {/* Show orphaned errors (errors for paths not found in schema) */}
+        {selectedSchema && relevantErrors && relevantErrors.length > 0 && (
+          <div className="px-4 pt-4">
+            <OrphanedErrors
+              errors={relevantErrors}
+              basePath={basePath || ''}
+              schema={selectedSchema}
+              maxVisibleErrors={config?.max_visible_errors}
+            />
+          </div>
+        )}
+
+        {/* Content */}
         <div className="p-4" data-pydantic-ui="detail-content">
           {renderContent()}
         </div>

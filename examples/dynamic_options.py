@@ -2,12 +2,12 @@ import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from pydantic_ui import FieldConfig, Renderer, UIConfig, create_pydantic_ui
+from pydantic_ui import DisplayConfig, FieldConfig, Renderer, UIConfig, create_pydantic_ui
 
 
 class Subclass(BaseModel):
     id: int
-    name: str
+    name: list[str]
 
 
 class User(BaseModel):
@@ -78,10 +78,22 @@ attr_configs = {
         renderer=Renderer.MULTI_SELECT,
         options_from="hr_data.staff.[].name",
     ),
+    "hr_data.staff.[]": FieldConfig(
+        display=DisplayConfig(title="{name} ({role})"),
+    ),
 }
 
 app = FastAPI()
-app.include_router(create_pydantic_ui(CompanyData, ui_config=UIConfig(attr_configs=attr_configs)))
+app.include_router(
+    create_pydantic_ui(
+        CompanyData,
+        ui_config=UIConfig(
+            attr_configs=attr_configs,
+            show_save_reset=True,
+            max_visible_errors=3,
+        ),
+    )
+)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
