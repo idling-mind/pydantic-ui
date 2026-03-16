@@ -217,6 +217,7 @@ class TestUIConfig:
         assert config.show_types is True
         assert config.actions == []
         assert config.show_save_reset is False
+        assert config.table_pinned_columns == ["__check", "__row_number"]
 
     def test_all_options(self):
         """Test UIConfig with all options."""
@@ -240,6 +241,7 @@ class TestUIConfig:
             show_types=False,
             actions=actions,
             show_save_reset=True,
+            table_pinned_columns=["__check", "__row_number", "email"],
         )
         assert config.title == "Custom Editor"
         assert config.subtitle == "A custom configuration editor"
@@ -256,6 +258,7 @@ class TestUIConfig:
         assert config.show_types is False
         assert len(config.actions) == 2
         assert config.show_save_reset is True
+        assert config.table_pinned_columns == ["__check", "__row_number", "email"]
 
     def test_theme_aware_logos(self):
         """Test UIConfig with theme-aware logos."""

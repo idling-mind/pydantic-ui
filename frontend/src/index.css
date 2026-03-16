@@ -2,117 +2,124 @@
 @tailwind components;
 @tailwind utilities;
 
-/* AG Grid theme integration with shadcn/ui */
-.ag-theme-quartz,
-.ag-theme-quartz-dark {
-  --ag-font-family: inherit;
-  --ag-font-size: 13px;
-  --ag-grid-size: 6px;
-  --ag-row-height: 36px;
-  --ag-header-height: 40px;
+/* RevoGrid theme integration with shadcn/ui */
+.revogrid-light revo-grid,
+.revogrid-dark revo-grid {
+  --rv-font-family: inherit;
+  --rv-font-size: 13px;
 }
 
-/* Light theme customizations */
-.ag-theme-quartz {
-  --ag-background-color: hsl(var(--background));
-  --ag-foreground-color: hsl(var(--foreground));
-  --ag-border-color: hsl(var(--border));
-  --ag-secondary-border-color: hsl(var(--border));
-  --ag-header-background-color: hsl(var(--muted));
-  --ag-header-foreground-color: hsl(var(--foreground));
-  --ag-odd-row-background-color: hsl(var(--muted) / 0.3);
-  --ag-row-hover-color: hsl(var(--accent));
-  --ag-selected-row-background-color: hsl(var(--accent));
-  --ag-range-selection-background-color: hsl(var(--primary) / 0.2);
-  --ag-input-focus-border-color: hsl(var(--ring));
-  --ag-checkbox-checked-color: hsl(var(--primary));
-  --ag-modal-overlay-background-color: hsl(var(--background) / 0.8);
+/* Table grid wrapper scrollbar (for wide column overflow) */
+[data-pydantic-ui='table-grid'] {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent;
 }
 
-/* Dark theme customizations */
-.ag-theme-quartz-dark {
-  --ag-background-color: hsl(var(--background));
-  --ag-foreground-color: hsl(var(--foreground));
-  --ag-border-color: hsl(var(--border));
-  --ag-secondary-border-color: hsl(var(--border));
-  --ag-header-background-color: hsl(var(--muted));
-  --ag-header-foreground-color: hsl(var(--foreground));
-  --ag-odd-row-background-color: hsl(var(--muted) / 0.3);
-  --ag-row-hover-color: hsl(var(--accent));
-  --ag-selected-row-background-color: hsl(var(--accent));
-  --ag-range-selection-background-color: hsl(var(--primary) / 0.2);
-  --ag-input-focus-border-color: hsl(var(--ring));
-  --ag-checkbox-checked-color: hsl(var(--primary));
-  --ag-modal-overlay-background-color: hsl(var(--background) / 0.8);
-  /* Dark theme scrollbar colors */
-  scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--muted) / 0.5);
-}
-
-/* Cell styling */
-.ag-theme-quartz .ag-cell,
-.ag-theme-quartz-dark .ag-cell {
-  display: flex;
-  align-items: center;
-}
-
-/* Header styling */
-.ag-theme-quartz .ag-header-cell-label,
-.ag-theme-quartz-dark .ag-header-cell-label {
-  font-weight: 500;
-}
-
-/* Row drag icon */
-.ag-theme-quartz .ag-row-drag,
-.ag-theme-quartz-dark .ag-row-drag {
-  cursor: grab;
-  opacity: 0.5;
-}
-
-.ag-theme-quartz .ag-row-drag:hover,
-.ag-theme-quartz-dark .ag-row-drag:hover {
-  opacity: 1;
-}
-
-/* Column group headers */
-.ag-theme-quartz .ag-header-group-cell,
-.ag-theme-quartz-dark .ag-header-group-cell {
-  font-weight: 600;
-  border-bottom: 2px solid hsl(var(--border));
-}
-
-.ag-theme-quartz .ag-header-group-cell-label,
-.ag-theme-quartz-dark .ag-header-group-cell-label {
-  justify-content: center;
-}
-
-/* Multi-level header styling */
-.ag-theme-quartz .ag-header-row:not(:first-child) .ag-header-cell,
-.ag-theme-quartz-dark .ag-header-row:not(:first-child) .ag-header-cell {
-  border-top: 1px solid hsl(var(--border));
-}
-
-/* Dark theme scrollbar webkit styles */
-.ag-theme-quartz-dark ::-webkit-scrollbar {
+[data-pydantic-ui='table-grid']::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-.ag-theme-quartz-dark ::-webkit-scrollbar-track {
-  background: hsl(var(--muted) / 0.3);
-  border-radius: 5px;
+[data-pydantic-ui='table-grid']::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.ag-theme-quartz-dark ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.4);
-  border-radius: 5px;
+[data-pydantic-ui='table-grid']::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.4);
+  border-radius: 9999px;
 }
 
-.ag-theme-quartz-dark ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.6);
+[data-pydantic-ui='table-grid']::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.6);
 }
 
-.ag-theme-quartz-dark ::-webkit-scrollbar-corner {
-  background: hsl(var(--muted) / 0.3);
+/* Light theme */
+.revogrid-light revo-grid {
+  --rv-bg: hsl(var(--background));
+  --rv-fg: hsl(var(--foreground));
+  --rv-border: hsl(var(--border));
+  --rv-header-bg: hsl(var(--muted));
+  --rv-header-fg: hsl(var(--foreground));
+  --rv-odd-row-bg: hsl(var(--muted) / 0.3);
+  --rv-row-hover: hsl(var(--accent));
+  --rv-selection-bg: hsl(var(--primary) / 0.15);
+}
+
+/* Dark theme */
+.revogrid-dark revo-grid {
+  --rv-bg: hsl(var(--background));
+  --rv-fg: hsl(var(--foreground));
+  --rv-border: hsl(var(--border));
+  --rv-header-bg: hsl(var(--muted));
+  --rv-header-fg: hsl(var(--foreground));
+  --rv-odd-row-bg: hsl(var(--muted) / 0.3);
+  --rv-row-hover: hsl(var(--accent));
+  --rv-selection-bg: hsl(var(--primary) / 0.2);
+}
+
+/* RevoGrid editor overlay — override library's hardcoded white background */
+.revogrid-light revogr-edit,
+.revogrid-dark revogr-edit {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground));
+}
+
+.revogrid-light revogr-edit input,
+.revogrid-light revogr-edit select,
+.revogrid-dark revogr-edit input,
+.revogrid-dark revogr-edit select {
+  color: hsl(var(--foreground));
+  background: transparent;
+}
+
+/* Select dropdown option colors in dark mode */
+.revogrid-dark revogr-edit select,
+.revogrid-dark .revogrid-cell-select {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+.revogrid-dark revogr-edit select option,
+.revogrid-dark .revogrid-cell-select option {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+/* Light mode select options (keep consistent) */
+.revogrid-light revogr-edit select option,
+.revogrid-light .revogrid-cell-select option {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+/* RevoGrid scrollbar theming */
+.revogrid-light revogr-scroll-virtual,
+.revogrid-dark revogr-scroll-virtual {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}
+
+.revogrid-light revogr-scroll-virtual::-webkit-scrollbar,
+.revogrid-dark revogr-scroll-virtual::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.revogrid-light revogr-scroll-virtual::-webkit-scrollbar-track,
+.revogrid-dark revogr-scroll-virtual::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.revogrid-light revogr-scroll-virtual::-webkit-scrollbar-thumb,
+.revogrid-dark revogr-scroll-virtual::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 9999px;
+}
+
+.revogrid-light revogr-scroll-virtual::-webkit-scrollbar-thumb:hover,
+.revogrid-dark revogr-scroll-virtual::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.55);
 }
 
 @layer base {

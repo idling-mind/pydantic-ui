@@ -801,7 +801,7 @@ export function ArrayListEditor({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="w-full min-w-0 space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
           {items.length} item{items.length !== 1 ? 's' : ''}

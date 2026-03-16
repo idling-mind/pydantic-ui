@@ -1,7 +1,6 @@
 import React from 'react';
 import { Save, RotateCcw, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -546,7 +545,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
   };
 
   return (
-    <div className={cn('flex flex-col h-full', className)} data-pydantic-ui="detail-panel">
+    <div className={cn('flex h-full min-w-0 flex-col', className)} data-pydantic-ui="detail-panel">
       {/* Fixed Header (outside scroll area) */}
       <div className="p-4 border-b shrink-0" data-pydantic-ui="detail-header">
         <div className="flex items-center justify-between mb-2">
@@ -583,7 +582,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
       </div>
 
       {/* Scrollable content area */}
-      <ScrollArea className="flex-1">
+      <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto" data-pydantic-ui="detail-scroll">
         {/* Show orphaned errors (errors for paths not found in schema) */}
         {selectedSchema && relevantErrors && relevantErrors.length > 0 && (
           <div className="px-4 pt-4">
@@ -597,10 +596,10 @@ export function DetailPanel({ className }: DetailPanelProps) {
         )}
 
         {/* Content */}
-        <div className="p-4" data-pydantic-ui="detail-content">
+        <div className="w-full min-w-0 p-4" data-pydantic-ui="detail-content">
           {renderContent()}
         </div>
-      </ScrollArea>
+      </div>
 
       <Separator />
 

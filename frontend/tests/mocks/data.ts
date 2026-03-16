@@ -188,6 +188,7 @@ export const testConfig: UIConfig = {
     },
   ],
   show_save_reset: true,
+  table_pinned_columns: ['__check', '__row_number'],
 };
 
 // Test data

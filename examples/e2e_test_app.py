@@ -146,6 +146,7 @@ ui_config = UIConfig(
     collapsible_tree=True,
     show_validation=True,
     show_save_reset=True,
+    table_pinned_columns=["__check", "__row_number", "email"],
     # Logo URLs for testing theme-aware logos
     logo_url="/static/lightlogo.png",
     logo_url_dark="/static/darklogo.png",

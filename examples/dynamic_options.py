@@ -1,3 +1,6 @@
+from datetime import date
+from typing import Literal
+
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
@@ -10,10 +13,20 @@ class Subclass(BaseModel):
     name: list[str]
 
 
+class Address(BaseModel):
+    street: str
+    city: str = "Unknown"
+    zip_code: str
+
+
 class User(BaseModel):
     id: int
     name: str
-    role: str
+    address: Address
+    role: Literal["Engineer", "Manager", "Designer", "QA"]
+    active: bool = True
+    date_joined: date = Field(default_factory=lambda: date(2024, 1, 1))
+    teams: list[Literal["Frontend", "Backend", "Design", "QA"]] = Field(default_factory=list)
 
 
 class Department(BaseModel):

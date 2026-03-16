@@ -67,7 +67,7 @@ export function Layout({}: LayoutProps) {
         logoUrlDark={config?.logo_url_dark}
       />
       
-      <div ref={containerRef} className="flex-1 flex overflow-hidden">
+      <div ref={containerRef} className="flex min-w-0 flex-1 overflow-hidden">
         {/* Tree Panel */}
         <div
           style={{ width: panelWidth }}
@@ -90,7 +90,7 @@ export function Layout({}: LayoutProps) {
         </div>
 
         {/* Detail Panel */}
-        <div className="flex-1 overflow-hidden" data-pydantic-ui="detail-panel-container">
+        <div className="min-w-0 flex-1 overflow-hidden" data-pydantic-ui="detail-panel-container">
           <DetailPanel />
         </div>
       </div>
