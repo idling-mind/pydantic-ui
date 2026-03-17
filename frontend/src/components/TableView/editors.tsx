@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Editor } from '@revolist/react-datagrid';
 import type { EditorType } from '@revolist/react-datagrid';
 
@@ -634,29 +635,108 @@ function MultiselectEditorComponent({ column, save, close }: EditorType) {
   const [selected, setSelected] = useState<string[]>(
     Array.isArray(currentVal) ? currentVal.map(String) : [],
   );
-  const containerRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<string[]>(selected);
+  const committedRef = useRef(false);
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties | null>(null);
+
+  const updatePopupPosition = useCallback(() => {
+    const anchor = anchorRef.current;
+    if (!anchor) {
+      return;
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const viewportPadding = 8;
+    const popupGap = 4;
+    const maxPopupHeight = 240;
+    const minPopupWidth = 180;
+
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const openUpward = spaceBelow < 140 && spaceAbove > spaceBelow;
+    const availableHeight = Math.max(80, openUpward ? spaceAbove : spaceBelow);
+    const maxHeight = Math.min(maxPopupHeight, availableHeight);
+
+    const width = Math.max(minPopupWidth, rect.width);
+    const maxLeft = window.innerWidth - viewportPadding - width;
+    const left = Math.max(viewportPadding, Math.min(rect.left, maxLeft));
+
+    const top = openUpward
+      ? Math.max(viewportPadding, rect.top - maxHeight - popupGap)
+      : Math.min(window.innerHeight - viewportPadding - maxHeight, rect.bottom + popupGap);
+
+    setPopupStyle({
+      position: 'fixed',
+      top,
+      left,
+      width,
+      maxHeight,
+      overflowY: 'auto',
+      zIndex: 10000,
+      backgroundColor: 'hsl(var(--popover))',
+      color: 'hsl(var(--popover-foreground))',
+      border: '1px solid hsl(var(--border))',
+      borderRadius: '6px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      padding: '4px 0',
+    });
+  }, []);
+
+  const commitAndClose = useCallback(
+    (nextValues: string[], persist: boolean) => {
+      if (committedRef.current) {
+        return;
+      }
+      committedRef.current = true;
+      if (persist) {
+        save(nextValues, true);
+      }
+      close(false);
+    },
+    [close, save],
+  );
 
   useEffect(() => {
     selectedRef.current = selected;
   }, [selected]);
 
+  useLayoutEffect(() => {
+    updatePopupPosition();
+  }, [updatePopupPosition, enumValues.length]);
+
   useEffect(() => {
-    containerRef.current?.focus();
-  }, []);
+    const handleViewportChange = () => {
+      updatePopupPosition();
+    };
+
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
+  }, [updatePopupPosition]);
+
+  useEffect(() => {
+    popupRef.current?.focus();
+  }, [popupStyle]);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node | null;
-      if (!containerRef.current) {
+      const popup = popupRef.current;
+      const anchor = anchorRef.current;
+      if (!popup || !anchor) {
         return;
       }
-      if (target && containerRef.current.contains(target)) {
+      if (target && (popup.contains(target) || anchor.contains(target))) {
         return;
       }
 
-      save(selectedRef.current);
-      close(false);
+      commitAndClose(selectedRef.current, true);
     };
 
     document.addEventListener('mousedown', onPointerDown);
@@ -666,7 +746,7 @@ function MultiselectEditorComponent({ column, save, close }: EditorType) {
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('touchstart', onPointerDown);
     };
-  }, [save, close]);
+  }, [commitAndClose]);
 
   const toggle = (val: string) => {
     setSelected((prev) => {
@@ -675,40 +755,26 @@ function MultiselectEditorComponent({ column, save, close }: EditorType) {
     });
   };
 
-  const commitValue = () => {
-    save(selected);
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      commitValue();
-      close(false);
+      e.preventDefault();
+      commitAndClose(selectedRef.current, true);
     } else if (e.key === 'Escape') {
-      close(false);
+      e.preventDefault();
+      commitAndClose(selectedRef.current, false);
     }
   };
 
-  return (
+  const popup = popupStyle ? (
     <div
-      ref={containerRef}
+      ref={popupRef}
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      onMouseDown={(event) => event.stopPropagation()}
+      onTouchStart={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
       className="revogrid-multiselect-editor"
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        minWidth: '100%',
-        maxHeight: '200px',
-        overflowY: 'auto',
-        zIndex: 999,
-        backgroundColor: 'hsl(var(--popover))',
-        color: 'hsl(var(--popover-foreground))',
-        border: '1px solid hsl(var(--border))',
-        borderRadius: '6px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        padding: '4px 0',
-      }}
+      style={popupStyle}
     >
       {enumValues.map((val) => (
         <label
@@ -722,7 +788,6 @@ function MultiselectEditorComponent({ column, save, close }: EditorType) {
             fontSize: '13px',
             whiteSpace: 'nowrap',
           }}
-          onMouseDown={(e) => e.preventDefault()} // keep focus on container
         >
           <input
             type="checkbox"
@@ -743,6 +808,15 @@ function MultiselectEditorComponent({ column, save, close }: EditorType) {
         </div>
       )}
     </div>
+  ) : null;
+
+  const portalTarget = typeof document !== 'undefined' ? document.body : null;
+
+  return (
+    <>
+      <div ref={anchorRef} style={{ width: '100%', height: '100%' }} aria-hidden="true" />
+      {portalTarget && popup ? createPortal(popup, portalTarget) : null}
+    </>
   );
 }
 

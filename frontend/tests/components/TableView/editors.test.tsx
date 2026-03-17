@@ -7,7 +7,13 @@ vi.mock('@revolist/react-datagrid', () => ({
   Editor: (component: unknown) => component,
 }));
 
-import { selectEditor, sliderEditor, textEditor, numberEditor } from '../../../src/components/TableView/editors';
+import {
+  multiselectEditor,
+  numberEditor,
+  selectEditor,
+  sliderEditor,
+  textEditor,
+} from '../../../src/components/TableView/editors';
 
 function createSelectProps(overrides: Partial<EditorType> = {}): EditorType {
   const save = vi.fn();
@@ -107,6 +113,30 @@ function createNumberProps(overrides: Partial<EditorType> = {}): EditorType {
 function renderNumberEditor(props: EditorType): void {
   const NumberEditorComponent = numberEditor as unknown as ComponentType<EditorType>;
   render(<NumberEditorComponent {...props} />);
+}
+
+function createMultiselectProps(overrides: Partial<EditorType> = {}): EditorType {
+  const save = vi.fn();
+  const close = vi.fn();
+
+  return {
+    column: {
+      prop: 'reviewers',
+      val: undefined,
+      model: { reviewers: ['Najeem'] },
+      column: {
+        __enumValues: ['Najeem', 'John', 'Jane', 'Alice', 'Alex', 'Dave'],
+      },
+    },
+    save,
+    close,
+    ...overrides,
+  } as unknown as EditorType;
+}
+
+function renderMultiselectEditor(props: EditorType): void {
+  const MultiselectEditorComponent = multiselectEditor as unknown as ComponentType<EditorType>;
+  render(<MultiselectEditorComponent {...props} />);
 }
 
 describe('table selectEditor', () => {
@@ -285,5 +315,61 @@ describe('table sliderEditor', () => {
 
     expect(props.save).toHaveBeenCalledTimes(1);
     expect(props.save).toHaveBeenCalledWith(50, false);
+  });
+});
+
+describe('table multiselectEditor', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders a fixed-position popup overlay for options', () => {
+    const props = createMultiselectProps();
+
+    renderMultiselectEditor(props);
+
+    const popup = document.querySelector('.revogrid-multiselect-editor') as HTMLElement | null;
+    expect(popup).not.toBeNull();
+    expect(popup?.style.position).toBe('fixed');
+
+    expect(screen.getByLabelText('Najeem')).toBeTruthy();
+    expect(screen.getByLabelText('Dave')).toBeTruthy();
+  });
+
+  it('toggles checkbox values when clicking options', () => {
+    const props = createMultiselectProps();
+
+    renderMultiselectEditor(props);
+
+    const john = screen.getByLabelText('John') as HTMLInputElement;
+    expect(john.checked).toBe(false);
+
+    fireEvent.click(john);
+
+    expect(john.checked).toBe(true);
+  });
+
+  it('commits selection on outside click without advancing table focus', () => {
+    const props = createMultiselectProps();
+
+    renderMultiselectEditor(props);
+
+    fireEvent.click(screen.getByLabelText('John'));
+    fireEvent.mouseDown(document.body);
+
+    expect(props.save).toHaveBeenCalledWith(['Najeem', 'John'], true);
+    expect(props.close).toHaveBeenCalledWith(false);
+  });
+
+  it('closes on escape without persisting changes', () => {
+    const props = createMultiselectProps();
+
+    renderMultiselectEditor(props);
+
+    const popup = document.querySelector('.revogrid-multiselect-editor') as HTMLElement;
+    fireEvent.keyDown(popup, { key: 'Escape' });
+
+    expect(props.close).toHaveBeenCalledWith(false);
+    expect(props.save).not.toHaveBeenCalled();
   });
 });
