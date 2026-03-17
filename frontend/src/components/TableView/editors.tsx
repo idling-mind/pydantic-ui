@@ -29,31 +29,33 @@ function getInitialTextValue(column: EditorType['column']): string {
 function TextEditorComponent({ column, save, close }: EditorType) {
   const [value, setValue] = useState(() => getInitialTextValue(column));
   const inputRef = useRef<HTMLInputElement>(null);
-  const startedFromTyping = column.val !== undefined && column.val !== null;
+  const committedRef = useRef(false);
 
   useEffect(() => {
-    inputRef.current?.focus();
-    if (!inputRef.current) {
+    const input = inputRef.current;
+    if (!input) {
       return;
     }
 
-    if (startedFromTyping) {
-      const end = inputRef.current.value.length;
-      inputRef.current.setSelectionRange(end, end);
-      return;
-    }
-
-    inputRef.current.select();
+    input.focus();
+    const end = input.value.length;
+    input.setSelectionRange(end, end);
   }, []);
 
-  const commitValue = () => {
-    save(value);
+  const commitValue = (preventFocusMove: boolean = false) => {
+    if (committedRef.current) {
+      return;
+    }
+    committedRef.current = true;
+    save(value, preventFocusMove);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      commitValue();
+      e.preventDefault();
+      commitValue(false);
     } else if (e.key === 'Escape') {
+      committedRef.current = true;
       close();
     }
   };
@@ -65,7 +67,7 @@ function TextEditorComponent({ column, save, close }: EditorType) {
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
-      onBlur={commitValue}
+      onBlur={() => commitValue(true)}
       style={editorInputStyle}
     />
   );
@@ -81,36 +83,39 @@ function NumberEditorComponent({ column, save, close }: EditorType) {
   const step = column.column.__step ?? (isInt ? 1 : 'any');
   const [value, setValue] = useState(() => getInitialTextValue(column));
   const inputRef = useRef<HTMLInputElement>(null);
-  const startedFromTyping = column.val !== undefined && column.val !== null;
+  const committedRef = useRef(false);
 
   useEffect(() => {
-    inputRef.current?.focus();
-    if (!inputRef.current) {
+    const input = inputRef.current;
+    if (!input) {
       return;
     }
 
-    if (startedFromTyping) {
-      const end = inputRef.current.value.length;
-      inputRef.current.setSelectionRange(end, end);
-      return;
-    }
-
-    inputRef.current.select();
+    input.focus();
+    const end = input.value.length;
+    input.setSelectionRange(end, end);
   }, []);
 
-  const commitValue = () => {
+  const commitValue = (preventFocusMove: boolean = false) => {
+    if (committedRef.current) {
+      return;
+    }
+    committedRef.current = true;
+
     if (value === '') {
-      save(null);
+      save(null, preventFocusMove);
       return;
     }
     const parsed = isInt ? parseInt(value, 10) : parseFloat(value);
-    save(isNaN(parsed) ? null : parsed);
+    save(isNaN(parsed) ? null : parsed, preventFocusMove);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      commitValue();
+      e.preventDefault();
+      commitValue(false);
     } else if (e.key === 'Escape') {
+      committedRef.current = true;
       close();
     }
   };
@@ -125,7 +130,7 @@ function NumberEditorComponent({ column, save, close }: EditorType) {
       max={typeof max === 'number' ? max : undefined}
       step={step}
       onKeyDown={handleKeyDown}
-      onBlur={commitValue}
+      onBlur={() => commitValue(true)}
       style={editorInputStyle}
     />
   );
@@ -137,35 +142,36 @@ function NumberEditorComponent({ column, save, close }: EditorType) {
 function TextareaEditorComponent({ column, save, close }: EditorType) {
   const [value, setValue] = useState(() => getInitialTextValue(column));
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const startedFromTyping = column.val !== undefined && column.val !== null;
+  const committedRef = useRef(false);
 
   useEffect(() => {
-    textareaRef.current?.focus();
-    if (!textareaRef.current) {
+    const textarea = textareaRef.current;
+    if (!textarea) {
       return;
     }
 
-    if (startedFromTyping) {
-      const end = textareaRef.current.value.length;
-      textareaRef.current.setSelectionRange(end, end);
-      return;
-    }
-
-    textareaRef.current.select();
+    textarea.focus();
+    const end = textarea.value.length;
+    textarea.setSelectionRange(end, end);
   }, []);
 
-  const commitValue = () => {
-    save(value);
+  const commitValue = (preventFocusMove: boolean = true) => {
+    if (committedRef.current) {
+      return;
+    }
+    committedRef.current = true;
+    save(value, preventFocusMove);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
+      committedRef.current = true;
       close();
       return;
     }
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      commitValue();
+      commitValue(true);
     }
   };
 
@@ -175,7 +181,7 @@ function TextareaEditorComponent({ column, save, close }: EditorType) {
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
-      onBlur={commitValue}
+      onBlur={() => commitValue(true)}
       rows={4}
       style={editorTextareaStyle}
     />
@@ -203,20 +209,32 @@ function JsonEditorComponent({ column, save, close }: EditorType) {
 
   const [value, setValue] = useState(initialValue);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const committedRef = useRef(false);
 
   useEffect(() => {
-    textareaRef.current?.focus();
-    textareaRef.current?.select();
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+    textarea.focus();
+    const end = textarea.value.length;
+    textarea.setSelectionRange(end, end);
   }, []);
 
-  const commitValue = () => {
+  const commitValue = (preventFocusMove: boolean = true) => {
+    if (committedRef.current) {
+      return;
+    }
+
     if (!value.trim()) {
-      save(null);
+      committedRef.current = true;
+      save(null, preventFocusMove);
       return;
     }
 
     try {
-      save(JSON.parse(value));
+      committedRef.current = true;
+      save(JSON.parse(value), preventFocusMove);
     } catch {
       // Keep editor open for correction by restoring focus.
       textareaRef.current?.focus();
@@ -225,12 +243,13 @@ function JsonEditorComponent({ column, save, close }: EditorType) {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
+      committedRef.current = true;
       close();
       return;
     }
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      commitValue();
+      commitValue(true);
     }
   };
 
@@ -240,7 +259,7 @@ function JsonEditorComponent({ column, save, close }: EditorType) {
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
-      onBlur={commitValue}
+      onBlur={() => commitValue(true)}
       rows={6}
       style={editorJsonStyle}
     />
@@ -367,6 +386,7 @@ function DateEditorComponent({ column, save, close }: EditorType) {
   };
 
   const [value, setValue] = useState(toInputValue(currentVal));
+  const committedRef = useRef(false);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -374,22 +394,29 @@ function DateEditorComponent({ column, save, close }: EditorType) {
     inputRef.current?.showPicker?.();
   }, []);
 
-  const commitValue = () => {
+  const commitValue = (preventFocusMove: boolean = false) => {
+    if (committedRef.current) {
+      return;
+    }
+    committedRef.current = true;
+
     if (!value) {
-      save(null);
+      save(null, preventFocusMove);
       return;
     }
     if (includeTime) {
-      save(new Date(value).toISOString());
+      save(new Date(value).toISOString(), preventFocusMove);
     } else {
-      save(value); // YYYY-MM-DD string
+      save(value, preventFocusMove); // YYYY-MM-DD string
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      commitValue();
+      e.preventDefault();
+      commitValue(false);
     } else if (e.key === 'Escape') {
+      committedRef.current = true;
       close();
     }
   };
@@ -401,7 +428,7 @@ function DateEditorComponent({ column, save, close }: EditorType) {
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
-      onBlur={commitValue}
+      onBlur={() => commitValue(true)}
       style={editorInputStyle}
     />
   );
@@ -416,6 +443,7 @@ function ColorEditorComponent({ column, save, close }: EditorType) {
     typeof currentVal === 'string' && currentVal.startsWith('#') ? currentVal : '#000000',
   );
   const inputRef = useRef<HTMLInputElement>(null);
+  const committedRef = useRef(false);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -426,14 +454,20 @@ function ColorEditorComponent({ column, save, close }: EditorType) {
     setValue(e.target.value);
   };
 
-  const commitValue = () => {
-    save(value);
+  const commitValue = (preventFocusMove: boolean = false) => {
+    if (committedRef.current) {
+      return;
+    }
+    committedRef.current = true;
+    save(value, preventFocusMove);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      commitValue();
+      e.preventDefault();
+      commitValue(false);
     } else if (e.key === 'Escape') {
+      committedRef.current = true;
       close();
     }
   };
@@ -446,7 +480,7 @@ function ColorEditorComponent({ column, save, close }: EditorType) {
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        onBlur={commitValue}
+        onBlur={() => commitValue(true)}
         style={{
           width: '28px',
           height: '22px',
@@ -462,7 +496,7 @@ function ColorEditorComponent({ column, save, close }: EditorType) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        onBlur={commitValue}
+        onBlur={() => commitValue(true)}
         style={{
           ...editorInputStyle,
           padding: 0,

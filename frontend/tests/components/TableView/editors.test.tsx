@@ -7,7 +7,7 @@ vi.mock('@revolist/react-datagrid', () => ({
   Editor: (component: unknown) => component,
 }));
 
-import { selectEditor } from '../../../src/components/TableView/editors';
+import { selectEditor, textEditor } from '../../../src/components/TableView/editors';
 
 function createSelectProps(overrides: Partial<EditorType> = {}): EditorType {
   const save = vi.fn();
@@ -31,6 +31,28 @@ function createSelectProps(overrides: Partial<EditorType> = {}): EditorType {
 function renderSelectEditor(props: EditorType): void {
   const SelectEditorComponent = selectEditor as unknown as ComponentType<EditorType>;
   render(<SelectEditorComponent {...props} />);
+}
+
+function createTextProps(overrides: Partial<EditorType> = {}): EditorType {
+  const save = vi.fn();
+  const close = vi.fn();
+
+  return {
+    column: {
+      prop: 'title',
+      val: undefined,
+      model: { title: 'hello' },
+      column: {},
+    },
+    save,
+    close,
+    ...overrides,
+  } as unknown as EditorType;
+}
+
+function renderTextEditor(props: EditorType): void {
+  const TextEditorComponent = textEditor as unknown as ComponentType<EditorType>;
+  render(<TextEditorComponent {...props} />);
 }
 
 describe('table selectEditor', () => {
@@ -73,5 +95,47 @@ describe('table selectEditor', () => {
 
     expect(props.close).toHaveBeenCalled();
     expect(props.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('table textEditor', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('places caret at end instead of selecting full content on mount', () => {
+    const props = createTextProps();
+
+    renderTextEditor(props);
+
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    expect(input.selectionStart).toBe(5);
+    expect(input.selectionEnd).toBe(5);
+  });
+
+  it('commits once on Enter even when blur follows', () => {
+    const props = createTextProps();
+
+    renderTextEditor(props);
+
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'hello world' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.blur(input);
+
+    expect(props.save).toHaveBeenCalledTimes(1);
+    expect(props.save).toHaveBeenCalledWith('hello world', false);
+  });
+
+  it('commits on blur without advancing to next row', () => {
+    const props = createTextProps();
+
+    renderTextEditor(props);
+
+    const input = screen.getByRole('textbox');
+    fireEvent.blur(input);
+
+    expect(props.save).toHaveBeenCalledTimes(1);
+    expect(props.save).toHaveBeenCalledWith('hello', true);
   });
 });
