@@ -316,6 +316,7 @@ class DataHandler:
             actions=actions,
             show_save_reset=self.ui_config.show_save_reset,
             table_pinned_columns=self.ui_config.table_pinned_columns,
+            table_column_widths=self.ui_config.table_column_widths,
             responsive_columns=self.ui_config.responsive_columns,
             max_visible_errors=self.ui_config.max_visible_errors,
         )

@@ -7,6 +7,8 @@ import {
   createCellTemplate,
   generateFlatColumnDefs,
   getTableRenderer,
+  normalizeColumnWidthPropKey,
+  resolveConfiguredColumnSizes,
   type FlattenedField,
 } from '../../src/lib/tableUtils';
 import {
@@ -270,6 +272,56 @@ describe('applyColumnSizes', () => {
 
     expect((originalColumns[0] as ColumnRegular).size).toBe(120);
     expect(((originalColumns[1] as ColumnGrouping).children[0] as ColumnRegular).size).toBe(140);
+  });
+});
+
+describe('resolveConfiguredColumnSizes', () => {
+  const flattenedFields = [
+    createField('name', { type: 'string' }),
+    createField('email', { type: 'string' }),
+  ];
+
+  it('applies shared numeric width to data columns only', () => {
+    const widths = resolveConfiguredColumnSizes(flattenedFields, 180);
+
+    expect(widths).toEqual({
+      name: 180,
+      email: 180,
+    });
+    expect(widths.__check).toBeUndefined();
+    expect(widths.__displayIndex).toBeUndefined();
+  });
+
+  it('applies dictionary widths and normalizes row-number aliases', () => {
+    const widths = resolveConfiguredColumnSizes(flattenedFields, {
+      name: 220,
+      __row_number: 72,
+      '#': 68,
+      invalid: -1,
+    });
+
+    expect(widths).toEqual({
+      name: 220,
+      __displayIndex: 68,
+    });
+  });
+
+  it('ignores unsupported values', () => {
+    expect(resolveConfiguredColumnSizes(flattenedFields, null)).toEqual({});
+    expect(resolveConfiguredColumnSizes(flattenedFields, 0)).toEqual({});
+    expect(resolveConfiguredColumnSizes(flattenedFields, -5)).toEqual({});
+  });
+});
+
+describe('normalizeColumnWidthPropKey', () => {
+  it('maps row-number aliases to __displayIndex', () => {
+    expect(normalizeColumnWidthPropKey('__row_number')).toBe('__displayIndex');
+    expect(normalizeColumnWidthPropKey('__rowIndex')).toBe('__displayIndex');
+    expect(normalizeColumnWidthPropKey('#')).toBe('__displayIndex');
+  });
+
+  it('returns trimmed key for non-alias props', () => {
+    expect(normalizeColumnWidthPropKey('  name  ')).toBe('name');
   });
 });
 

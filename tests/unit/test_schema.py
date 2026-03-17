@@ -404,7 +404,8 @@ class TestParseField:
             FieldConfig(
                 display=DisplayConfig(
                     table=ViewDisplay(
-                        pinned_columns=["__check", "__row_number", "name"]
+                        pinned_columns=["__check", "__row_number", "name"],
+                        column_widths={"id": 90, "name": 180},
                     )
                 )
             )
@@ -417,6 +418,10 @@ class TestParseField:
             "__row_number",
             "name",
         ]
+        assert result["ui_config"]["display"]["table"]["column_widths"] == {
+            "id": 90,
+            "name": 180,
+        }
 
     def test_parse_set_field(self):
         """Test parsing a Set field."""

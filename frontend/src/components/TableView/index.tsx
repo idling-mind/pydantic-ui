@@ -20,7 +20,10 @@ import {
   flattenSchema,
   arrayToFlatRows,
   generateColumnDefs,
+  normalizeColumnWidthPropKey,
+  resolveConfiguredColumnSizes,
   setValueByPath,
+  type ColumnWidthConfig,
   type FlattenedField,
 } from '@/lib/tableUtils';
 import {
@@ -52,6 +55,61 @@ interface TableViewProps {
 }
 
 const DEFAULT_TABLE_PINNED_COLUMNS = ['__check', '__row_number'];
+const TABLE_COLUMN_SIZES_STORAGE_KEY_PREFIX = 'pydantic-ui:table-column-sizes:v1';
+
+function getTableColumnSizesStorageKey(tablePath: string, schemaName?: string): string {
+  const safeSchema = schemaName?.trim() || '__unknown_schema__';
+  const safePath = tablePath.trim() || '__root__';
+  return `${TABLE_COLUMN_SIZES_STORAGE_KEY_PREFIX}:${safeSchema}:${safePath}`;
+}
+
+function loadColumnSizesFromLocalStorage(storageKey: string): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {};
+    }
+
+    const sizesByProp: Record<string, number> = {};
+    for (const [prop, width] of Object.entries(parsed)) {
+      if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) {
+        continue;
+      }
+
+      const normalizedProp = normalizeColumnWidthPropKey(prop);
+      if (!normalizedProp) {
+        continue;
+      }
+
+      sizesByProp[normalizedProp] = width;
+    }
+
+    return sizesByProp;
+  } catch {
+    // Ignore malformed storage payloads.
+    return {};
+  }
+}
+
+function saveColumnSizesToLocalStorage(
+  storageKey: string,
+  sizesByProp: Readonly<Record<string, number>>,
+): void {
+  try {
+    if (Object.keys(sizesByProp).length === 0) {
+      localStorage.removeItem(storageKey);
+      return;
+    }
+    localStorage.setItem(storageKey, JSON.stringify(sizesByProp));
+  } catch {
+    // Ignore persistence failures.
+  }
+}
 
 function normalizePinnedColumnKey(key: string): string {
   const normalized = key.trim();
@@ -79,7 +137,7 @@ export function TableView({
   onChange,
 }: TableViewProps) {
   const { theme } = useTheme();
-  const { config, data } = useData();
+  const { config, data, schema: rootSchema } = useData();
   const gridRef = useRef<HTMLRevoGridElement>(null);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [columnSizesByProp, setColumnSizesByProp] = useState<Record<string, number>>({});
@@ -99,6 +157,8 @@ export function TableView({
 
   const tablePinnedColumnsOverride =
     schema.ui_config?.display?.table?.pinned_columns;
+  const tableColumnWidthsOverride =
+    schema.ui_config?.display?.table?.column_widths;
 
   const normalizedPinnedColumns = useMemo(() => {
     const configured =
@@ -153,6 +213,29 @@ export function TableView({
     return flattenSchema(itemSchema, '', 5);
   }, [itemSchema]);
 
+  const effectiveColumnWidthConfig: ColumnWidthConfig =
+    tableColumnWidthsOverride !== undefined && tableColumnWidthsOverride !== null
+      ? tableColumnWidthsOverride
+      : config?.table_column_widths;
+
+  const configuredColumnSizesByProp = useMemo(
+    () => resolveConfiguredColumnSizes(flattenedFields, effectiveColumnWidthConfig),
+    [flattenedFields, effectiveColumnWidthConfig],
+  );
+
+  const columnSizeStorageKey = useMemo(
+    () => getTableColumnSizesStorageKey(path, rootSchema?.name),
+    [path, rootSchema?.name],
+  );
+
+  const mergedColumnSizesByProp = useMemo(
+    () => ({
+      ...configuredColumnSizesByProp,
+      ...columnSizesByProp,
+    }),
+    [configuredColumnSizesByProp, columnSizesByProp],
+  );
+
   // Convert data to flat rows (add __displayIndex for the index column)
   const rowData: DataType[] = useMemo(() => {
     const rows = arrayToFlatRows(items, flattenedFields) as DataType[];
@@ -163,8 +246,12 @@ export function TableView({
   }, [items, flattenedFields]);
 
   useEffect(() => {
-    setColumnSizesByProp({});
-  }, [path]);
+    setColumnSizesByProp(loadColumnSizesFromLocalStorage(columnSizeStorageKey));
+  }, [columnSizeStorageKey]);
+
+  useEffect(() => {
+    saveColumnSizesToLocalStorage(columnSizeStorageKey, columnSizesByProp);
+  }, [columnSizeStorageKey, columnSizesByProp]);
 
   // Generate column definitions
   const columnDefs: (ColumnRegular | ColumnGrouping)[] = useMemo(() => {
@@ -235,8 +322,8 @@ export function TableView({
       data,
     });
 
-    return applyColumnSizes([checkCol, indexCol, ...dataCols], columnSizesByProp);
-  }, [flattenedFields, disabled, selectedRows, normalizedPinnedColumns, pinnedDataColumns, data, columnSizesByProp]);
+    return applyColumnSizes([checkCol, indexCol, ...dataCols], mergedColumnSizesByProp);
+  }, [flattenedFields, disabled, selectedRows, normalizedPinnedColumns, pinnedDataColumns, data, mergedColumnSizesByProp]);
 
   const handleAftercolumnresize = useCallback(
     (event: CustomEvent<Record<number, ColumnRegular>>) => {
@@ -258,7 +345,10 @@ export function TableView({
             typeof size === 'number' &&
             Number.isFinite(size)
           ) {
-            const key = String(prop);
+            const key = normalizeColumnWidthPropKey(String(prop));
+            if (!key) {
+              continue;
+            }
             if (next[key] !== size) {
               next[key] = size;
               changed = true;

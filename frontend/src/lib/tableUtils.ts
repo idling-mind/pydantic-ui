@@ -22,6 +22,65 @@ export interface FlatRow {
   [flatPath: string]: unknown;
 }
 
+export type ColumnWidthConfig = number | Record<string, number> | null | undefined;
+
+const ROW_NUMBER_COLUMN_WIDTH_ALIASES = new Set([
+  '__displayIndex',
+  '__rowIndex',
+  '__row_number',
+  '#',
+]);
+
+function isValidColumnWidth(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+export function normalizeColumnWidthPropKey(prop: string): string {
+  const normalized = prop.trim();
+  if (!normalized) {
+    return normalized;
+  }
+  if (ROW_NUMBER_COLUMN_WIDTH_ALIASES.has(normalized)) {
+    return '__displayIndex';
+  }
+  return normalized;
+}
+
+/**
+ * Resolve configured column widths into a per-column map keyed by RevoGrid column prop.
+ *
+ * - number: apply the same width to all data columns (private columns are excluded)
+ * - dict: apply explicit per-column widths
+ */
+export function resolveConfiguredColumnSizes(
+  flattenedFields: ReadonlyArray<FlattenedField>,
+  columnWidthConfig: ColumnWidthConfig,
+): Record<string, number> {
+  if (isValidColumnWidth(columnWidthConfig)) {
+    const sharedWidth = columnWidthConfig;
+    const widths: Record<string, number> = {};
+    for (const field of flattenedFields) {
+      widths[field.path] = sharedWidth;
+    }
+    return widths;
+  }
+
+  if (!columnWidthConfig || Array.isArray(columnWidthConfig) || typeof columnWidthConfig !== 'object') {
+    return {};
+  }
+
+  const widths: Record<string, number> = {};
+  for (const [rawKey, rawWidth] of Object.entries(columnWidthConfig)) {
+    const key = normalizeColumnWidthPropKey(rawKey);
+    if (!key || !isValidColumnWidth(rawWidth)) {
+      continue;
+    }
+    widths[key] = rawWidth;
+  }
+
+  return widths;
+}
+
 /**
  * Recursively flatten a schema to extract all leaf fields with their full paths.
  * For nested objects, creates paths like "user.name", "user.address.city"

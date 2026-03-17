@@ -100,6 +100,7 @@ class ConfigResponse(BaseModel):
     actions: list[ActionButtonResponse] = Field(default_factory=list)
     show_save_reset: bool = False
     table_pinned_columns: list[str] = Field(default_factory=lambda: ["__check", "__row_number"])
+    table_column_widths: int | dict[str, int] | None = None
     responsive_columns: dict[int, int] = Field(default_factory=dict)
     max_visible_errors: int = 5
 

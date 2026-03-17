@@ -5,7 +5,14 @@ import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from pydantic_ui import DisplayConfig, FieldConfig, Renderer, UIConfig, create_pydantic_ui
+from pydantic_ui import (
+    DisplayConfig,
+    FieldConfig,
+    Renderer,
+    UIConfig,
+    ViewDisplay,
+    create_pydantic_ui,
+)
 
 
 class Subclass(BaseModel):
@@ -28,6 +35,7 @@ class User(BaseModel):
     date_joined: date = Field(default_factory=lambda: date(2024, 1, 1))
     age: int = Field(gt=20, le=150, default=30, description="Age in years")
     teams: list[Literal["Frontend", "Backend", "Design", "QA"]] = Field(default_factory=list)
+    years_at_company: float = Field(default=0, description="Number of years at the company")
 
 
 class Department(BaseModel):
@@ -94,6 +102,14 @@ attr_configs = {
         renderer=Renderer.MULTI_SELECT,
         options_from="hr_data.staff.[].name",
     ),
+    "hr_data.staff": FieldConfig(
+        display=DisplayConfig(
+            table=ViewDisplay(
+                pinned_columns=["__check", "__row_number", "name"],
+                column_widths={"id": 80, "name": 220, "role": 140},
+            ),
+        )
+    ),
     "hr_data.staff.[]": FieldConfig(
         display=DisplayConfig(title="{name} ({role})"),
     ),
@@ -110,9 +126,7 @@ app.include_router(
         ui_config=UIConfig(
             attr_configs=attr_configs,
             show_save_reset=True,
-            # Pin checkbox, row index, and the user's name column in table view.
-            # This is most visible in the hr_data.staff list when switched to Table view.
-            table_pinned_columns=["__check", "__row_number", "name"],
+            table_column_widths=160,
             max_visible_errors=3,
         ),
     )

@@ -18,6 +18,7 @@ class TestViewDisplay:
         assert vd.help_text is None
         assert vd.icon is None
         assert vd.pinned_columns is None
+        assert vd.column_widths is None
 
     def test_with_title(self):
         """ViewDisplay can be created with title."""
@@ -32,11 +33,13 @@ class TestViewDisplay:
             subtitle="Subtitle",
             help_text="Help",
             pinned_columns=["__check", "__row_number", "name"],
+            column_widths={"id": 90, "name": 180},
         )
         assert vd.title == "Title"
         assert vd.subtitle == "Subtitle"
         assert vd.help_text == "Help"
         assert vd.pinned_columns == ["__check", "__row_number", "name"]
+        assert vd.column_widths == {"id": 90, "name": 180}
 
     def test_asdict(self):
         """ViewDisplay can be converted to dict."""
@@ -48,6 +51,7 @@ class TestViewDisplay:
             "help_text": None,
             "icon": None,
             "pinned_columns": None,
+            "column_widths": None,
         }
 
     def test_pinned_columns_only(self):
@@ -55,6 +59,12 @@ class TestViewDisplay:
         vd = ViewDisplay(pinned_columns=["__check", "__row_number", "email"])
         d = asdict(vd)
         assert d["pinned_columns"] == ["__check", "__row_number", "email"]
+
+    def test_column_widths_only(self):
+        """ViewDisplay supports table-specific column width overrides."""
+        vd = ViewDisplay(column_widths=180)
+        d = asdict(vd)
+        assert d["column_widths"] == 180
 
 
 class TestDisplayConfig:

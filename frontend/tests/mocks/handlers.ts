@@ -70,6 +70,7 @@ export const mockConfig = {
   actions: [],
   show_save_reset: true,
   table_pinned_columns: ['__check', '__row_number'],
+  table_column_widths: null,
 };
 
 export const mockData = {

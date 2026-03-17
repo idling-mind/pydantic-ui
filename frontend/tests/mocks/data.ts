@@ -2,7 +2,7 @@
  * Mock data fixtures for frontend tests
  */
 
-import type { Schema, UIConfig, SchemaField } from '@/types';
+import type { Schema, UIConfig, SchemaField } from '../../src/types';
 
 // Simple string field
 export const stringField: SchemaField = {
@@ -127,7 +127,9 @@ export const fieldWithUiConfig: SchemaField = {
   maximum: 100,
   ui_config: {
     renderer: 'slider',
-    help_text: 'Drag to select value',
+    display: {
+      help_text: 'Drag to select value',
+    },
     props: {
       step: 5,
     },
@@ -154,7 +156,7 @@ export const testSchema: Schema = {
 // Test UI config
 export const testConfig: UIConfig = {
   title: 'Test Editor',
-  description: 'Testing the pydantic-ui',
+  subtitle: 'Testing the pydantic-ui',
   logo_text: null,
   logo_url: null,
   logo_url_dark: null,
@@ -189,6 +191,9 @@ export const testConfig: UIConfig = {
   ],
   show_save_reset: true,
   table_pinned_columns: ['__check', '__row_number'],
+  table_column_widths: null,
+  responsive_columns: { 640: 1, 1000: 2, 1600: 3 },
+  max_visible_errors: 5,
 };
 
 // Test data

@@ -7,7 +7,7 @@ vi.mock('@revolist/react-datagrid', () => ({
   Editor: (component: unknown) => component,
 }));
 
-import { selectEditor, sliderEditor, textEditor } from '../../../src/components/TableView/editors';
+import { selectEditor, sliderEditor, textEditor, numberEditor } from '../../../src/components/TableView/editors';
 
 function createSelectProps(overrides: Partial<EditorType> = {}): EditorType {
   const save = vi.fn();
@@ -80,6 +80,33 @@ function createSliderProps(overrides: Partial<EditorType> = {}): EditorType {
 function renderSliderEditor(props: EditorType): void {
   const SliderEditorComponent = sliderEditor as unknown as ComponentType<EditorType>;
   render(<SliderEditorComponent {...props} />);
+}
+
+function createNumberProps(overrides: Partial<EditorType> = {}): EditorType {
+  const save = vi.fn();
+  const close = vi.fn();
+
+  return {
+    column: {
+      prop: 'age',
+      val: undefined,
+      model: { age: 30 },
+      column: {
+        __minimum: 0,
+        __maximum: 100,
+        __step: 1,
+        __isInteger: true,
+      },
+    },
+    save,
+    close,
+    ...overrides,
+  } as unknown as EditorType;
+}
+
+function renderNumberEditor(props: EditorType): void {
+  const NumberEditorComponent = numberEditor as unknown as ComponentType<EditorType>;
+  render(<NumberEditorComponent {...props} />);
 }
 
 describe('table selectEditor', () => {
@@ -164,6 +191,67 @@ describe('table textEditor', () => {
 
     expect(props.save).toHaveBeenCalledTimes(1);
     expect(props.save).toHaveBeenCalledWith('hello', true);
+  });
+});
+
+describe('table numberEditor', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('commits parsed integer value on blur', () => {
+    const props = createNumberProps();
+
+    renderNumberEditor(props);
+
+    const input = screen.getByRole('spinbutton');
+    fireEvent.change(input, { target: { value: '42' } });
+    fireEvent.blur(input);
+
+    expect(props.save).toHaveBeenCalledTimes(1);
+    expect(props.save).toHaveBeenCalledWith(42, true);
+  });
+
+  it('commits once on Enter even when blur follows', () => {
+    const props = createNumberProps();
+
+    renderNumberEditor(props);
+
+    const input = screen.getByRole('spinbutton');
+    fireEvent.change(input, { target: { value: '77' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.blur(input);
+
+    expect(props.save).toHaveBeenCalledTimes(1);
+    expect(props.save).toHaveBeenCalledWith(77, false);
+  });
+
+  it('does not crash when number inputs do not support setSelectionRange', () => {
+    const originalSetSelectionRange = HTMLInputElement.prototype.setSelectionRange;
+    const setSelectionRangeSpy = vi
+      .spyOn(HTMLInputElement.prototype, 'setSelectionRange')
+      .mockImplementation(function (
+        this: HTMLInputElement,
+        start: number | null,
+        end: number | null,
+        direction?: 'forward' | 'backward' | 'none',
+      ) {
+        if (this.type === 'number') {
+          throw new DOMException('The object is in an invalid state.');
+        }
+        return originalSetSelectionRange.call(this, start, end, direction);
+      });
+
+    const props = createNumberProps();
+
+    expect(() => renderNumberEditor(props)).not.toThrow();
+
+    const input = screen.getByRole('spinbutton');
+    fireEvent.change(input, { target: { value: '55' } });
+    fireEvent.blur(input);
+
+    expect(props.save).toHaveBeenCalledWith(55, true);
+    setSelectionRangeSpy.mockRestore();
   });
 });
 

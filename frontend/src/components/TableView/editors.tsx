@@ -23,6 +23,17 @@ function getInitialTextValue(column: EditorType['column']): string {
   return currentVal != null ? String(currentVal) : '';
 }
 
+function placeCaretAtEnd(input: HTMLInputElement | HTMLTextAreaElement): void {
+  const end = input.value.length;
+
+  // Some input types (for example number) do not support selection APIs.
+  try {
+    input.setSelectionRange(end, end);
+  } catch {
+    // Ignore unsupported selection operations.
+  }
+}
+
 /**
  * Text editor — default inline editor used by text-like renderers.
  */
@@ -38,8 +49,7 @@ function TextEditorComponent({ column, save, close }: EditorType) {
     }
 
     input.focus();
-    const end = input.value.length;
-    input.setSelectionRange(end, end);
+    placeCaretAtEnd(input);
   }, []);
 
   const commitValue = (preventFocusMove: boolean = false) => {
@@ -92,8 +102,7 @@ function NumberEditorComponent({ column, save, close }: EditorType) {
     }
 
     input.focus();
-    const end = input.value.length;
-    input.setSelectionRange(end, end);
+    placeCaretAtEnd(input);
   }, []);
 
   const commitValue = (preventFocusMove: boolean = false) => {
@@ -260,8 +269,7 @@ function TextareaEditorComponent({ column, save, close }: EditorType) {
     }
 
     textarea.focus();
-    const end = textarea.value.length;
-    textarea.setSelectionRange(end, end);
+    placeCaretAtEnd(textarea);
   }, []);
 
   const commitValue = (preventFocusMove: boolean = true) => {
@@ -326,8 +334,7 @@ function JsonEditorComponent({ column, save, close }: EditorType) {
       return;
     }
     textarea.focus();
-    const end = textarea.value.length;
-    textarea.setSelectionRange(end, end);
+    placeCaretAtEnd(textarea);
   }, []);
 
   const commitValue = (preventFocusMove: boolean = true) => {
