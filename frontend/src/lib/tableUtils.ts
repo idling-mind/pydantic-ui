@@ -482,6 +482,54 @@ function getNumericMeta(schema: SchemaField): {
   };
 }
 
+/**
+ * Coerce table cell values according to schema type.
+ *
+ * Clipboard/range edits can provide string payloads for numeric fields.
+ * Converting those values before writing state keeps numeric behaviors
+ * (sorting, filtering, conditional formatting) consistent.
+ */
+export function coerceTableCellValueBySchema(
+  schema: SchemaField | undefined,
+  value: unknown,
+): unknown {
+  if (!schema) {
+    return value;
+  }
+
+  if (schema.type !== 'integer' && schema.type !== 'number') {
+    return value;
+  }
+
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  let parsed: number | null | undefined;
+
+  if (typeof value === 'number') {
+    parsed = Number.isFinite(value) ? value : undefined;
+  } else if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      parsed = null;
+    } else {
+      const candidate = Number(trimmed);
+      parsed = Number.isFinite(candidate) ? candidate : undefined;
+    }
+  }
+
+  if (parsed === undefined) {
+    return value;
+  }
+
+  if (parsed === null) {
+    return null;
+  }
+
+  return schema.type === 'integer' ? Math.trunc(parsed) : parsed;
+}
+
 function toBoolean(value: unknown): boolean {
   if (typeof value === 'boolean') {
     return value;

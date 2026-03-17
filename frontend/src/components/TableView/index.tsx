@@ -19,6 +19,7 @@ import {
   applyColumnSizes,
   flattenSchema,
   arrayToFlatRows,
+  coerceTableCellValueBySchema,
   generateColumnDefs,
   normalizeColumnWidthPropKey,
   resolveConfiguredColumnSizes,
@@ -185,6 +186,20 @@ export function TableView({
     return dataColumns;
   }, [normalizedPinnedColumns]);
 
+  // Flatten the item schema to get all columns
+  const flattenedFields: FlattenedField[] = useMemo(() => {
+    if (!itemSchema) return [];
+    return flattenSchema(itemSchema, '', 5);
+  }, [itemSchema]);
+
+  const fieldSchemaByPath = useMemo(() => {
+    const schemaByPath = new Map<string, SchemaField>();
+    for (const field of flattenedFields) {
+      schemaByPath.set(field.path, field.schema);
+    }
+    return schemaByPath;
+  }, [flattenedFields]);
+
   const applySingleCellEdit = useCallback(
     (rowIndex: number, field: string, valueToSet: unknown) => {
       if (
@@ -199,19 +214,15 @@ export function TableView({
         return;
       }
 
+      const schemaForField = fieldSchemaByPath.get(field);
+      const normalizedValue = coerceTableCellValueBySchema(schemaForField, valueToSet);
       const newItems = [...items];
       const currentItem = newItems[rowIndex] ?? {};
-      newItems[rowIndex] = setValueByPath(currentItem, field, valueToSet);
+      newItems[rowIndex] = setValueByPath(currentItem, field, normalizedValue);
       onChange(newItems);
     },
-    [items, onChange],
+    [fieldSchemaByPath, items, onChange],
   );
-
-  // Flatten the item schema to get all columns
-  const flattenedFields: FlattenedField[] = useMemo(() => {
-    if (!itemSchema) return [];
-    return flattenSchema(itemSchema, '', 5);
-  }, [itemSchema]);
 
   const effectiveColumnWidthConfig: ColumnWidthConfig =
     tableColumnWidthsOverride !== undefined && tableColumnWidthsOverride !== null
@@ -462,15 +473,17 @@ export function TableView({
           const changedRow = rowChanges as Record<string, unknown>;
           for (const [prop, value] of Object.entries(changedRow)) {
             if (prop === '__rowIndex' || prop === '__displayIndex' || prop === '__check' || prop === '__originalData') continue;
+            const schemaForField = fieldSchemaByPath.get(prop);
+            const normalizedValue = coerceTableCellValueBySchema(schemaForField, value);
             const currentItem = newItems[rowIndex] ?? {};
-            newItems[rowIndex] = setValueByPath(currentItem, prop, value);
+            newItems[rowIndex] = setValueByPath(currentItem, prop, normalizedValue);
           }
         }
 
         onChange(newItems);
       }
     },
-    [applySingleCellEdit, items, onChange],
+    [applySingleCellEdit, fieldSchemaByPath, items, onChange],
   );
 
   // Handle row reorder

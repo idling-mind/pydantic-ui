@@ -4,6 +4,7 @@ import type { SchemaField } from '../../src/types';
 import {
   applyColumnSizes,
   arrayToFlatRows,
+  coerceTableCellValueBySchema,
   createCellTemplate,
   generateFlatColumnDefs,
   getTableRenderer,
@@ -322,6 +323,33 @@ describe('normalizeColumnWidthPropKey', () => {
 
   it('returns trimmed key for non-alias props', () => {
     expect(normalizeColumnWidthPropKey('  name  ')).toBe('name');
+  });
+});
+
+describe('coerceTableCellValueBySchema', () => {
+  it('converts integer strings to numbers', () => {
+    const value = coerceTableCellValueBySchema({ type: 'integer' }, '42');
+    expect(value).toBe(42);
+  });
+
+  it('converts numeric strings to floats', () => {
+    const value = coerceTableCellValueBySchema({ type: 'number' }, '3.14');
+    expect(value).toBe(3.14);
+  });
+
+  it('converts empty numeric strings to null', () => {
+    const value = coerceTableCellValueBySchema({ type: 'number' }, '   ');
+    expect(value).toBeNull();
+  });
+
+  it('keeps non-numeric strings unchanged', () => {
+    const value = coerceTableCellValueBySchema({ type: 'integer' }, 'abc');
+    expect(value).toBe('abc');
+  });
+
+  it('leaves non-numeric schema types untouched', () => {
+    const value = coerceTableCellValueBySchema({ type: 'string' }, '42');
+    expect(value).toBe('42');
   });
 });
 
