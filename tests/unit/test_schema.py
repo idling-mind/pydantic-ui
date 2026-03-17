@@ -8,7 +8,7 @@ from typing import Annotated, Any, Literal
 
 import pytest
 
-from pydantic_ui.config import DisplayConfig, FieldConfig, Renderer
+from pydantic_ui.config import DisplayConfig, FieldConfig, Renderer, ViewDisplay
 from pydantic_ui.schema import (
     extract_field_config,
     get_constraints,
@@ -394,6 +394,29 @@ class TestParseField:
         result = parse_field("tags", FieldInfo(), list[str])
         assert result["type"] == "array"
         assert result["items"]["type"] == "string"
+
+    def test_parse_list_field_with_pinned_columns(self):
+        """Table view pinned columns can be configured per-array field via display.table."""
+        from pydantic.fields import FieldInfo
+
+        field_info = FieldInfo()
+        field_info.metadata = [
+            FieldConfig(
+                display=DisplayConfig(
+                    table=ViewDisplay(
+                        pinned_columns=["__check", "__row_number", "name"]
+                    )
+                )
+            )
+        ]
+
+        result = parse_field("users", field_info, list[Address])
+        assert result["type"] == "array"
+        assert result["ui_config"]["display"]["table"]["pinned_columns"] == [
+            "__check",
+            "__row_number",
+            "name",
+        ]
 
     def test_parse_set_field(self):
         """Test parsing a Set field."""

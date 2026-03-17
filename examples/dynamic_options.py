@@ -103,6 +103,9 @@ app.include_router(
         ui_config=UIConfig(
             attr_configs=attr_configs,
             show_save_reset=True,
+            # Pin checkbox, row index, and the user's name column in table view.
+            # This is most visible in the hr_data.staff list when switched to Table view.
+            table_pinned_columns=["__check", "__row_number", "name"],
             max_visible_errors=3,
         ),
     )

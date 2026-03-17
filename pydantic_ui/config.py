@@ -17,12 +17,19 @@ class ViewDisplay:
         ViewDisplay(
             title="Port",  # Shorter title for tree view
         )
+
+    Table-specific options can be set on the table view override:
+        ViewDisplay(
+            title="Users Table",
+            pinned_columns=["__check", "__row_number", "name"],
+        )
     """
 
     title: str | None = None
     subtitle: str | None = None
     help_text: str | None = None
     icon: str | None = None
+    pinned_columns: list[str] | None = None
 
     def model_dump(self) -> dict[str, Any]:
         """Return a dict representation."""
@@ -31,6 +38,7 @@ class ViewDisplay:
             "subtitle": self.subtitle,
             "help_text": self.help_text,
             "icon": self.icon,
+            "pinned_columns": self.pinned_columns,
         }
 
 
@@ -40,6 +48,9 @@ class DisplayConfig:
 
     Defines how title, subtitle, help text, and icon are displayed across all views.
     Per-view overrides allow customizing display for specific contexts (tree, detail, table, card).
+
+    The table view override (`table=ViewDisplay(...)`) also supports
+    `pinned_columns` for configuring pinned columns per array/table field.
 
     Title and subtitle support template syntax with curly braces to reference data fields:
     - "{name}" → value of data.name

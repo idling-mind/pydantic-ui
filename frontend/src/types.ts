@@ -5,6 +5,7 @@ export interface ViewDisplay {
   title?: string | null;
   subtitle?: string | null;
   help_text?: string | null;
+  pinned_columns?: string[] | null;
 }
 
 // Unified display configuration

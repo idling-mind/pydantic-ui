@@ -17,6 +17,7 @@ class TestViewDisplay:
         assert vd.subtitle is None
         assert vd.help_text is None
         assert vd.icon is None
+        assert vd.pinned_columns is None
 
     def test_with_title(self):
         """ViewDisplay can be created with title."""
@@ -30,10 +31,12 @@ class TestViewDisplay:
             title="Title",
             subtitle="Subtitle",
             help_text="Help",
+            pinned_columns=["__check", "__row_number", "name"],
         )
         assert vd.title == "Title"
         assert vd.subtitle == "Subtitle"
         assert vd.help_text == "Help"
+        assert vd.pinned_columns == ["__check", "__row_number", "name"]
 
     def test_asdict(self):
         """ViewDisplay can be converted to dict."""
@@ -44,7 +47,14 @@ class TestViewDisplay:
             "subtitle": "Sub",
             "help_text": None,
             "icon": None,
+            "pinned_columns": None,
         }
+
+    def test_pinned_columns_only(self):
+        """ViewDisplay supports table-specific pinned columns."""
+        vd = ViewDisplay(pinned_columns=["__check", "__row_number", "email"])
+        d = asdict(vd)
+        assert d["pinned_columns"] == ["__check", "__row_number", "email"]
 
 
 class TestDisplayConfig:

@@ -94,17 +94,22 @@ export function TableView({
     (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const gridTheme = isDark ? 'darkCompact' : 'compact';
 
+  const tablePinnedColumnsOverride =
+    schema.ui_config?.display?.table?.pinned_columns;
+
   const normalizedPinnedColumns = useMemo(() => {
     const configured =
-      config?.table_pinned_columns && config.table_pinned_columns.length > 0
-        ? config.table_pinned_columns
-        : DEFAULT_TABLE_PINNED_COLUMNS;
+      tablePinnedColumnsOverride && tablePinnedColumnsOverride.length > 0
+        ? tablePinnedColumnsOverride
+        : config?.table_pinned_columns && config.table_pinned_columns.length > 0
+          ? config.table_pinned_columns
+          : DEFAULT_TABLE_PINNED_COLUMNS;
     return new Set(
       configured
         .map(normalizePinnedColumnKey)
         .filter((columnKey) => columnKey.length > 0),
     );
-  }, [config?.table_pinned_columns]);
+  }, [tablePinnedColumnsOverride, config?.table_pinned_columns]);
 
   const pinnedDataColumns = useMemo(() => {
     const dataColumns = new Set<string>();
