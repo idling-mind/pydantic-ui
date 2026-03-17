@@ -16,6 +16,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useData } from '@/context/DataContext';
 import type { SchemaField, FieldError } from '@/types';
 import {
+  applyColumnSizes,
   flattenSchema,
   arrayToFlatRows,
   generateColumnDefs,
@@ -77,9 +78,10 @@ export function TableView({
   onChange,
 }: TableViewProps) {
   const { theme } = useTheme();
-  const { config } = useData();
+  const { config, data } = useData();
   const gridRef = useRef<HTMLRevoGridElement>(null);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [columnSizesByProp, setColumnSizesByProp] = useState<Record<string, number>>({});
 
   const items = value || [];
   const itemSchema = schema.items;
@@ -159,6 +161,10 @@ export function TableView({
     return rows;
   }, [items, flattenedFields]);
 
+  useEffect(() => {
+    setColumnSizesByProp({});
+  }, [path]);
+
   // Generate column definitions
   const columnDefs: (ColumnRegular | ColumnGrouping)[] = useMemo(() => {
     if (flattenedFields.length === 0) return [];
@@ -225,10 +231,45 @@ export function TableView({
     const dataCols = generateColumnDefs(flattenedFields, {
       readOnly: !!disabled,
       pinnedColumnsStart: pinnedDataColumns,
+      data,
     });
 
-    return [checkCol, indexCol, ...dataCols];
-  }, [flattenedFields, disabled, selectedRows, normalizedPinnedColumns, pinnedDataColumns]);
+    return applyColumnSizes([checkCol, indexCol, ...dataCols], columnSizesByProp);
+  }, [flattenedFields, disabled, selectedRows, normalizedPinnedColumns, pinnedDataColumns, data, columnSizesByProp]);
+
+  const handleAftercolumnresize = useCallback(
+    (event: CustomEvent<Record<number, ColumnRegular>>) => {
+      const resizedColumns = event.detail;
+      if (!resizedColumns) {
+        return;
+      }
+
+      setColumnSizesByProp((previous) => {
+        let changed = false;
+        const next = { ...previous };
+
+        for (const column of Object.values(resizedColumns)) {
+          const prop = column?.prop;
+          const size = column?.size;
+
+          if (
+            (typeof prop === 'string' || typeof prop === 'number') &&
+            typeof size === 'number' &&
+            Number.isFinite(size)
+          ) {
+            const key = String(prop);
+            if (next[key] !== size) {
+              next[key] = size;
+              changed = true;
+            }
+          }
+        }
+
+        return changed ? next : previous;
+      });
+    },
+    [],
+  );
 
   // Custom editors for field types
   const editors: Editors = useMemo(() => ({
@@ -513,6 +554,7 @@ export function TableView({
             filter={true}
             canDrag={!disabled}
             onAfteredit={handleAfteredit}
+            onAftercolumnresize={handleAftercolumnresize}
             onRoworderchanged={handleRowOrderChanged}
             style={{ height: '100%', width: '100%' }}
           />

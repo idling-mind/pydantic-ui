@@ -41,6 +41,8 @@ class Task(BaseModel):
     # Deeply nested field using options from another branch of the tree (hr_data.staff)
     assignee: str = None
 
+    priority: Literal["low", "medium", "high", "critical"] = "medium"
+
     # Multi-select example
     reviewers: list[str] = Field(default_factory=list)
 

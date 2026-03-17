@@ -254,6 +254,24 @@ function SelectEditorComponent({ column, save, close }: EditorType) {
   const enumValues: string[] = column.column.__enumValues || [];
   const currentVal = column.model[column.prop];
   const selectRef = useRef<HTMLSelectElement>(null);
+  const currentValueRef = useRef<string>(currentVal != null ? String(currentVal) : '');
+  const committedRef = useRef(false);
+
+  const commitAndClose = (nextValue: string) => {
+    if (committedRef.current) {
+      return;
+    }
+    committedRef.current = true;
+    currentValueRef.current = nextValue;
+    // Use preventFocusMove=true to avoid unexpected focus jumps after committing.
+    save(nextValue, true);
+    close(false);
+  };
+
+  useEffect(() => {
+    currentValueRef.current = currentVal != null ? String(currentVal) : '';
+    committedRef.current = false;
+  }, [currentVal, column.prop]);
 
   useEffect(() => {
     const select = selectRef.current;
@@ -282,12 +300,26 @@ function SelectEditorComponent({ column, save, close }: EditorType) {
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    save(e.target.value);
+    const nextValue = e.target.value;
+    currentValueRef.current = nextValue;
+    commitAndClose(nextValue);
+  };
+
+  const handleBlur = () => {
+    // Selecting the same value doesn't fire onChange; blur ensures a commit/close path.
+    commitAndClose(currentValueRef.current);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
+      committedRef.current = true;
       close();
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitAndClose(currentValueRef.current);
     }
   };
 
@@ -296,6 +328,7 @@ function SelectEditorComponent({ column, save, close }: EditorType) {
       ref={selectRef}
       value={currentVal != null ? String(currentVal) : ''}
       onChange={handleChange}
+      onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       className="revogrid-cell-select"
       style={editorInputStyle}

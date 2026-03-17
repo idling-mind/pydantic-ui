@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import type { ColumnGrouping, ColumnRegular } from '@revolist/react-datagrid';
 import type { SchemaField } from '../../src/types';
 import {
+  applyColumnSizes,
   arrayToFlatRows,
   createCellTemplate,
   generateFlatColumnDefs,
@@ -76,6 +78,28 @@ describe('generateFlatColumnDefs', () => {
 
     expect(col.editor).toBe('select');
     expect(col.__enumValues).toEqual(['draft', 'published']);
+  });
+
+  it('resolves select options from options_from data source', () => {
+    const fields = [
+      createField('owner', {
+        type: 'string',
+        ui_config: {
+          renderer: 'select',
+          options_from: 'users.[].name',
+        },
+      }),
+    ];
+
+    const [col] = generateFlatColumnDefs(fields, {
+      readOnly: false,
+      data: {
+        users: [{ name: 'Ada' }, { name: 'Grace' }, { name: 'Ada' }],
+      },
+    }) as Array<Record<string, unknown>>;
+
+    expect(col.editor).toBe('select');
+    expect(col.__enumValues).toEqual(['Ada', 'Grace']);
   });
 
   it('keeps boolean columns on event-driven mode without native editor', () => {
@@ -154,6 +178,39 @@ describe('arrayToFlatRows', () => {
     const rows = arrayToFlatRows([{ role: null }], fields);
 
     expect(rows[0].role).toBeNull();
+  });
+});
+
+describe('applyColumnSizes', () => {
+  it('applies persisted sizes to leaf and grouped columns without mutating originals', () => {
+    const originalColumns: Array<ColumnRegular | ColumnGrouping> = [
+      {
+        prop: 'name',
+        name: 'name',
+        size: 120,
+      },
+      {
+        name: 'meta',
+        children: [
+          {
+            prop: 'status',
+            name: 'status',
+            size: 140,
+          },
+        ],
+      },
+    ];
+
+    const resizedColumns = applyColumnSizes(originalColumns, {
+      name: 260,
+      status: 310,
+    });
+
+    expect((resizedColumns[0] as ColumnRegular).size).toBe(260);
+    expect(((resizedColumns[1] as ColumnGrouping).children[0] as ColumnRegular).size).toBe(310);
+
+    expect((originalColumns[0] as ColumnRegular).size).toBe(120);
+    expect(((originalColumns[1] as ColumnGrouping).children[0] as ColumnRegular).size).toBe(140);
   });
 });
 

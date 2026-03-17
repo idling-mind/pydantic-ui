@@ -1,7 +1,7 @@
 import type { SchemaField } from '@/types';
 import type { ColumnRegular, ColumnGrouping } from '@revolist/react-datagrid';
 import { triggerCellEdit, triggerCellOpenEditor } from '@/components/TableView/cells';
-import { getValueWithDefault } from './utils';
+import { getValueWithDefault, resolveOptionsFromData } from './utils';
 import { resolveDisplay } from './displayUtils';
 
 /**
@@ -287,6 +287,7 @@ export function getColorForValue(
 interface TableColumnDefOptions {
   readOnly?: boolean;
   pinnedColumnsStart?: ReadonlySet<string>;
+  data?: Record<string, unknown>;
 }
 
 const BOOLEAN_RENDERERS = new Set(['checkbox', 'toggle', 'switch']);
@@ -327,7 +328,27 @@ function getOptionsFromUiProps(schema: SchemaField): string[] {
   return [...new Set(values)];
 }
 
-function getEnumValues(schema: SchemaField): string[] {
+function getOptionsFromDataSource(
+  schema: SchemaField,
+  data?: Record<string, unknown>,
+): string[] {
+  const optionsFromPath = schema.ui_config?.options_from;
+  if (!optionsFromPath || !data) {
+    return [];
+  }
+
+  const resolved = resolveOptionsFromData(optionsFromPath, data)
+    .map((option) => option.value);
+
+  return [...new Set(resolved)];
+}
+
+function getEnumValues(schema: SchemaField, data?: Record<string, unknown>): string[] {
+  const optionsFromData = getOptionsFromDataSource(schema, data);
+  if (optionsFromData.length > 0) {
+    return optionsFromData;
+  }
+
   const optionsFromProps = getOptionsFromUiProps(schema);
   if (optionsFromProps.length > 0) {
     return optionsFromProps;
@@ -342,7 +363,12 @@ function getEnumValues(schema: SchemaField): string[] {
   return [];
 }
 
-function getMultiSelectValues(schema: SchemaField): string[] {
+function getMultiSelectValues(schema: SchemaField, data?: Record<string, unknown>): string[] {
+  const optionsFromData = getOptionsFromDataSource(schema, data);
+  if (optionsFromData.length > 0) {
+    return optionsFromData;
+  }
+
   const optionsFromProps = getOptionsFromUiProps(schema);
   if (optionsFromProps.length > 0) {
     return optionsFromProps;
@@ -351,7 +377,7 @@ function getMultiSelectValues(schema: SchemaField): string[] {
   if (!schema.items) {
     return [];
   }
-  return getEnumValues(schema.items);
+  return getEnumValues(schema.items, data);
 }
 
 function toBoolean(value: unknown): boolean {
@@ -1107,7 +1133,7 @@ function createLeafColumnDef(
   const isBoolean = field.schema.type === 'boolean' || BOOLEAN_RENDERERS.has(renderer);
   const isMultiSelect = MULTI_SELECT_RENDERERS.has(renderer);
   const isArray = field.schema.type === 'array';
-  const hasEnum = getEnumValues(field.schema).length > 0;
+  const hasEnum = getEnumValues(field.schema, options.data).length > 0;
   const isArrayReadOnly = isArray && !isMultiSelect;
   const isReadOnly = !!(options.readOnly || field.schema.ui_config?.read_only || isArrayReadOnly);
   const rendererProps = field.schema.ui_config?.props || {};
@@ -1145,10 +1171,10 @@ function createLeafColumnDef(
       colDef.editor = 'color';
     } else if (isMultiSelect) {
       colDef.editor = 'multiselect';
-      colDef.__enumValues = getMultiSelectValues(field.schema);
+      colDef.__enumValues = getMultiSelectValues(field.schema, options.data);
     } else if (SINGLE_SELECT_RENDERERS.has(renderer) || hasEnum) {
       colDef.editor = 'select';
-      colDef.__enumValues = getEnumValues(field.schema);
+      colDef.__enumValues = getEnumValues(field.schema, options.data);
     } else if (TEXTAREA_RENDERERS.has(renderer)) {
       colDef.editor = 'textarea';
     } else if (JSON_RENDERERS.has(renderer) || field.schema.type === 'object') {
@@ -1288,4 +1314,56 @@ export function generateFlatColumnDefs(
   return flattenedFields.map((field) =>
     createLeafColumnDef(field, field.path, options),
   );
+}
+
+function applyColumnSizesToDefs(
+  columnDefs: (ColumnRegular | ColumnGrouping)[],
+  sizesByProp: Readonly<Record<string, number>>,
+): (ColumnRegular | ColumnGrouping)[] {
+  let changed = false;
+
+  const nextDefs = columnDefs.map((columnDef) => {
+    if ('children' in columnDef && Array.isArray(columnDef.children)) {
+      const nextChildren = applyColumnSizesToDefs(columnDef.children, sizesByProp);
+      if (nextChildren !== columnDef.children) {
+        changed = true;
+        return {
+          ...columnDef,
+          children: nextChildren,
+        };
+      }
+      return columnDef;
+    }
+
+    if (!('prop' in columnDef)) {
+      return columnDef;
+    }
+
+    const nextSize = sizesByProp[String(columnDef.prop)];
+    if (typeof nextSize !== 'number' || !Number.isFinite(nextSize) || columnDef.size === nextSize) {
+      return columnDef;
+    }
+
+    changed = true;
+    return {
+      ...columnDef,
+      size: nextSize,
+    };
+  });
+
+  return changed ? nextDefs : columnDefs;
+}
+
+/**
+ * Apply persisted per-column sizes by column prop to a column definition tree.
+ */
+export function applyColumnSizes(
+  columnDefs: (ColumnRegular | ColumnGrouping)[],
+  sizesByProp: Readonly<Record<string, number>>,
+): (ColumnRegular | ColumnGrouping)[] {
+  if (Object.keys(sizesByProp).length === 0) {
+    return columnDefs;
+  }
+
+  return applyColumnSizesToDefs(columnDefs, sizesByProp);
 }
