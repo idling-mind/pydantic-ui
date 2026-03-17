@@ -137,6 +137,115 @@ function NumberEditorComponent({ column, save, close }: EditorType) {
 }
 
 /**
+ * Slider editor — native range input for slider/range renderers.
+ */
+function SliderEditorComponent({ column, save, close }: EditorType) {
+  const isInt = column.column.__isInteger;
+  const minimum = typeof column.column.__minimum === 'number' ? column.column.__minimum : 0;
+  const maximum = typeof column.column.__maximum === 'number' ? column.column.__maximum : 100;
+  const safeMaximum = maximum <= minimum ? minimum + 1 : maximum;
+  const step =
+    typeof column.column.__step === 'number'
+      ? column.column.__step
+      : isInt
+        ? 1
+        : 0.1;
+  const currentVal = column.model[column.prop];
+  const initialValue = (() => {
+    const parsed = Number(currentVal);
+    if (isNaN(parsed)) {
+      return minimum;
+    }
+    return Math.min(safeMaximum, Math.max(minimum, parsed));
+  })();
+
+  const [value, setValue] = useState(initialValue);
+  const valueRef = useRef(initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const committedRef = useRef(false);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const commitValue = (preventFocusMove: boolean = true) => {
+    if (committedRef.current) {
+      return;
+    }
+    committedRef.current = true;
+    save(valueRef.current, preventFocusMove);
+  };
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const parsed = Number(event.target.value);
+    if (isNaN(parsed)) {
+      return;
+    }
+    const normalized = isInt ? Math.round(parsed) : parsed;
+    const clamped = Math.min(safeMaximum, Math.max(minimum, normalized));
+    setValue(clamped);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitValue(false);
+    } else if (event.key === 'Escape') {
+      committedRef.current = true;
+      close();
+    }
+  };
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        width: '100%',
+        height: '100%',
+        padding: '0 8px',
+      }}
+    >
+      <input
+        ref={inputRef}
+        type="range"
+        min={minimum}
+        max={safeMaximum}
+        step={step}
+        value={value}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onMouseUp={() => commitValue(true)}
+        onTouchEnd={() => commitValue(true)}
+        onBlur={() => commitValue(true)}
+        style={{
+          flex: 1,
+          width: '100%',
+          margin: 0,
+          accentColor: 'hsl(var(--primary))',
+        }}
+      />
+      <span
+        style={{
+          minWidth: '28px',
+          fontSize: '12px',
+          fontVariantNumeric: 'tabular-nums',
+          color: 'hsl(var(--foreground))',
+          textAlign: 'right',
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/**
  * Textarea editor — used by text_area/markdown renderers.
  */
 function TextareaEditorComponent({ column, save, close }: EditorType) {
@@ -662,6 +771,7 @@ const editorJsonStyle: React.CSSProperties = {
 export const booleanEditor = Editor(BooleanEditorComponent);
 export const textEditor = Editor(TextEditorComponent);
 export const numberEditor = Editor(NumberEditorComponent);
+export const sliderEditor = Editor(SliderEditorComponent);
 export const textareaEditor = Editor(TextareaEditorComponent);
 export const jsonEditor = Editor(JsonEditorComponent);
 export const selectEditor = Editor(SelectEditorComponent);

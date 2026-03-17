@@ -26,6 +26,7 @@ class User(BaseModel):
     role: Literal["Engineer", "Manager", "Designer", "QA"]
     active: bool = True
     date_joined: date = Field(default_factory=lambda: date(2024, 1, 1))
+    age: int = Field(gt=20, le=150, default=30, description="Age in years")
     teams: list[Literal["Frontend", "Backend", "Design", "QA"]] = Field(default_factory=list)
 
 
@@ -95,6 +96,10 @@ attr_configs = {
     ),
     "hr_data.staff.[]": FieldConfig(
         display=DisplayConfig(title="{name} ({role})"),
+    ),
+    "hr_data.staff.[].age": FieldConfig(
+        renderer=Renderer.SLIDER,
+        props={"min": 30, "max": 150, "step": 1},
     ),
 }
 

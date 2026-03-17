@@ -26,6 +26,7 @@ import {
 import {
   textEditor,
   numberEditor,
+  sliderEditor,
   textareaEditor,
   jsonEditor,
   selectEditor,
@@ -275,6 +276,7 @@ export function TableView({
   const editors: Editors = useMemo(() => ({
     text: textEditor,
     number: numberEditor,
+    slider: sliderEditor,
     textarea: textareaEditor,
     json: jsonEditor,
     select: selectEditor,

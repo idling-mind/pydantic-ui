@@ -63,6 +63,18 @@ describe('getTableRenderer', () => {
       }),
     ).toBe('multi_select');
   });
+
+  it('uses slider when numeric bounds come from constraints', () => {
+    expect(
+      getTableRenderer({
+        type: 'integer',
+        constraints: {
+          minimum: 5,
+          maximum: 25,
+        },
+      }),
+    ).toBe('slider');
+  });
 });
 
 describe('generateFlatColumnDefs', () => {
@@ -78,6 +90,53 @@ describe('generateFlatColumnDefs', () => {
 
     expect(col.editor).toBe('select');
     expect(col.__enumValues).toEqual(['draft', 'published']);
+  });
+
+  it('maps slider renderer fields to slider editor', () => {
+    const fields = [
+      createField('age', {
+        type: 'integer',
+        minimum: 0,
+        maximum: 150,
+        ui_config: {
+          renderer: 'slider',
+          props: {
+            min: 10,
+            max: 90,
+            step: 5,
+          },
+        },
+      }),
+    ];
+
+    const [col] = generateFlatColumnDefs(fields, { readOnly: false }) as Array<Record<string, unknown>>;
+
+    expect(col.editor).toBe('slider');
+    expect(col.__minimum).toBe(10);
+    expect(col.__maximum).toBe(90);
+    expect(col.__step).toBe(5);
+  });
+
+  it('maps constraint-based slider bounds to the slider editor', () => {
+    const fields = [
+      createField('score', {
+        type: 'integer',
+        ui_config: {
+          renderer: 'slider',
+        },
+        constraints: {
+          minimum: 20,
+          maximum: 80,
+        },
+      }),
+    ];
+
+    const [col] = generateFlatColumnDefs(fields, { readOnly: false }) as Array<Record<string, unknown>>;
+
+    expect(col.editor).toBe('slider');
+    expect(col.__minimum).toBe(20);
+    expect(col.__maximum).toBe(80);
+    expect(col.__step).toBe(1);
   });
 
   it('resolves select options from options_from data source', () => {
@@ -289,6 +348,50 @@ describe('createCellTemplate', () => {
     expect(captured).toEqual({
       rowIndex: 1,
       prop: 'status',
+    });
+  });
+
+  it('dispatches open-editor event for slider cells', () => {
+    const template = createCellTemplate(
+      createField('age', {
+        type: 'integer',
+        ui_config: {
+          renderer: 'slider',
+          props: {
+            min: 0,
+            max: 100,
+          },
+        },
+      }),
+      { readOnly: false },
+    );
+
+    expect(template).toBeDefined();
+
+    const vnode = template!(
+      h as unknown as never,
+      {
+        model: { __rowIndex: 4, age: 20 },
+        prop: 'age',
+        rowIndex: 4,
+      } as unknown as never,
+    ) as unknown as VNodeLike;
+
+    const button = document.createElement('button');
+    let captured: TableCellOpenEditorDetail | null = null;
+
+    button.addEventListener(TABLE_CELL_OPEN_EDITOR_EVENT, (event) => {
+      captured = (event as CustomEvent<TableCellOpenEditorDetail>).detail;
+    });
+
+    (vnode.props.onClick as (event: Event) => void)({
+      currentTarget: button,
+      stopPropagation: () => {},
+    } as unknown as Event);
+
+    expect(captured).toEqual({
+      rowIndex: 4,
+      prop: 'age',
     });
   });
 });

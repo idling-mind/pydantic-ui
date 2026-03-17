@@ -7,7 +7,7 @@ vi.mock('@revolist/react-datagrid', () => ({
   Editor: (component: unknown) => component,
 }));
 
-import { selectEditor, textEditor } from '../../../src/components/TableView/editors';
+import { selectEditor, sliderEditor, textEditor } from '../../../src/components/TableView/editors';
 
 function createSelectProps(overrides: Partial<EditorType> = {}): EditorType {
   const save = vi.fn();
@@ -53,6 +53,33 @@ function createTextProps(overrides: Partial<EditorType> = {}): EditorType {
 function renderTextEditor(props: EditorType): void {
   const TextEditorComponent = textEditor as unknown as ComponentType<EditorType>;
   render(<TextEditorComponent {...props} />);
+}
+
+function createSliderProps(overrides: Partial<EditorType> = {}): EditorType {
+  const save = vi.fn();
+  const close = vi.fn();
+
+  return {
+    column: {
+      prop: 'age',
+      val: undefined,
+      model: { age: 30 },
+      column: {
+        __minimum: 0,
+        __maximum: 100,
+        __step: 5,
+        __isInteger: true,
+      },
+    },
+    save,
+    close,
+    ...overrides,
+  } as unknown as EditorType;
+}
+
+function renderSliderEditor(props: EditorType): void {
+  const SliderEditorComponent = sliderEditor as unknown as ComponentType<EditorType>;
+  render(<SliderEditorComponent {...props} />);
 }
 
 describe('table selectEditor', () => {
@@ -137,5 +164,38 @@ describe('table textEditor', () => {
 
     expect(props.save).toHaveBeenCalledTimes(1);
     expect(props.save).toHaveBeenCalledWith('hello', true);
+  });
+});
+
+describe('table sliderEditor', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('commits slider value on pointer release', () => {
+    const props = createSliderProps();
+
+    renderSliderEditor(props);
+
+    const slider = screen.getByRole('slider');
+    fireEvent.change(slider, { target: { value: '45' } });
+    fireEvent.mouseUp(slider);
+
+    expect(props.save).toHaveBeenCalledTimes(1);
+    expect(props.save).toHaveBeenCalledWith(45, true);
+  });
+
+  it('commits once on Enter even when blur follows', () => {
+    const props = createSliderProps();
+
+    renderSliderEditor(props);
+
+    const slider = screen.getByRole('slider');
+    fireEvent.change(slider, { target: { value: '50' } });
+    fireEvent.keyDown(slider, { key: 'Enter' });
+    fireEvent.blur(slider);
+
+    expect(props.save).toHaveBeenCalledTimes(1);
+    expect(props.save).toHaveBeenCalledWith(50, false);
   });
 });

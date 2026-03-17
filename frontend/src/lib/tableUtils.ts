@@ -1,7 +1,7 @@
 import type { SchemaField } from '@/types';
 import type { ColumnRegular, ColumnGrouping } from '@revolist/react-datagrid';
 import { triggerCellEdit, triggerCellOpenEditor } from '@/components/TableView/cells';
-import { getValueWithDefault, resolveOptionsFromData } from './utils';
+import { getSchemaNumericBounds, getValueWithDefault, resolveOptionsFromData } from './utils';
 import { resolveDisplay } from './displayUtils';
 
 /**
@@ -380,6 +380,49 @@ function getMultiSelectValues(schema: SchemaField, data?: Record<string, unknown
   return getEnumValues(schema.items, data);
 }
 
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+function getNumericMeta(schema: SchemaField): {
+  minimum: number | undefined;
+  maximum: number | undefined;
+  step: number;
+} {
+  const props = schema.ui_config?.props;
+  const minFromProps = toFiniteNumber(props?.min);
+  const maxFromProps = toFiniteNumber(props?.max);
+  const stepFromProps = toFiniteNumber(props?.step);
+  const schemaBounds = getSchemaNumericBounds(schema);
+
+  const minimum =
+    minFromProps
+      ?? schemaBounds.minimum;
+  const maximum =
+    maxFromProps
+      ?? schemaBounds.maximum;
+  const fallbackStep = schema.type === 'integer' ? 1 : 0.1;
+  const step =
+    stepFromProps
+      ?? schemaBounds.step
+      ?? fallbackStep;
+
+  return {
+    minimum,
+    maximum,
+    step,
+  };
+}
+
 function toBoolean(value: unknown): boolean {
   if (typeof value === 'boolean') {
     return value;
@@ -468,15 +511,17 @@ export function getTableRenderer(schema: SchemaField): string {
       return 'text_input';
 
     case 'integer':
-    case 'number':
+    case 'number': {
+      const numericMeta = getNumericMeta(schema);
       if (
-        schema.minimum !== undefined &&
-        schema.maximum !== undefined &&
-        schema.maximum - schema.minimum <= 1000
+        numericMeta.minimum !== undefined &&
+        numericMeta.maximum !== undefined &&
+        numericMeta.maximum - numericMeta.minimum <= 1000
       ) {
         return 'slider';
       }
       return 'number_input';
+    }
 
     case 'boolean':
       return 'toggle';
@@ -954,8 +999,9 @@ export function createCellTemplate(
   }
 
   if (isSlider) {
-    const min = field.schema.minimum ?? 0;
-    const max = field.schema.maximum ?? 100;
+    const numericMeta = getNumericMeta(field.schema);
+    const min = numericMeta.minimum ?? 0;
+    const max = numericMeta.maximum ?? 100;
     const safeMax = max <= min ? min + 1 : max;
 
     return (h, props) => {
@@ -1136,8 +1182,7 @@ function createLeafColumnDef(
   const hasEnum = getEnumValues(field.schema, options.data).length > 0;
   const isArrayReadOnly = isArray && !isMultiSelect;
   const isReadOnly = !!(options.readOnly || field.schema.ui_config?.read_only || isArrayReadOnly);
-  const rendererProps = field.schema.ui_config?.props || {};
-  const stepOverride = typeof rendererProps.step === 'number' ? rendererProps.step : undefined;
+  const numericMeta = getNumericMeta(field.schema);
 
   const display = resolveDisplay({ schema: field.schema, view: 'table', name: headerName });
 
@@ -1179,12 +1224,18 @@ function createLeafColumnDef(
       colDef.editor = 'textarea';
     } else if (JSON_RENDERERS.has(renderer) || field.schema.type === 'object') {
       colDef.editor = 'json';
+    } else if (renderer === 'slider' || renderer === 'range') {
+      colDef.editor = 'slider';
+      colDef.__isInteger = field.schema.type === 'integer';
+      colDef.__minimum = numericMeta.minimum;
+      colDef.__maximum = numericMeta.maximum;
+      colDef.__step = numericMeta.step;
     } else if (NUMERIC_RENDERERS.has(renderer) || isNumeric) {
       colDef.editor = 'number';
       colDef.__isInteger = field.schema.type === 'integer';
-      colDef.__minimum = field.schema.minimum;
-      colDef.__maximum = field.schema.maximum;
-      colDef.__step = stepOverride ?? (field.schema.type === 'integer' ? 1 : 0.1);
+      colDef.__minimum = numericMeta.minimum;
+      colDef.__maximum = numericMeta.maximum;
+      colDef.__step = numericMeta.step;
     } else {
       colDef.editor = 'text';
     }
