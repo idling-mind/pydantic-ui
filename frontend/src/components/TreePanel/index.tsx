@@ -795,7 +795,7 @@ export function TreePanel({ className }: TreePanelProps) {
         </div>
       </ScrollArea>
 
-      {/* Clear Value Confirmation Dialog */}
+      {/* Clear Value Confirmation Dialog box */}
       <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
