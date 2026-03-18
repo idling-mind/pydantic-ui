@@ -324,26 +324,11 @@
 }
 
 .nested-card-action-button {
-  background-color: hsl(var(--muted) / 0.25);
+  background-color: hsl(var(--muted) / 0.6);
 }
 
 .nested-card-action-button:hover {
-  background-color: hsl(var(--muted) / 0.32);
-}
-
-/* Tree lines */
-.tree-line {
-  position: relative;
-}
-
-.tree-line::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background-color: hsl(var(--border));
+  background-color: hsl(var(--muted) / 0.7);
 }
 
 /* 
@@ -412,16 +397,6 @@
 }
 
 @layer utilities {
-  @keyframes progress-indeterminate {
-    0% { transform: translateX(-100%); }
-    50% { transform: translateX(100%); }
-    100% { transform: translateX(100%); }
-  }
-
-  .animate-progress-indeterminate {
-    animation: progress-indeterminate 2s infinite linear;
-  }
-
   @keyframes progress-shimmer {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
