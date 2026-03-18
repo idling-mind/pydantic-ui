@@ -1389,8 +1389,22 @@ export function generateColumnDefs(
   flattenedFields: FlattenedField[],
   options: TableColumnDefOptions = {},
 ): (ColumnRegular | ColumnGrouping)[] {
+  const GROUP_PAD_PREFIX = '__pydantic_ui_group_pad__';
+
+  const getPathParts = (fieldPath: string): string[] =>
+    fieldPath
+      .split('.')
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+
+  const maxPathDepth = flattenedFields.reduce((maxDepth, field) => {
+    const depth = getPathParts(field.path).length;
+    return depth > maxDepth ? depth : maxDepth;
+  }, 0);
+
   // Build a tree structure from the flattened fields
   interface ColumnNode {
+    key: string;
     name: string;
     path: string;
     field?: FlattenedField;
@@ -1398,29 +1412,52 @@ export function generateColumnDefs(
   }
 
   const root: ColumnNode = {
+    key: '',
     name: '',
     path: '',
     children: new Map(),
   };
 
   for (const field of flattenedFields) {
-    const parts = field.path.split('.');
+    const parts = getPathParts(field.path);
+    if (parts.length === 0) {
+      continue;
+    }
+
+    const missingLevels = Math.max(0, maxPathDepth - parts.length);
+    const rootKey = parts[0];
+    const normalizedParts: Array<{ key: string; name: string }> = [];
+
+    for (let i = 0; i < missingLevels; i++) {
+      normalizedParts.push({
+        key: `${GROUP_PAD_PREFIX}${i}:${rootKey}`,
+        name: '',
+      });
+    }
+
+    for (const part of parts) {
+      normalizedParts.push({ key: part, name: part });
+    }
+
     let current = root;
+    const pathParts: string[] = [];
 
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      const isLast = i === parts.length - 1;
-      const currentPath = parts.slice(0, i + 1).join('.');
+    for (let i = 0; i < normalizedParts.length; i++) {
+      const part = normalizedParts[i];
+      const isLast = i === normalizedParts.length - 1;
+      pathParts.push(part.key);
+      const currentPath = pathParts.join('.');
 
-      if (!current.children.has(part)) {
-        current.children.set(part, {
-          name: part,
+      if (!current.children.has(part.key)) {
+        current.children.set(part.key, {
+          key: part.key,
+          name: part.name,
           path: currentPath,
           children: new Map(),
         });
       }
 
-      const node = current.children.get(part)!;
+      const node = current.children.get(part.key)!;
 
       if (isLast) {
         node.field = field;
@@ -1435,18 +1472,18 @@ export function generateColumnDefs(
   ): (ColumnRegular | ColumnGrouping)[] => {
     const results: (ColumnRegular | ColumnGrouping)[] = [];
 
-    for (const [name, child] of node.children) {
+    for (const child of node.children.values()) {
       if (child.field && child.children.size === 0) {
-        results.push(createLeafColumnDef(child.field, name, options));
+        results.push(createLeafColumnDef(child.field, child.name, options));
       } else if (child.children.size > 0) {
         const children = convertToColDefs(child);
 
         if (child.field) {
-          children.unshift(createLeafColumnDef(child.field, name, options));
+          children.unshift(createLeafColumnDef(child.field, child.name, options));
         }
 
         const colGroup: ColumnGrouping = {
-          name,
+          name: child.name,
           children,
         };
         results.push(colGroup);

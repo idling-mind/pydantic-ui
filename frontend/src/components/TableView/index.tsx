@@ -635,7 +635,7 @@ export function TableView({
       {/* RevoGrid */}
       <div
         className={cn('w-full max-w-full min-w-0 rounded-md border overflow-hidden', isDark ? 'revogrid-dark' : 'revogrid-light')}
-        style={{ height: 'calc(100vh - 400px)', minHeight: '200px' }}
+        style={{ height: 'calc(100vh - 410px)', minHeight: '200px' }}
         data-pydantic-ui="table-grid"
       >
         <div

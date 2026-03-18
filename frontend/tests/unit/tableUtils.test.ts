@@ -6,6 +6,7 @@ import {
   arrayToFlatRows,
   coerceTableCellValueBySchema,
   createCellTemplate,
+  generateColumnDefs,
   generateFlatColumnDefs,
   getTableRenderer,
   normalizeColumnWidthPropKey,
@@ -212,6 +213,47 @@ describe('generateFlatColumnDefs', () => {
     }) as Array<Record<string, unknown>>;
 
     expect(col.pin).toBe('colPinStart');
+  });
+});
+
+describe('generateColumnDefs', () => {
+  it('bottom-aligns shallower grouped paths by padding top levels', () => {
+    const fields = [
+      createField('width.value', {
+        type: 'number',
+      }),
+      createField('width.from', {
+        type: 'string',
+      }),
+      createField('crack_sizes.top_to_root.depth', {
+        type: 'number',
+      }),
+      createField('crack_sizes.root_to_top.depth', {
+        type: 'number',
+      }),
+    ];
+
+    const grouped = generateColumnDefs(fields, { readOnly: false });
+
+    expect((grouped[0] as ColumnGrouping).name).toBe('');
+    expect((grouped[1] as ColumnGrouping).name).toBe('crack_sizes');
+
+    const paddedGroup = grouped[0] as ColumnGrouping;
+    expect((paddedGroup.children[0] as ColumnGrouping).name).toBe('width');
+  });
+
+  it('does not add padding when all paths share the same depth', () => {
+    const fields = [
+      createField('metrics.min', { type: 'number' }),
+      createField('metrics.max', { type: 'number' }),
+      createField('limits.low', { type: 'number' }),
+      createField('limits.high', { type: 'number' }),
+    ];
+
+    const grouped = generateColumnDefs(fields, { readOnly: false });
+
+    expect((grouped[0] as ColumnGrouping).name).toBe('metrics');
+    expect((grouped[1] as ColumnGrouping).name).toBe('limits');
   });
 });
 

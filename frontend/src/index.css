@@ -40,6 +40,8 @@
   --rv-fg: hsl(var(--foreground));
   --rv-border: hsl(var(--border));
   --rv-header-bg: hsl(var(--muted));
+  --rv-group-header-bg-strong: hsl(var(--foreground) / 0.08);
+  --rv-group-header-bg-soft: hsl(var(--foreground) / 0.04);
   --rv-header-fg: hsl(var(--foreground));
   --rv-odd-row-bg: hsl(var(--muted) / 0.3);
   --rv-row-hover: hsl(var(--accent));
@@ -52,10 +54,43 @@
   --rv-fg: hsl(var(--foreground));
   --rv-border: hsl(var(--border));
   --rv-header-bg: hsl(var(--muted));
+  --rv-group-header-bg-strong: hsl(var(--foreground) / 0.14);
+  --rv-group-header-bg-soft: hsl(var(--foreground) / 0.08);
   --rv-header-fg: hsl(var(--foreground));
   --rv-odd-row-bg: hsl(var(--muted) / 0.3);
   --rv-row-hover: hsl(var(--accent));
   --rv-selection-bg: hsl(var(--primary) / 0.2);
+}
+
+/* Compact theme: tint merged/grouped header bands (RevoGrid uses .group-rgRow) */
+.revogrid-light revo-grid[theme='compact'] revogr-header .group-rgRow,
+.revogrid-dark revo-grid[theme='darkCompact'] revogr-header .group-rgRow {
+  background-color: var(--rv-group-header-bg-soft);
+}
+
+.revogrid-light revo-grid[theme='compact'] revogr-header .group-rgRow .rgHeaderCell,
+.revogrid-dark revo-grid[theme='darkCompact'] revogr-header .group-rgRow .rgHeaderCell {
+  background-color: transparent;
+}
+
+.revogrid-light revo-grid[theme='compact'] revogr-header .group-rgRow .rgHeaderCell .header-content:not(:empty),
+.revogrid-dark revo-grid[theme='darkCompact'] revogr-header .group-rgRow .rgHeaderCell .header-content:not(:empty) {
+  background-color: var(--rv-group-header-bg-strong);
+  height: 100%;
+  padding-inline: 8px;
+}
+
+/* Color the full merged cell (including padded area) when a label is present. */
+@supports selector(.rgHeaderCell:has(.header-content:not(:empty))) {
+  .revogrid-light revo-grid[theme='compact'] revogr-header .group-rgRow .rgHeaderCell:has(.header-content:not(:empty)),
+  .revogrid-dark revo-grid[theme='darkCompact'] revogr-header .group-rgRow .rgHeaderCell:has(.header-content:not(:empty)) {
+    background-color: var(--rv-group-header-bg-strong);
+  }
+
+  .revogrid-light revo-grid[theme='compact'] revogr-header .group-rgRow .rgHeaderCell .header-content:not(:empty),
+  .revogrid-dark revo-grid[theme='darkCompact'] revogr-header .group-rgRow .rgHeaderCell .header-content:not(:empty) {
+    background-color: transparent;
+  }
 }
 
 /* RevoGrid editor overlay — override library's hardcoded white background */
