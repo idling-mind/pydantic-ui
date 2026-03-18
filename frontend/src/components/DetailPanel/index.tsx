@@ -3,7 +3,6 @@ import { Save, RotateCcw, AlertCircle, CheckCircle2, Loader2 } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { resolveDisplay, resolveArrayItemDisplay } from '@/lib/displayUtils';
 import FieldHelp from '@/components/FieldHelp';
@@ -583,25 +582,23 @@ export function DetailPanel({ className }: DetailPanelProps) {
       </div>
 
       {/* Scrollable content area */}
-      <div className="min-w-0 flex-1 overflow-x-hidden" data-pydantic-ui="detail-scroll">
-        <ScrollArea className="h-full">
-          {/* Show orphaned errors (errors for paths not found in schema) */}
-          {selectedSchema && relevantErrors && relevantErrors.length > 0 && (
-            <div className="px-4 pt-4">
-              <OrphanedErrors
-                errors={relevantErrors}
-                basePath={basePath || ''}
-                schema={selectedSchema}
-                maxVisibleErrors={config?.max_visible_errors}
-              />
-            </div>
-          )}
-
-          {/* Content */}
-          <div className="w-full min-w-0 p-4" data-pydantic-ui="detail-content">
-            {renderContent()}
+      <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto" data-pydantic-ui="detail-scroll">
+        {/* Show orphaned errors (errors for paths not found in schema) */}
+        {selectedSchema && relevantErrors && relevantErrors.length > 0 && (
+          <div className="px-4 pt-4">
+            <OrphanedErrors
+              errors={relevantErrors}
+              basePath={basePath || ''}
+              schema={selectedSchema}
+              maxVisibleErrors={config?.max_visible_errors}
+            />
           </div>
-        </ScrollArea>
+        )}
+
+        {/* Content */}
+        <div className="w-full min-w-0 p-4" data-pydantic-ui="detail-content">
+          {renderContent()}
+        </div>
       </div>
 
       <Separator />
