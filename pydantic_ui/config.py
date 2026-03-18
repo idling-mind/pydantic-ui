@@ -28,9 +28,7 @@ def _normalize_column_widths(
         normalized: dict[str, int] = {}
         for key, width in value.items():
             if isinstance(width, bool) or not isinstance(width, int) or width <= 0:
-                raise ValueError(
-                    f"{field_name}['{key}'] must be a positive integer"
-                )
+                raise ValueError(f"{field_name}['{key}'] must be a positive integer")
             normalized[str(key)] = width
         return normalized
 

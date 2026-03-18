@@ -29,7 +29,7 @@ pytestmark = pytest.mark.e2e
 
 TABLE_VIEW_TOGGLE = 'button[title="Table view"]'
 LIST_VIEW_TOGGLE = 'button[title="List view"]'
-TABLE_COLUMN_SIZES_STORAGE_KEY = 'pydantic-ui:table-column-sizes:v1:Settings:users'
+TABLE_COLUMN_SIZES_STORAGE_KEY = "pydantic-ui:table-column-sizes:v1:Settings:users"
 
 
 def goto_config_with_retry(page: Page, base_url: str, *, attempts: int = 3) -> None:
@@ -298,9 +298,7 @@ class TestTableViewRowOperations:
         page.wait_for_timeout(300)
 
         rows_after_add = get_grid_source(table_grid)
-        assert len(rows_after_add) == 3, (
-            f"Expected 3 rows after Add Row, got {len(rows_after_add)}"
-        )
+        assert len(rows_after_add) == 3, f"Expected 3 rows after Add Row, got {len(rows_after_add)}"
         assert is_save_button_enabled(page), "Save should be enabled after adding a row"
 
     def test_duplicate_selected_row_inserts_a_copy(self, page: Page, base_url: str):
@@ -327,9 +325,7 @@ class TestTableViewRowOperations:
             f"Expected 3 rows after duplicate, got {len(rows_after_duplicate)}"
         )
 
-        name_email_pairs = [
-            (row.get("name"), row.get("email")) for row in rows_after_duplicate
-        ]
+        name_email_pairs = [(row.get("name"), row.get("email")) for row in rows_after_duplicate]
         has_adjacent_duplicate = any(
             name_email_pairs[idx] == name_email_pairs[idx + 1]
             for idx in range(len(name_email_pairs) - 1)
