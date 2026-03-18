@@ -254,6 +254,83 @@
   background-color: hsl(var(--muted-foreground) / 0.6);
 }
 
+/* Nested detail cards: use container queries so layout responds to panel/card width. */
+.nested-card-content {
+  container-type: inline-size;
+  container-name: nested-card;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nested-card-header-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.nested-card-icon {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.nested-card-main {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.nested-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.nested-card-title {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nested-card-title-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.nested-card-actions {
+  width: 100%;
+}
+
+.nested-card-alert,
+.nested-card-badge,
+.nested-card-disable,
+.nested-card-enable {
+  flex-shrink: 0;
+}
+
+.nested-card-action-button,
+.nested-card-enable,
+.nested-card-disable {
+  width: 100%;
+  justify-content: center;
+}
+
+.nested-card-action-button {
+  background-color: hsl(var(--muted) / 0.25);
+}
+
+.nested-card-action-button:hover {
+  background-color: hsl(var(--muted) / 0.32);
+}
+
 /* Tree lines */
 .tree-line {
   position: relative;

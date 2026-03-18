@@ -32,7 +32,7 @@ export function Layout({}: LayoutProps) {
       const containerRect = containerRef.current.getBoundingClientRect();
       const newWidth = e.clientX - containerRect.left;
       // Clamp between 200 and 500
-      setPanelWidth(Math.max(200, Math.min(500, newWidth)));
+      setPanelWidth(Math.max(200, Math.min(1000, newWidth)));
     };
 
     const handleMouseUp = () => {

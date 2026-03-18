@@ -23,48 +23,75 @@ import type { SchemaField, FieldError, UIConfig } from '@/types';
 
 /**
  * Hook to generate responsive grid columns based on config breakpoints.
- * Returns a CSS style object with grid-template-columns using CSS clamp/container queries.
+ * Column count is computed from the editor container width (panel-local), not viewport width.
  */
-function useResponsiveColumns(config: UIConfig | null): { style: React.CSSProperties; className: string } {
+function useResponsiveColumns(config: UIConfig | null): {
+  style: React.CSSProperties;
+  containerRef: React.RefObject<HTMLDivElement>;
+} {
   const [columns, setColumns] = React.useState(1);
+  const containerRef = React.useRef<HTMLDivElement>(null);
   
   // Default breakpoints if not provided
   const defaultBreakpoints: Record<number, number> = { 640: 1, 1000: 2, 1600: 3 };
   const breakpoints = config?.responsive_columns || defaultBreakpoints;
-  
-  React.useEffect(() => {
-    const updateColumns = () => {
-      const width = window.innerWidth;
-      
-      // Sort breakpoints by key (width) in ascending order
-      const sortedBreakpoints = Object.entries(breakpoints)
-        .map(([k, v]) => [parseInt(k), v] as [number, number])
-        .sort((a, b) => a[0] - b[0]);
-      
-      // Find the appropriate column count based on current width
-      let cols = sortedBreakpoints[sortedBreakpoints.length - 1]?.[1] || 1;
-      for (const [maxWidth, colCount] of sortedBreakpoints) {
-        if (width <= maxWidth) {
-          cols = colCount;
-          break;
-        }
+
+  const getColumnsForWidth = React.useCallback((width: number) => {
+    // Sort breakpoints by key (width) in ascending order
+    const sortedBreakpoints = Object.entries(breakpoints)
+      .map(([k, v]) => [parseInt(k, 10), v] as [number, number])
+      .sort((a, b) => a[0] - b[0]);
+
+    // Find the appropriate column count based on current width
+    let cols = sortedBreakpoints[sortedBreakpoints.length - 1]?.[1] || 1;
+    for (const [maxWidth, colCount] of sortedBreakpoints) {
+      if (width <= maxWidth) {
+        cols = colCount;
+        break;
       }
-      
-      setColumns(cols);
-    };
-    
-    updateColumns();
-    window.addEventListener('resize', updateColumns);
-    return () => window.removeEventListener('resize', updateColumns);
+    }
+
+    return cols;
   }, [breakpoints]);
   
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateColumns = (width: number) => {
+      setColumns(getColumnsForWidth(width));
+    };
+
+    updateColumns(container.getBoundingClientRect().width);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        updateColumns(entry.contentRect.width);
+      });
+      observer.observe(container);
+
+      return () => {
+        observer.disconnect();
+      };
+    }
+
+    const handleWindowResize = () => {
+      updateColumns(container.getBoundingClientRect().width);
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+    return () => window.removeEventListener('resize', handleWindowResize);
+  }, [getColumnsForWidth]);
+  
   return {
+    containerRef,
     style: {
       display: 'grid',
       gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
       gap: '1rem',
     },
-    className: 'responsive-grid',
   };
 }
 
@@ -91,7 +118,7 @@ export function ObjectEditor({
 }: ObjectEditorProps) {
   const { setSelectedPath, toggleExpanded, expandedPaths, config, data: rootData } = useData();
   const [isExpanded, setIsExpanded] = React.useState(depth < 2);
-  const { style: gridStyle } = useResponsiveColumns(config);
+  const { style: gridStyle, containerRef } = useResponsiveColumns(config);
   
   const fields = schema.fields || {};
   const label = getFieldLabel(schema, name);
@@ -220,7 +247,7 @@ export function ObjectEditor({
   if (depth === 0) {
     // Root level - render primitive fields in responsive grid and nested fields as cards
     return (
-      <div className="space-y-6">
+      <div ref={containerRef} className="space-y-6">
         {/* Primitive fields in responsive grid */}
         {groupedPrimitiveFields.ungrouped.length > 0 && (
           <div style={gridStyle}>
@@ -262,7 +289,7 @@ export function ObjectEditor({
 
   // Nested objects - use collapsible card (this is for inline expansion if needed)
   return (
-    <Card className={cn('border-l-4', depth % 2 === 0 ? 'border-l-blue-500' : 'border-l-green-500')}>
+    <Card ref={containerRef} className={cn('border-l-4', depth % 2 === 0 ? 'border-l-blue-500' : 'border-l-green-500')}>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CollapsibleTrigger asChild>
           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">

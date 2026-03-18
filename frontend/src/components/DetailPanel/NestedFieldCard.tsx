@@ -1,4 +1,4 @@
-import { ChevronRight, Folder, List, Plus, X, AlertCircle } from 'lucide-react';
+import { Folder, List, Plus, X, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -118,39 +118,47 @@ export function NestedFieldCard({
         data-pydantic-ui-type={schema.type}
         data-pydantic-ui-enabled="false"
       >
-        <CardContent className="flex items-center gap-3 p-4">
-          <div className="flex-shrink-0 opacity-50">{info.icon}</div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium truncate text-sm text-muted-foreground flex items-center gap-2">
-              <span className="truncate">{label}</span>
-              {helpText && <FieldHelp helpText={helpText} />}
-            </h3>
-            <p className="text-xs text-muted-foreground/70">
-              Not configured (optional)
-            </p>
+        <CardContent className="nested-card-content p-4">
+          <div className="nested-card-header-row">
+            <div className="nested-card-icon opacity-50">{info.icon}</div>
+            <div className="nested-card-main">
+              <div className="nested-card-text min-w-0 flex-1">
+                <div className="nested-card-title-row">
+                  <h3 className="nested-card-title font-medium truncate text-sm text-muted-foreground">
+                    <span className="truncate">{label}</span>
+                    {helpText && <FieldHelp helpText={helpText} />}
+                  </h3>
+                  <Badge
+                    variant="outline"
+                    className="nested-card-badge text-muted-foreground max-w-[150px] truncate"
+                    title={info.badge}
+                  >
+                    {info.badge}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground/70">
+                  Not configured (optional)
+                </p>
                 {subtitle && (
                   <p className="text-xs text-muted-foreground/50 truncate mt-0.5">
                     {subtitle}
                   </p>
                 )}
+              </div>
+            </div>
           </div>
-          <Badge 
-            variant="outline" 
-            className="shrink-0 text-muted-foreground max-w-[150px] truncate"
-            title={info.badge}
-          >
-            {info.badge}
-          </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleEnable}
-            disabled={disabled}
-            className="shrink-0"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Enable
-          </Button>
+          <div className="nested-card-actions">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleEnable}
+              disabled={disabled}
+              className="nested-card-action-button nested-card-enable"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Enable
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -171,50 +179,58 @@ export function NestedFieldCard({
         data-pydantic-ui-type={schema.type}
         data-pydantic-ui-enabled="true"
       >
-        <CardContent className="flex items-center gap-3 p-4">
-          <div className="flex-shrink-0">{info.icon}</div>
-          <div className="flex-1 min-w-0">
-            <h3 className={cn('font-medium truncate text-sm', hasError && 'text-destructive')}>
-              <span className="inline-flex items-center gap-2">
-                <span className="truncate">{label}</span>
-                {helpText && <FieldHelp helpText={helpText} />}
-              </span>
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {info.description}
-              {info.subtitle && (
-                <span className="ml-1 text-muted-foreground/70">{info.subtitle}</span>
-              )}
-            </p>
-            {subtitle && (
-                <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
-                  {subtitle}
+        <CardContent className="nested-card-content p-4">
+          <div className="nested-card-header-row">
+            <div className="nested-card-icon">{info.icon}</div>
+            <div className="nested-card-main">
+              <div className="nested-card-text min-w-0 flex-1">
+                <div className="nested-card-title-row">
+                  <h3 className={cn('nested-card-title font-medium truncate text-sm', hasError && 'text-destructive')}>
+                    <span className="truncate">{label}</span>
+                    {helpText && <FieldHelp helpText={helpText} />}
+                  </h3>
+                  <div className="nested-card-title-meta">
+                    {hasError && (
+                      <AlertCircle className="nested-card-alert h-4 w-4 text-destructive" />
+                    )}
+                    <Badge
+                      variant={info.badgeVariant}
+                      className="nested-card-badge max-w-[150px] truncate"
+                      title={info.badge}
+                    >
+                      {info.badge}
+                    </Badge>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {info.description}
+                  {info.subtitle && (
+                    <span className="ml-1 text-muted-foreground/70">{info.subtitle}</span>
+                  )}
                 </p>
-              )}
+                {subtitle && (
+                  <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
+                    {subtitle}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-          {hasError && (
-            <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-          )}
-          <Badge 
-            variant={info.badgeVariant} 
-            className="shrink-0 max-w-[150px] truncate"
-            title={info.badge}
-          >
-            {info.badge}
-          </Badge>
           {isOptional && onChange && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleDisable}
-              disabled={disabled}
-              className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
-              title="Disable this optional field"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="nested-card-actions">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDisable}
+                disabled={disabled}
+                className="nested-card-action-button nested-card-disable text-muted-foreground hover:text-destructive"
+                title="Disable this optional field"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Disable
+              </Button>
+            </div>
           )}
-          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
         </CardContent>
       </Card>
       {hasError && (
