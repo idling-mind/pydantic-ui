@@ -69,6 +69,7 @@ SELECTORS = {
     "table_add_row": '[data-pydantic-ui="table-add-row"]',
     "table_duplicate_rows": '[data-pydantic-ui="table-duplicate-rows"]',
     "table_delete_rows": '[data-pydantic-ui="table-delete-rows"]',
+    "table_toggle_fullscreen": '[data-pydantic-ui="table-toggle-fullscreen"]',
     "table_grid": '[data-pydantic-ui="table-grid"]',
 }
 

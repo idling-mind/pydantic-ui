@@ -9,7 +9,7 @@ import type {
   DataType,
   Editors,
 } from '@revolist/react-datagrid';
-import { Plus, Trash2, Copy, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Copy, GripVertical, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/context/ThemeContext';
@@ -142,6 +142,7 @@ export function TableView({
   const gridRef = useRef<HTMLRevoGridElement>(null);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [columnSizesByProp, setColumnSizesByProp] = useState<Record<string, number>>({});
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const items = value || [];
   const itemSchema = schema.items;
@@ -444,7 +445,7 @@ export function TableView({
     return () => {
       window.cancelAnimationFrame(rafId);
     };
-  }, [columnDefs, rowData.length, gridTheme]);
+  }, [columnDefs, rowData.length, gridTheme, isFullscreen]);
 
   // Handle cell edit (single cell + range paste)
   const handleAfteredit = useCallback(
@@ -560,6 +561,40 @@ export function TableView({
     setSelectedRows(new Set());
   }, [canAdd, selectedRows, items, maxItems, onChange]);
 
+  const handleToggleFullscreen = useCallback(() => {
+    setIsFullscreen((previous) => !previous);
+  }, []);
+
+  useEffect(() => {
+    if (!isFullscreen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen]);
+
+  useEffect(() => {
+    if (!isFullscreen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFullscreen]);
+
   // Error display
   const arrayErrors = errors?.filter((e) => e.path === path) || [];
 
@@ -580,9 +615,17 @@ export function TableView({
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-4" data-pydantic-ui="table-view" data-pydantic-ui-path={path}>
+    <div
+      className={cn(
+        'flex w-full min-w-0 flex-col gap-4',
+        isFullscreen && 'fixed inset-0 z-[60] h-full overflow-auto bg-background p-4',
+      )}
+      data-pydantic-ui="table-view"
+      data-pydantic-ui-path={path}
+      data-pydantic-ui-fullscreen={isFullscreen ? 'true' : 'false'}
+    >
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2" data-pydantic-ui="table-toolbar">
+      <div className="flex flex-wrap items-center justify-between gap-2" data-pydantic-ui="table-toolbar">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -619,6 +662,16 @@ export function TableView({
               </Button>
             </>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToggleFullscreen}
+            data-pydantic-ui="table-toggle-fullscreen"
+            aria-pressed={isFullscreen}
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4 mr-1" /> : <Maximize2 className="h-4 w-4 mr-1" />}
+            {isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
+          </Button>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <GripVertical className="h-4 w-4" />
@@ -635,7 +688,11 @@ export function TableView({
       {/* RevoGrid */}
       <div
         className={cn('w-full max-w-full min-w-0 rounded-md border overflow-hidden', isDark ? 'revogrid-dark' : 'revogrid-light')}
-        style={{ height: 'calc(100vh - 410px)', minHeight: '200px' }}
+        style={
+          isFullscreen
+            ? { height: 'calc(100vh - 100px)', minHeight: '280px' }
+            : { height: 'calc(100vh - 410px)', minHeight: '200px' }
+        }
         data-pydantic-ui="table-grid"
       >
         <div
