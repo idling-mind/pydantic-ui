@@ -222,6 +222,8 @@ export function DetailPanel({ className }: DetailPanelProps) {
     saveData,
     resetData,
     selectedPath,
+    setSelectedPath,
+    expandPath,
     variantSelections,
   } = useData();
 
@@ -429,6 +431,29 @@ export function DetailPanel({ className }: DetailPanelProps) {
 
   const relevantErrors = getRelevantErrors();
 
+  const expandAndSelectPath = React.useCallback(
+    (path: string) => {
+      const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+      let match;
+      let currentPath = '';
+
+      while ((match = pathRegex.exec(path)) !== null) {
+        if (match[1] !== undefined) {
+          currentPath = currentPath ? `${currentPath}.${match[1]}` : match[1];
+        } else if (match[2] !== undefined) {
+          currentPath = `${currentPath}[${match[2]}]`;
+        }
+
+        if (currentPath) {
+          expandPath(currentPath);
+        }
+      }
+
+      setSelectedPath(path);
+    },
+    [expandPath, setSelectedPath]
+  );
+
   const handleChange = (newValue: unknown) => {
     if (!basePath) {
       // Root level change - replace entire data
@@ -591,6 +616,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
               basePath={basePath || ''}
               schema={selectedSchema}
               maxVisibleErrors={config?.max_visible_errors}
+              onPathClick={expandAndSelectPath}
             />
           </div>
         )}

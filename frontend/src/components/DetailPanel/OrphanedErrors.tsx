@@ -13,6 +13,122 @@ interface OrphanedErrorsProps {
   schema: SchemaField;
   className?: string;
   maxVisibleErrors?: number;
+  onPathClick?: (path: string) => void;
+}
+
+interface PathPart {
+  key: string;
+  isIndex: boolean;
+}
+
+function getRelativePath(errorPath: string, basePath: string): string | null {
+  if (!basePath) {
+    return errorPath;
+  }
+
+  if (errorPath === basePath) {
+    return '';
+  }
+
+  if (errorPath.startsWith(basePath + '.')) {
+    return errorPath.slice(basePath.length + 1);
+  }
+
+  if (errorPath.startsWith(basePath + '[')) {
+    return errorPath.slice(basePath.length);
+  }
+
+  return null;
+}
+
+function parsePath(path: string): PathPart[] {
+  const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+  const parts: PathPart[] = [];
+  let match;
+
+  while ((match = pathRegex.exec(path)) !== null) {
+    if (match[1] !== undefined) {
+      parts.push({ key: match[1], isIndex: false });
+    } else if (match[2] !== undefined) {
+      parts.push({ key: match[2], isIndex: true });
+    }
+  }
+
+  return parts;
+}
+
+function resolveNavigationPath(errorPath: string, basePath: string, schema: SchemaField): string | null {
+  const normalizedBasePath = basePath === 'root' ? '' : basePath;
+
+  if (!errorPath || errorPath === '__root__' || errorPath.startsWith('__')) {
+    return null;
+  }
+
+  const relativePath = getRelativePath(errorPath, normalizedBasePath);
+  if (relativePath === null) {
+    return null;
+  }
+
+  if (relativePath === '') {
+    return normalizedBasePath || null;
+  }
+
+  const parts = parsePath(relativePath);
+  let currentSchema: SchemaField | undefined = schema;
+  let currentPath = normalizedBasePath;
+  let traversedAny = false;
+
+  for (const part of parts) {
+    if (!currentSchema) {
+      break;
+    }
+
+    if (part.isIndex) {
+      if (currentSchema.type === 'array' && currentSchema.items) {
+        currentSchema = currentSchema.items;
+      } else if (currentSchema.type === 'union' && currentSchema.variants) {
+        const arrayVariantWithItems: SchemaField | undefined = currentSchema.variants.find(
+          (variant) => variant.type === 'array' && variant.items
+        )?.items;
+        if (!arrayVariantWithItems) {
+          break;
+        }
+        currentSchema = arrayVariantWithItems;
+      } else {
+        break;
+      }
+
+      currentPath = currentPath ? `${currentPath}[${part.key}]` : `[${part.key}]`;
+      traversedAny = true;
+      continue;
+    }
+
+    if (currentSchema.type === 'object' && currentSchema.fields?.[part.key]) {
+      currentSchema = currentSchema.fields[part.key];
+      currentPath = currentPath ? `${currentPath}.${part.key}` : part.key;
+      traversedAny = true;
+      continue;
+    }
+
+    if (currentSchema.type === 'union' && currentSchema.variants) {
+      const fieldFromVariant: SchemaField | undefined = currentSchema.variants.find(
+        (variant) => variant.type === 'object' && variant.fields?.[part.key]
+      )?.fields?.[part.key];
+
+      if (!fieldFromVariant) {
+        break;
+      }
+
+      currentSchema = fieldFromVariant;
+      currentPath = currentPath ? `${currentPath}.${part.key}` : part.key;
+      traversedAny = true;
+      continue;
+    }
+
+    break;
+  }
+
+  return traversedAny ? currentPath : null;
 }
 
 /**
@@ -182,10 +298,18 @@ function formatErrorPath(errorPath: string, basePath: string): string {
  * If there are more than 5 errors, displays only the first 5 with an
  * expandable "Show more" button.
  */
-export function OrphanedErrors({ errors, basePath, schema, className, maxVisibleErrors }: OrphanedErrorsProps) {
+export function OrphanedErrors({
+  errors,
+  basePath,
+  schema,
+  className,
+  maxVisibleErrors,
+  onPathClick,
+}: OrphanedErrorsProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const orphanedErrors = getOrphanedErrors(errors, basePath, schema);
   const maxVisible = maxVisibleErrors ?? DEFAULT_MAX_VISIBLE_ERRORS;
+  const normalizedBasePath = basePath === 'root' ? '' : basePath;
 
   if (orphanedErrors.length === 0) {
     return null;
@@ -197,24 +321,45 @@ export function OrphanedErrors({ errors, basePath, schema, className, maxVisible
 
   return (
     <div className={cn('space-y-2', className)}>
-      {visibleErrors.map((error, index) => (
-        <Card 
-          key={`${error.path}-${index}`} 
-          className="border-destructive bg-destructive/5"
-        >
-          <CardContent className="flex items-start gap-3 p-3">
-            <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-destructive font-medium">
-                {error.message}
-              </p>
-              <p className="text-xs text-muted-foreground font-mono mt-1">
-                Path: {formatErrorPath(error.path, basePath)}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      {visibleErrors.map((error, index) => {
+        const displayPath = formatErrorPath(error.path, basePath);
+        const navigationPath = resolveNavigationPath(error.path, basePath, schema);
+        const canNavigate =
+          navigationPath !== null &&
+          navigationPath !== '' &&
+          navigationPath !== normalizedBasePath;
+
+        return (
+          <Card
+            key={`${error.path}-${index}`}
+            className="border-destructive bg-destructive/5"
+          >
+            <CardContent className="flex items-start gap-3 p-3">
+              <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-destructive font-medium">
+                  {error.message}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <span className="mr-1">Path:</span>
+                  {canNavigate && onPathClick ? (
+                    <button
+                      type="button"
+                      className="font-mono underline decoration-dotted underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+                      onClick={() => onPathClick(navigationPath)}
+                      title={`Go to ${navigationPath}`}
+                    >
+                      {displayPath}
+                    </button>
+                  ) : (
+                    <span className="font-mono">{displayPath}</span>
+                  )}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
       {hasMoreErrors && (
         <Button
           variant="ghost"
