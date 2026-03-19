@@ -687,7 +687,10 @@ export function TableView({
 
       {/* RevoGrid */}
       <div
-        className={cn('w-full max-w-full min-w-0 rounded-md border overflow-hidden', isDark ? 'revogrid-dark' : 'revogrid-light')}
+        className={cn(
+          'w-full max-w-full min-w-0 rounded-md border overflow-x-auto overflow-y-hidden',
+          isDark ? 'revogrid-dark' : 'revogrid-light'
+        )}
         style={
           isFullscreen
             ? { height: 'calc(100vh - 100px)', minHeight: '280px' }
@@ -696,7 +699,7 @@ export function TableView({
         data-pydantic-ui="table-grid"
       >
         <div
-          className="h-full w-full max-w-full min-w-0"
+          className="h-full w-full"
           data-pydantic-ui="table-grid-inner"
         >
           <RevoGrid
