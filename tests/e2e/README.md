@@ -49,6 +49,7 @@ pytest tests/e2e/
 uv run pytest tests/e2e/test_app.py
 uv run pytest tests/e2e/test_data_operations.py
 uv run pytest tests/e2e/test_field_renderers.py
+uv run pytest tests/e2e/test_table_horizontal_scroll.py
 uv run pytest tests/e2e/test_tree_navigation.py
 uv run pytest tests/e2e/test_ui_config.py
 ```
@@ -97,6 +98,7 @@ tests/e2e/
 ├── test_app.py              # Application loading and basic functionality
 ├── test_data_operations.py  # Data CRUD operations
 ├── test_field_renderers.py  # Field renderer components
+├── test_table_horizontal_scroll.py  # Table horizontal overflow and scrolling
 ├── test_tree_navigation.py  # Tree navigation functionality
 └── test_ui_config.py        # UI configuration and theming
 ```
@@ -215,6 +217,12 @@ assert is_dark_mode(page)
 - Color pickers
 - Field validation
 - Custom renderer props
+
+### `test_table_horizontal_scroll.py`
+- Horizontal overflow behavior in table view
+- Horizontal scrollbar availability when content exceeds width
+- Programmatic horizontal scroll movement across wide columns
+- No unnecessary overflow in wide layouts
 
 ### `test_tree_navigation.py`
 - Tree structure display

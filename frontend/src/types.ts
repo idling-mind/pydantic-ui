@@ -5,6 +5,8 @@ export interface ViewDisplay {
   title?: string | null;
   subtitle?: string | null;
   help_text?: string | null;
+  pinned_columns?: string[] | null;
+  column_widths?: number | Record<string, number> | null;
 }
 
 // Unified display configuration
@@ -53,6 +55,7 @@ export interface SchemaField {
   min_items?: number;
   max_items?: number;
   pattern?: string;
+  constraints?: Record<string, unknown>;
   enum?: unknown[];
   literal_values?: unknown[];
   format?: string;
@@ -117,6 +120,8 @@ export interface UIConfig {
   show_types: boolean;
   actions: ActionButton[];
   show_save_reset: boolean;
+  table_pinned_columns: string[];
+  table_column_widths: number | Record<string, number> | null;
   responsive_columns: Record<number, number>;
   max_visible_errors: number;
 }

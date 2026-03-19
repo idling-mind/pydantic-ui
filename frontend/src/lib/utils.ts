@@ -41,6 +41,59 @@ export function getValueWithDefault<T = unknown>(
   return fallback as T;
 }
 
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Resolve numeric bounds and step from schema fields, with compatibility for
+ * older payloads that still nest values under `constraints`.
+ */
+export function getSchemaNumericBounds(schema: SchemaField): {
+  minimum: number | undefined;
+  maximum: number | undefined;
+  step: number | undefined;
+} {
+  const legacyConstraints = (
+    schema as SchemaField & {
+      constraints?: Record<string, unknown>;
+      multiple_of?: unknown;
+    }
+  ).constraints;
+
+  const minimum =
+    toFiniteNumber(schema.minimum)
+    ?? toFiniteNumber(legacyConstraints?.minimum)
+    ?? toFiniteNumber(schema.exclusive_minimum)
+    ?? toFiniteNumber(legacyConstraints?.exclusive_minimum);
+
+  const maximum =
+    toFiniteNumber(schema.maximum)
+    ?? toFiniteNumber(legacyConstraints?.maximum)
+    ?? toFiniteNumber(schema.exclusive_maximum)
+    ?? toFiniteNumber(legacyConstraints?.exclusive_maximum);
+
+  const step =
+    toFiniteNumber((schema as SchemaField & { multiple_of?: unknown }).multiple_of)
+    ?? toFiniteNumber(legacyConstraints?.multiple_of)
+    ?? toFiniteNumber(legacyConstraints?.multipleOf);
+
+  return {
+    minimum,
+    maximum,
+    step,
+  };
+}
+
 /**
  * Create a default value for a schema field based on its type and default value.
  * This is used when adding new items to arrays or creating new nested objects.

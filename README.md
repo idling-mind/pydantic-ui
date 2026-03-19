@@ -142,10 +142,10 @@ ui_config = UIConfig(
     footer_url="https://github.com/idling-mind/pydantic-ui",  # Footer link URL
     
     # Layout
-    responsive_columns={              # Responsive column breakpoints
-        640: 1,                       # 1 column up to 640px
-        1000: 2,                      # 2 columns from 640-1000px  
-        1600: 3                       # 3 columns above 1000px
+    responsive_columns={              # Responsive column breakpoints (based on detail panel width)
+        640: 1,                       # 1 column when panel width is <= 640px
+        1000: 2,                      # 2 columns when panel width is <= 1000px
+        1600: 3                       # 3 columns when panel width is > 1000px
     },
     
     # Custom Actions (see Action Buttons section)

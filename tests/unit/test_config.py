@@ -217,6 +217,8 @@ class TestUIConfig:
         assert config.show_types is True
         assert config.actions == []
         assert config.show_save_reset is False
+        assert config.table_pinned_columns == ["__check", "__row_number"]
+        assert config.table_column_widths is None
 
     def test_all_options(self):
         """Test UIConfig with all options."""
@@ -240,6 +242,8 @@ class TestUIConfig:
             show_types=False,
             actions=actions,
             show_save_reset=True,
+            table_pinned_columns=["__check", "__row_number", "email"],
+            table_column_widths={"name": 220, "email": 260},
         )
         assert config.title == "Custom Editor"
         assert config.subtitle == "A custom configuration editor"
@@ -256,6 +260,8 @@ class TestUIConfig:
         assert config.show_types is False
         assert len(config.actions) == 2
         assert config.show_save_reset is True
+        assert config.table_pinned_columns == ["__check", "__row_number", "email"]
+        assert config.table_column_widths == {"name": 220, "email": 260}
 
     def test_theme_aware_logos(self):
         """Test UIConfig with theme-aware logos."""
@@ -309,3 +315,16 @@ class TestUIConfig:
         for theme in ["light", "dark", "system"]:
             config = UIConfig(theme=theme)
             assert config.theme == theme
+
+    def test_table_column_widths_accepts_integer(self):
+        """Global table column widths can be configured with a single integer."""
+        config = UIConfig(table_column_widths=160)
+        assert config.table_column_widths == 160
+
+    def test_table_column_widths_rejects_non_positive_values(self):
+        """Global table column widths must be positive integers."""
+        with pytest.raises(ValidationError):
+            UIConfig(table_column_widths=0)
+
+        with pytest.raises(ValidationError):
+            UIConfig(table_column_widths={"name": -10})

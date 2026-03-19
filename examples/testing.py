@@ -107,6 +107,11 @@ attr_configs = {
             subtitle="List of users",
             help_text="List of users in the system",
             tree=ViewDisplay(title="Users - tree", subtitle="This is the users tree view"),
+            table=ViewDisplay(
+                title="Users - table",
+                subtitle="This is the users table view",
+                pinned_columns=["__check", "__row_number", "name"],
+            ),
             card=ViewDisplay(
                 title="Users - card",
                 subtitle="This is the users card view",

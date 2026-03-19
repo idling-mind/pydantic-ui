@@ -442,6 +442,9 @@ def _merge_display_configs(base: DisplayConfig, override: DisplayConfig) -> Disp
             if override_view.help_text is not None
             else base_view.help_text,
             icon=override_view.icon if override_view.icon is not None else base_view.icon,
+            pinned_columns=override_view.pinned_columns
+            if override_view.pinned_columns is not None
+            else base_view.pinned_columns,
         )
 
     return DisplayConfig(

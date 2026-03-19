@@ -144,6 +144,8 @@ function getViewOverride(display: DisplayConfig | null | undefined, view: ViewTy
   }
 }
 
+type DisplayTextKey = 'title' | 'subtitle' | 'help_text';
+
 /**
  * Resolve a single display property with fallback chain.
  * Priority: view override → display config → schema → fallback
@@ -151,7 +153,7 @@ function getViewOverride(display: DisplayConfig | null | undefined, view: ViewTy
 function resolveProperty<T>(
   viewOverride: ViewDisplay | null,
   display: DisplayConfig | null | undefined,
-  property: keyof ViewDisplay,
+  property: DisplayTextKey,
   schemaValue: T | undefined,
   fallback: T
 ): T {

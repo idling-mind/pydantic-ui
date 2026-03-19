@@ -28,6 +28,8 @@ class TestGetConfig:
         assert config["show_types"] is True
         assert config["actions"] == []
         assert config["show_save_reset"] is False
+        assert config["table_pinned_columns"] == ["__check", "__row_number"]
+        assert config["table_column_widths"] is None
 
     @pytest.mark.asyncio
     async def test_get_config_custom(self, client_with_config: AsyncClient):
@@ -43,6 +45,8 @@ class TestGetConfig:
         assert config["auto_save"] is True
         assert config["auto_save_delay"] == 500
         assert config["show_save_reset"] is True
+        assert config["table_pinned_columns"] == ["__check", "__row_number"]
+        assert config["table_column_widths"] is None
 
     @pytest.mark.asyncio
     async def test_config_with_actions(self, client_with_config: AsyncClient):
@@ -82,6 +86,8 @@ class TestGetConfig:
             "show_types",
             "actions",
             "show_save_reset",
+            "table_pinned_columns",
+            "table_column_widths",
         ]
 
         for field in required_fields:

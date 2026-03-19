@@ -4,7 +4,35 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def _normalize_column_widths(
+    value: int | dict[str, int] | None,
+    *,
+    field_name: str,
+) -> int | dict[str, int] | None:
+    """Validate and normalize column width configuration values."""
+    if value is None:
+        return None
+
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a positive integer or a dict of column widths")
+
+    if isinstance(value, int):
+        if value <= 0:
+            raise ValueError(f"{field_name} must be a positive integer")
+        return value
+
+    if isinstance(value, dict):
+        normalized: dict[str, int] = {}
+        for key, width in value.items():
+            if isinstance(width, bool) or not isinstance(width, int) or width <= 0:
+                raise ValueError(f"{field_name}['{key}'] must be a positive integer")
+            normalized[str(key)] = width
+        return normalized
+
+    raise ValueError(f"{field_name} must be a positive integer or a dict of column widths")
 
 
 @dataclass
@@ -17,12 +45,28 @@ class ViewDisplay:
         ViewDisplay(
             title="Port",  # Shorter title for tree view
         )
+
+    Table-specific options can be set on the table view override:
+        ViewDisplay(
+            title="Users Table",
+            pinned_columns=["__check", "__row_number", "name"],
+            column_widths={"id": 90, "name": 220},
+        )
     """
 
     title: str | None = None
     subtitle: str | None = None
     help_text: str | None = None
     icon: str | None = None
+    pinned_columns: list[str] | None = None
+    column_widths: int | dict[str, int] | None = None
+
+    def __post_init__(self) -> None:
+        """Validate table column width config when provided."""
+        self.column_widths = _normalize_column_widths(
+            self.column_widths,
+            field_name="column_widths",
+        )
 
     def model_dump(self) -> dict[str, Any]:
         """Return a dict representation."""
@@ -31,6 +75,8 @@ class ViewDisplay:
             "subtitle": self.subtitle,
             "help_text": self.help_text,
             "icon": self.icon,
+            "pinned_columns": self.pinned_columns,
+            "column_widths": self.column_widths,
         }
 
 
@@ -40,6 +86,9 @@ class DisplayConfig:
 
     Defines how title, subtitle, help text, and icon are displayed across all views.
     Per-view overrides allow customizing display for specific contexts (tree, detail, table, card).
+
+    The table view override (`table=ViewDisplay(...)`) also supports
+    `pinned_columns` and `column_widths` for per-array/table table behavior.
 
     Title and subtitle support template syntax with curly braces to reference data fields:
     - "{name}" → value of data.name
@@ -281,9 +330,17 @@ class UIConfig(BaseModel):
         default=False,
         description="Show Save and Reset buttons in the footer",
     )
+    table_pinned_columns: list[str] = Field(
+        default_factory=lambda: ["__check", "__row_number"],
+        description="Columns to pin at the start of table view. Supports '__check' for the selection checkbox, '__row_number' for the row index column, and flattened field paths such as 'name' or 'address.city'.",
+    )
+    table_column_widths: int | dict[str, int] | None = Field(
+        default=None,
+        description="Default table column widths. Use an integer to apply a uniform width to all data columns, or a dict like {'name': 220, 'address.city': 180} for per-column widths.",
+    )
     responsive_columns: dict[int, int] = Field(
         default_factory=lambda: {640: 1, 1000: 2, 1600: 3},
-        description="Responsive column breakpoints. Keys are max-width in pixels, values are number of columns. E.g., {640: 1, 1000: 2, 1600: 3} means 1 column up to 640px, 2 columns from 640-1000px, 3 columns above 1000px.",
+        description="Responsive column breakpoints. Keys are max-width in pixels of the detail editor container (not viewport width), values are number of columns. E.g., {640: 1, 1000: 2, 1600: 3} means 1 column up to 640px panel width, 2 columns from 640-1000px panel width, 3 columns above 1000px panel width.",
     )
     class_configs: dict[str, FieldConfig] = Field(
         default_factory=dict,
@@ -297,3 +354,12 @@ class UIConfig(BaseModel):
         default=5,
         description="Maximum number of validation errors to show before collapsing with 'Show more' button.",
     )
+
+    @field_validator("table_column_widths")
+    @classmethod
+    def validate_table_column_widths(
+        cls,
+        value: int | dict[str, int] | None,
+    ) -> int | dict[str, int] | None:
+        """Ensure global table column width config is valid."""
+        return _normalize_column_widths(value, field_name="table_column_widths")

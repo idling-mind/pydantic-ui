@@ -2,117 +2,184 @@
 @tailwind components;
 @tailwind utilities;
 
-/* AG Grid theme integration with shadcn/ui */
-.ag-theme-quartz,
-.ag-theme-quartz-dark {
-  --ag-font-family: inherit;
-  --ag-font-size: 13px;
-  --ag-grid-size: 6px;
-  --ag-row-height: 36px;
-  --ag-header-height: 40px;
+/* RevoGrid theme integration with shadcn/ui */
+.revogrid-light revo-grid,
+.revogrid-dark revo-grid {
+  --rv-font-family: inherit;
+  --rv-font-size: 13px;
 }
 
-/* Light theme customizations */
-.ag-theme-quartz {
-  --ag-background-color: hsl(var(--background));
-  --ag-foreground-color: hsl(var(--foreground));
-  --ag-border-color: hsl(var(--border));
-  --ag-secondary-border-color: hsl(var(--border));
-  --ag-header-background-color: hsl(var(--muted));
-  --ag-header-foreground-color: hsl(var(--foreground));
-  --ag-odd-row-background-color: hsl(var(--muted) / 0.3);
-  --ag-row-hover-color: hsl(var(--accent));
-  --ag-selected-row-background-color: hsl(var(--accent));
-  --ag-range-selection-background-color: hsl(var(--primary) / 0.2);
-  --ag-input-focus-border-color: hsl(var(--ring));
-  --ag-checkbox-checked-color: hsl(var(--primary));
-  --ag-modal-overlay-background-color: hsl(var(--background) / 0.8);
+/* Table grid wrapper scrollbar (for wide column overflow) */
+[data-pydantic-ui='table-grid'] {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent;
 }
 
-/* Dark theme customizations */
-.ag-theme-quartz-dark {
-  --ag-background-color: hsl(var(--background));
-  --ag-foreground-color: hsl(var(--foreground));
-  --ag-border-color: hsl(var(--border));
-  --ag-secondary-border-color: hsl(var(--border));
-  --ag-header-background-color: hsl(var(--muted));
-  --ag-header-foreground-color: hsl(var(--foreground));
-  --ag-odd-row-background-color: hsl(var(--muted) / 0.3);
-  --ag-row-hover-color: hsl(var(--accent));
-  --ag-selected-row-background-color: hsl(var(--accent));
-  --ag-range-selection-background-color: hsl(var(--primary) / 0.2);
-  --ag-input-focus-border-color: hsl(var(--ring));
-  --ag-checkbox-checked-color: hsl(var(--primary));
-  --ag-modal-overlay-background-color: hsl(var(--background) / 0.8);
-  /* Dark theme scrollbar colors */
-  scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--muted) / 0.5);
-}
-
-/* Cell styling */
-.ag-theme-quartz .ag-cell,
-.ag-theme-quartz-dark .ag-cell {
-  display: flex;
-  align-items: center;
-}
-
-/* Header styling */
-.ag-theme-quartz .ag-header-cell-label,
-.ag-theme-quartz-dark .ag-header-cell-label {
-  font-weight: 500;
-}
-
-/* Row drag icon */
-.ag-theme-quartz .ag-row-drag,
-.ag-theme-quartz-dark .ag-row-drag {
-  cursor: grab;
-  opacity: 0.5;
-}
-
-.ag-theme-quartz .ag-row-drag:hover,
-.ag-theme-quartz-dark .ag-row-drag:hover {
-  opacity: 1;
-}
-
-/* Column group headers */
-.ag-theme-quartz .ag-header-group-cell,
-.ag-theme-quartz-dark .ag-header-group-cell {
-  font-weight: 600;
-  border-bottom: 2px solid hsl(var(--border));
-}
-
-.ag-theme-quartz .ag-header-group-cell-label,
-.ag-theme-quartz-dark .ag-header-group-cell-label {
-  justify-content: center;
-}
-
-/* Multi-level header styling */
-.ag-theme-quartz .ag-header-row:not(:first-child) .ag-header-cell,
-.ag-theme-quartz-dark .ag-header-row:not(:first-child) .ag-header-cell {
-  border-top: 1px solid hsl(var(--border));
-}
-
-/* Dark theme scrollbar webkit styles */
-.ag-theme-quartz-dark ::-webkit-scrollbar {
+[data-pydantic-ui='table-grid']::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-.ag-theme-quartz-dark ::-webkit-scrollbar-track {
-  background: hsl(var(--muted) / 0.3);
-  border-radius: 5px;
+[data-pydantic-ui='table-grid']::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.ag-theme-quartz-dark ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.4);
-  border-radius: 5px;
+[data-pydantic-ui='table-grid']::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.4);
+  border-radius: 9999px;
 }
 
-.ag-theme-quartz-dark ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.6);
+[data-pydantic-ui='table-grid']::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.6);
 }
 
-.ag-theme-quartz-dark ::-webkit-scrollbar-corner {
-  background: hsl(var(--muted) / 0.3);
+/* Detail panel main content scrollbar */
+[data-pydantic-ui='detail-scroll'] {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.45) transparent;
+}
+
+[data-pydantic-ui='detail-scroll']::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-pydantic-ui='detail-scroll']::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-pydantic-ui='detail-scroll']::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.45);
+  border-radius: 9999px;
+}
+
+[data-pydantic-ui='detail-scroll']::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.65);
+}
+
+/* Light theme */
+.revogrid-light revo-grid {
+  --rv-bg: hsl(var(--background));
+  --rv-fg: hsl(var(--foreground));
+  --rv-border: hsl(var(--border));
+  --rv-header-bg: hsl(var(--muted));
+  --rv-group-header-bg-strong: hsl(var(--foreground) / 0.08);
+  --rv-group-header-bg-soft: hsl(var(--foreground) / 0.04);
+  --rv-header-fg: hsl(var(--foreground));
+  --rv-odd-row-bg: hsl(var(--muted) / 0.3);
+  --rv-row-hover: hsl(var(--accent));
+  --rv-selection-bg: hsl(var(--primary) / 0.15);
+}
+
+/* Dark theme */
+.revogrid-dark revo-grid {
+  --rv-bg: hsl(var(--background));
+  --rv-fg: hsl(var(--foreground));
+  --rv-border: hsl(var(--border));
+  --rv-header-bg: hsl(var(--muted));
+  --rv-group-header-bg-strong: hsl(var(--foreground) / 0.14);
+  --rv-group-header-bg-soft: hsl(var(--foreground) / 0.08);
+  --rv-header-fg: hsl(var(--foreground));
+  --rv-odd-row-bg: hsl(var(--muted) / 0.3);
+  --rv-row-hover: hsl(var(--accent));
+  --rv-selection-bg: hsl(var(--primary) / 0.2);
+}
+
+/* Compact theme: tint merged/grouped header bands (RevoGrid uses .group-rgRow) */
+.revogrid-light revo-grid[theme='compact'] revogr-header .group-rgRow,
+.revogrid-dark revo-grid[theme='darkCompact'] revogr-header .group-rgRow {
+  background-color: var(--rv-group-header-bg-soft);
+}
+
+.revogrid-light revo-grid[theme='compact'] revogr-header .group-rgRow .rgHeaderCell,
+.revogrid-dark revo-grid[theme='darkCompact'] revogr-header .group-rgRow .rgHeaderCell {
+  background-color: transparent;
+}
+
+.revogrid-light revo-grid[theme='compact'] revogr-header .group-rgRow .rgHeaderCell .header-content:not(:empty),
+.revogrid-dark revo-grid[theme='darkCompact'] revogr-header .group-rgRow .rgHeaderCell .header-content:not(:empty) {
+  background-color: var(--rv-group-header-bg-strong);
+  height: 100%;
+  padding-inline: 8px;
+}
+
+/* Color the full merged cell (including padded area) when a label is present. */
+@supports selector(.rgHeaderCell:has(.header-content:not(:empty))) {
+  .revogrid-light revo-grid[theme='compact'] revogr-header .group-rgRow .rgHeaderCell:has(.header-content:not(:empty)),
+  .revogrid-dark revo-grid[theme='darkCompact'] revogr-header .group-rgRow .rgHeaderCell:has(.header-content:not(:empty)) {
+    background-color: var(--rv-group-header-bg-strong);
+  }
+
+  .revogrid-light revo-grid[theme='compact'] revogr-header .group-rgRow .rgHeaderCell .header-content:not(:empty),
+  .revogrid-dark revo-grid[theme='darkCompact'] revogr-header .group-rgRow .rgHeaderCell .header-content:not(:empty) {
+    background-color: transparent;
+  }
+}
+
+/* RevoGrid editor overlay — override library's hardcoded white background */
+.revogrid-light revogr-edit,
+.revogrid-dark revogr-edit {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground));
+}
+
+.revogrid-light revogr-edit input,
+.revogrid-light revogr-edit select,
+.revogrid-dark revogr-edit input,
+.revogrid-dark revogr-edit select {
+  color: hsl(var(--foreground));
+  background: transparent;
+}
+
+/* Select dropdown option colors in dark mode */
+.revogrid-dark revogr-edit select,
+.revogrid-dark .revogrid-cell-select {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+.revogrid-dark revogr-edit select option,
+.revogrid-dark .revogrid-cell-select option {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+/* Light mode select options (keep consistent) */
+.revogrid-light revogr-edit select option,
+.revogrid-light .revogrid-cell-select option {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+/* RevoGrid scrollbar theming */
+.revogrid-light revogr-scroll-virtual,
+.revogrid-dark revogr-scroll-virtual {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}
+
+.revogrid-light revogr-scroll-virtual::-webkit-scrollbar,
+.revogrid-dark revogr-scroll-virtual::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.revogrid-light revogr-scroll-virtual::-webkit-scrollbar-track,
+.revogrid-dark revogr-scroll-virtual::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.revogrid-light revogr-scroll-virtual::-webkit-scrollbar-thumb,
+.revogrid-dark revogr-scroll-virtual::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 9999px;
+}
+
+.revogrid-light revogr-scroll-virtual::-webkit-scrollbar-thumb:hover,
+.revogrid-dark revogr-scroll-virtual::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.55);
 }
 
 @layer base {
@@ -212,19 +279,81 @@
   background-color: hsl(var(--muted-foreground) / 0.6);
 }
 
-/* Tree lines */
-.tree-line {
-  position: relative;
+/* Nested detail cards: use container queries so layout responds to panel/card width. */
+.nested-card-content {
+  container-type: inline-size;
+  container-name: nested-card;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.tree-line::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background-color: hsl(var(--border));
+.nested-card-header-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.nested-card-icon {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.nested-card-main {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.nested-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.nested-card-title {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nested-card-title-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.nested-card-actions {
+  width: 100%;
+}
+
+.nested-card-alert,
+.nested-card-badge,
+.nested-card-disable,
+.nested-card-enable {
+  flex-shrink: 0;
+}
+
+.nested-card-action-button,
+.nested-card-enable,
+.nested-card-disable {
+  width: 100%;
+  justify-content: center;
+}
+
+.nested-card-action-button {
+  background-color: hsl(var(--muted) / 0.6);
+}
+
+.nested-card-action-button:hover {
+  background-color: hsl(var(--muted) / 0.7);
 }
 
 /* 
@@ -293,16 +422,6 @@
 }
 
 @layer utilities {
-  @keyframes progress-indeterminate {
-    0% { transform: translateX(-100%); }
-    50% { transform: translateX(100%); }
-    100% { transform: translateX(100%); }
-  }
-
-  .animate-progress-indeterminate {
-    animation: progress-indeterminate 2s infinite linear;
-  }
-
   @keyframes progress-shimmer {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }

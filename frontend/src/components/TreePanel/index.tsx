@@ -384,6 +384,23 @@ export function TreePanel({ className }: TreePanelProps) {
       const isInputField = target instanceof HTMLInputElement || 
                           target instanceof HTMLTextAreaElement ||
                           target.isContentEditable;
+      const composedPath = typeof e.composedPath === 'function' ? e.composedPath() : [];
+      const isInTableGrid = composedPath.some((node) => {
+        if (!(node instanceof HTMLElement)) {
+          return false;
+        }
+
+        const tagName = node.tagName.toLowerCase();
+        if (tagName === 'revo-grid' || tagName.startsWith('revogr')) {
+          return true;
+        }
+
+        return !!node.closest('[data-pydantic-ui="table-grid"], [data-pydantic-ui="table-view"]');
+      });
+      const activeElement = document.activeElement;
+      const isActiveInTableGrid =
+        activeElement instanceof HTMLElement &&
+        !!activeElement.closest('[data-pydantic-ui="table-grid"], [data-pydantic-ui="table-view"]');
       
       // Check for Ctrl+K (or Cmd+K on mac) - search focus
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -393,8 +410,8 @@ export function TreePanel({ className }: TreePanelProps) {
         return;
       }
       
-      // Don't process other shortcuts if typing in an input
-      if (isInputField) return;
+      // Don't process tree shortcuts while typing or when focus is inside table grid.
+      if (isInputField || isInTableGrid || isActiveInTableGrid) return;
       
       // Get current schema and value for the selected path
       const currentSchema = selectedPath !== null ? getSchemaAtPath(schema, selectedPath) : null;
@@ -778,7 +795,7 @@ export function TreePanel({ className }: TreePanelProps) {
         </div>
       </ScrollArea>
 
-      {/* Clear Value Confirmation Dialog */}
+      {/* Clear Value Confirmation Dialog box */}
       <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

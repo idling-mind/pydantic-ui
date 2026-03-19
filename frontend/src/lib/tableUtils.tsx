@@ -1,7 +1,7 @@
 import type { SchemaField } from '@/types';
 import type { ColumnRegular, ColumnGrouping } from '@revolist/react-datagrid';
 import { triggerCellEdit, triggerCellOpenEditor } from '@/components/TableView/cells';
-import { getSchemaNumericBounds, getValueWithDefault, resolveOptionsFromData } from './utils';
+import { getValueWithDefault } from './utils';
 import { resolveDisplay } from './displayUtils';
 
 /**
@@ -20,65 +20,6 @@ export interface FlatRow {
   __rowIndex: number;
   __originalData: unknown;
   [flatPath: string]: unknown;
-}
-
-export type ColumnWidthConfig = number | Record<string, number> | null | undefined;
-
-const ROW_NUMBER_COLUMN_WIDTH_ALIASES = new Set([
-  '__displayIndex',
-  '__rowIndex',
-  '__row_number',
-  '#',
-]);
-
-function isValidColumnWidth(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0;
-}
-
-export function normalizeColumnWidthPropKey(prop: string): string {
-  const normalized = prop.trim();
-  if (!normalized) {
-    return normalized;
-  }
-  if (ROW_NUMBER_COLUMN_WIDTH_ALIASES.has(normalized)) {
-    return '__displayIndex';
-  }
-  return normalized;
-}
-
-/**
- * Resolve configured column widths into a per-column map keyed by RevoGrid column prop.
- *
- * - number: apply the same width to all data columns (private columns are excluded)
- * - dict: apply explicit per-column widths
- */
-export function resolveConfiguredColumnSizes(
-  flattenedFields: ReadonlyArray<FlattenedField>,
-  columnWidthConfig: ColumnWidthConfig,
-): Record<string, number> {
-  if (isValidColumnWidth(columnWidthConfig)) {
-    const sharedWidth = columnWidthConfig;
-    const widths: Record<string, number> = {};
-    for (const field of flattenedFields) {
-      widths[field.path] = sharedWidth;
-    }
-    return widths;
-  }
-
-  if (!columnWidthConfig || Array.isArray(columnWidthConfig) || typeof columnWidthConfig !== 'object') {
-    return {};
-  }
-
-  const widths: Record<string, number> = {};
-  for (const [rawKey, rawWidth] of Object.entries(columnWidthConfig)) {
-    const key = normalizeColumnWidthPropKey(rawKey);
-    if (!key || !isValidColumnWidth(rawWidth)) {
-      continue;
-    }
-    widths[key] = rawWidth;
-  }
-
-  return widths;
 }
 
 /**
@@ -346,7 +287,6 @@ export function getColorForValue(
 interface TableColumnDefOptions {
   readOnly?: boolean;
   pinnedColumnsStart?: ReadonlySet<string>;
-  data?: Record<string, unknown>;
 }
 
 const BOOLEAN_RENDERERS = new Set(['checkbox', 'toggle', 'switch']);
@@ -387,27 +327,7 @@ function getOptionsFromUiProps(schema: SchemaField): string[] {
   return [...new Set(values)];
 }
 
-function getOptionsFromDataSource(
-  schema: SchemaField,
-  data?: Record<string, unknown>,
-): string[] {
-  const optionsFromPath = schema.ui_config?.options_from;
-  if (!optionsFromPath || !data) {
-    return [];
-  }
-
-  const resolved = resolveOptionsFromData(optionsFromPath, data)
-    .map((option) => option.value);
-
-  return [...new Set(resolved)];
-}
-
-function getEnumValues(schema: SchemaField, data?: Record<string, unknown>): string[] {
-  const optionsFromData = getOptionsFromDataSource(schema, data);
-  if (optionsFromData.length > 0) {
-    return optionsFromData;
-  }
-
+function getEnumValues(schema: SchemaField): string[] {
   const optionsFromProps = getOptionsFromUiProps(schema);
   if (optionsFromProps.length > 0) {
     return optionsFromProps;
@@ -422,12 +342,7 @@ function getEnumValues(schema: SchemaField, data?: Record<string, unknown>): str
   return [];
 }
 
-function getMultiSelectValues(schema: SchemaField, data?: Record<string, unknown>): string[] {
-  const optionsFromData = getOptionsFromDataSource(schema, data);
-  if (optionsFromData.length > 0) {
-    return optionsFromData;
-  }
-
+function getMultiSelectValues(schema: SchemaField): string[] {
   const optionsFromProps = getOptionsFromUiProps(schema);
   if (optionsFromProps.length > 0) {
     return optionsFromProps;
@@ -436,98 +351,7 @@ function getMultiSelectValues(schema: SchemaField, data?: Record<string, unknown
   if (!schema.items) {
     return [];
   }
-  return getEnumValues(schema.items, data);
-}
-
-function toFiniteNumber(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-  return undefined;
-}
-
-function getNumericMeta(schema: SchemaField): {
-  minimum: number | undefined;
-  maximum: number | undefined;
-  step: number;
-} {
-  const props = schema.ui_config?.props;
-  const minFromProps = toFiniteNumber(props?.min);
-  const maxFromProps = toFiniteNumber(props?.max);
-  const stepFromProps = toFiniteNumber(props?.step);
-  const schemaBounds = getSchemaNumericBounds(schema);
-
-  const minimum =
-    minFromProps
-      ?? schemaBounds.minimum;
-  const maximum =
-    maxFromProps
-      ?? schemaBounds.maximum;
-  const fallbackStep = schema.type === 'integer' ? 1 : 0.1;
-  const step =
-    stepFromProps
-      ?? schemaBounds.step
-      ?? fallbackStep;
-
-  return {
-    minimum,
-    maximum,
-    step,
-  };
-}
-
-/**
- * Coerce table cell values according to schema type.
- *
- * Clipboard/range edits can provide string payloads for numeric fields.
- * Converting those values before writing state keeps numeric behaviors
- * (sorting, filtering, conditional formatting) consistent.
- */
-export function coerceTableCellValueBySchema(
-  schema: SchemaField | undefined,
-  value: unknown,
-): unknown {
-  if (!schema) {
-    return value;
-  }
-
-  if (schema.type !== 'integer' && schema.type !== 'number') {
-    return value;
-  }
-
-  if (value === null || value === undefined) {
-    return value;
-  }
-
-  let parsed: number | null | undefined;
-
-  if (typeof value === 'number') {
-    parsed = Number.isFinite(value) ? value : undefined;
-  } else if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      parsed = null;
-    } else {
-      const candidate = Number(trimmed);
-      parsed = Number.isFinite(candidate) ? candidate : undefined;
-    }
-  }
-
-  if (parsed === undefined) {
-    return value;
-  }
-
-  if (parsed === null) {
-    return null;
-  }
-
-  return schema.type === 'integer' ? Math.trunc(parsed) : parsed;
+  return getEnumValues(schema.items);
 }
 
 function toBoolean(value: unknown): boolean {
@@ -618,17 +442,15 @@ export function getTableRenderer(schema: SchemaField): string {
       return 'text_input';
 
     case 'integer':
-    case 'number': {
-      const numericMeta = getNumericMeta(schema);
+    case 'number':
       if (
-        numericMeta.minimum !== undefined &&
-        numericMeta.maximum !== undefined &&
-        numericMeta.maximum - numericMeta.minimum <= 1000
+        schema.minimum !== undefined &&
+        schema.maximum !== undefined &&
+        schema.maximum - schema.minimum <= 1000
       ) {
         return 'slider';
       }
       return 'number_input';
-    }
 
     case 'boolean':
       return 'toggle';
@@ -1106,9 +928,8 @@ export function createCellTemplate(
   }
 
   if (isSlider) {
-    const numericMeta = getNumericMeta(field.schema);
-    const min = numericMeta.minimum ?? 0;
-    const max = numericMeta.maximum ?? 100;
+    const min = field.schema.minimum ?? 0;
+    const max = field.schema.maximum ?? 100;
     const safeMax = max <= min ? min + 1 : max;
 
     return (h, props) => {
@@ -1286,10 +1107,11 @@ function createLeafColumnDef(
   const isBoolean = field.schema.type === 'boolean' || BOOLEAN_RENDERERS.has(renderer);
   const isMultiSelect = MULTI_SELECT_RENDERERS.has(renderer);
   const isArray = field.schema.type === 'array';
-  const hasEnum = getEnumValues(field.schema, options.data).length > 0;
+  const hasEnum = getEnumValues(field.schema).length > 0;
   const isArrayReadOnly = isArray && !isMultiSelect;
   const isReadOnly = !!(options.readOnly || field.schema.ui_config?.read_only || isArrayReadOnly);
-  const numericMeta = getNumericMeta(field.schema);
+  const rendererProps = field.schema.ui_config?.props || {};
+  const stepOverride = typeof rendererProps.step === 'number' ? rendererProps.step : undefined;
 
   const display = resolveDisplay({ schema: field.schema, view: 'table', name: headerName });
 
@@ -1323,26 +1145,20 @@ function createLeafColumnDef(
       colDef.editor = 'color';
     } else if (isMultiSelect) {
       colDef.editor = 'multiselect';
-      colDef.__enumValues = getMultiSelectValues(field.schema, options.data);
+      colDef.__enumValues = getMultiSelectValues(field.schema);
     } else if (SINGLE_SELECT_RENDERERS.has(renderer) || hasEnum) {
       colDef.editor = 'select';
-      colDef.__enumValues = getEnumValues(field.schema, options.data);
+      colDef.__enumValues = getEnumValues(field.schema);
     } else if (TEXTAREA_RENDERERS.has(renderer)) {
       colDef.editor = 'textarea';
     } else if (JSON_RENDERERS.has(renderer) || field.schema.type === 'object') {
       colDef.editor = 'json';
-    } else if (renderer === 'slider' || renderer === 'range') {
-      colDef.editor = 'slider';
-      colDef.__isInteger = field.schema.type === 'integer';
-      colDef.__minimum = numericMeta.minimum;
-      colDef.__maximum = numericMeta.maximum;
-      colDef.__step = numericMeta.step;
     } else if (NUMERIC_RENDERERS.has(renderer) || isNumeric) {
       colDef.editor = 'number';
       colDef.__isInteger = field.schema.type === 'integer';
-      colDef.__minimum = numericMeta.minimum;
-      colDef.__maximum = numericMeta.maximum;
-      colDef.__step = numericMeta.step;
+      colDef.__minimum = field.schema.minimum;
+      colDef.__maximum = field.schema.maximum;
+      colDef.__step = stepOverride ?? (field.schema.type === 'integer' ? 1 : 0.1);
     } else {
       colDef.editor = 'text';
     }
@@ -1389,22 +1205,8 @@ export function generateColumnDefs(
   flattenedFields: FlattenedField[],
   options: TableColumnDefOptions = {},
 ): (ColumnRegular | ColumnGrouping)[] {
-  const GROUP_PAD_PREFIX = '__pydantic_ui_group_pad__';
-
-  const getPathParts = (fieldPath: string): string[] =>
-    fieldPath
-      .split('.')
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0);
-
-  const maxPathDepth = flattenedFields.reduce((maxDepth, field) => {
-    const depth = getPathParts(field.path).length;
-    return depth > maxDepth ? depth : maxDepth;
-  }, 0);
-
   // Build a tree structure from the flattened fields
   interface ColumnNode {
-    key: string;
     name: string;
     path: string;
     field?: FlattenedField;
@@ -1412,52 +1214,29 @@ export function generateColumnDefs(
   }
 
   const root: ColumnNode = {
-    key: '',
     name: '',
     path: '',
     children: new Map(),
   };
 
   for (const field of flattenedFields) {
-    const parts = getPathParts(field.path);
-    if (parts.length === 0) {
-      continue;
-    }
-
-    const missingLevels = Math.max(0, maxPathDepth - parts.length);
-    const rootKey = parts[0];
-    const normalizedParts: Array<{ key: string; name: string }> = [];
-
-    for (let i = 0; i < missingLevels; i++) {
-      normalizedParts.push({
-        key: `${GROUP_PAD_PREFIX}${i}:${rootKey}`,
-        name: '',
-      });
-    }
-
-    for (const part of parts) {
-      normalizedParts.push({ key: part, name: part });
-    }
-
+    const parts = field.path.split('.');
     let current = root;
-    const pathParts: string[] = [];
 
-    for (let i = 0; i < normalizedParts.length; i++) {
-      const part = normalizedParts[i];
-      const isLast = i === normalizedParts.length - 1;
-      pathParts.push(part.key);
-      const currentPath = pathParts.join('.');
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const isLast = i === parts.length - 1;
+      const currentPath = parts.slice(0, i + 1).join('.');
 
-      if (!current.children.has(part.key)) {
-        current.children.set(part.key, {
-          key: part.key,
-          name: part.name,
+      if (!current.children.has(part)) {
+        current.children.set(part, {
+          name: part,
           path: currentPath,
           children: new Map(),
         });
       }
 
-      const node = current.children.get(part.key)!;
+      const node = current.children.get(part)!;
 
       if (isLast) {
         node.field = field;
@@ -1472,18 +1251,18 @@ export function generateColumnDefs(
   ): (ColumnRegular | ColumnGrouping)[] => {
     const results: (ColumnRegular | ColumnGrouping)[] = [];
 
-    for (const child of node.children.values()) {
+    for (const [name, child] of node.children) {
       if (child.field && child.children.size === 0) {
-        results.push(createLeafColumnDef(child.field, child.name, options));
+        results.push(createLeafColumnDef(child.field, name, options));
       } else if (child.children.size > 0) {
         const children = convertToColDefs(child);
 
         if (child.field) {
-          children.unshift(createLeafColumnDef(child.field, child.name, options));
+          children.unshift(createLeafColumnDef(child.field, name, options));
         }
 
         const colGroup: ColumnGrouping = {
-          name: child.name,
+          name,
           children,
         };
         results.push(colGroup);
@@ -1509,56 +1288,4 @@ export function generateFlatColumnDefs(
   return flattenedFields.map((field) =>
     createLeafColumnDef(field, field.path, options),
   );
-}
-
-function applyColumnSizesToDefs(
-  columnDefs: (ColumnRegular | ColumnGrouping)[],
-  sizesByProp: Readonly<Record<string, number>>,
-): (ColumnRegular | ColumnGrouping)[] {
-  let changed = false;
-
-  const nextDefs = columnDefs.map((columnDef) => {
-    if ('children' in columnDef && Array.isArray(columnDef.children)) {
-      const nextChildren = applyColumnSizesToDefs(columnDef.children, sizesByProp);
-      if (nextChildren !== columnDef.children) {
-        changed = true;
-        return {
-          ...columnDef,
-          children: nextChildren,
-        };
-      }
-      return columnDef;
-    }
-
-    if (!('prop' in columnDef)) {
-      return columnDef;
-    }
-
-    const nextSize = sizesByProp[String(columnDef.prop)];
-    if (typeof nextSize !== 'number' || !Number.isFinite(nextSize) || columnDef.size === nextSize) {
-      return columnDef;
-    }
-
-    changed = true;
-    return {
-      ...columnDef,
-      size: nextSize,
-    };
-  });
-
-  return changed ? nextDefs : columnDefs;
-}
-
-/**
- * Apply persisted per-column sizes by column prop to a column definition tree.
- */
-export function applyColumnSizes(
-  columnDefs: (ColumnRegular | ColumnGrouping)[],
-  sizesByProp: Readonly<Record<string, number>>,
-): (ColumnRegular | ColumnGrouping)[] {
-  if (Object.keys(sizesByProp).length === 0) {
-    return columnDefs;
-  }
-
-  return applyColumnSizesToDefs(columnDefs, sizesByProp);
 }
