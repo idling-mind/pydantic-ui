@@ -365,9 +365,9 @@ class TestNestedCardDisableConfirmation:
 
         optional_owner_enabled_card.get_by_role("button", name="Disable").click()
 
-        confirm_dialog = page.locator('[role="alertdialog"]').filter(
-            has_text="Disable optional field?"
-        ).first
+        confirm_dialog = (
+            page.locator('[role="alertdialog"]').filter(has_text="Disable optional field?").first
+        )
         expect(confirm_dialog).to_be_visible(timeout=5000)
 
         # Cancel should keep current values intact.
@@ -386,7 +386,9 @@ class TestNestedCardDisableConfirmation:
             '[data-pydantic-ui="nested-card"][data-pydantic-ui-path="optional_owner"][data-pydantic-ui-enabled="false"]'
         ).first
         expect(optional_owner_disabled_card).to_be_visible(timeout=5000)
-        expect(optional_owner_disabled_card.get_by_text("Not configured (optional)")).to_be_visible()
+        expect(
+            optional_owner_disabled_card.get_by_text("Not configured (optional)")
+        ).to_be_visible()
         expect(page.locator(SELECTORS["save_button"])).to_be_enabled(timeout=5000)
 
 
