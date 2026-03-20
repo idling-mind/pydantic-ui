@@ -24,6 +24,7 @@ from pydantic_ui import (
     FieldConfig,
     Renderer,
     UIConfig,
+    ViewDisplay,
     create_pydantic_ui,
 )
 
@@ -63,6 +64,99 @@ class Person(BaseModel):
     ]
     email: str = Field(default="john@example.com", description="Email address")
     address: Address = Field(default_factory=Address, description="Home address")
+
+
+class PanelMetadata(BaseModel):
+    """Metadata used to verify configurable tree/detail display text."""
+
+    tree_title: str = Field(default="Configuration Tree", description="Tree panel title")
+    tree_description: str = Field(
+        default="Browse and select fields to edit", description="Tree panel description"
+    )
+    main_title: str = Field(default="Main Editor", description="Main panel title")
+    main_description: str = Field(
+        default="Edit details for the selected node", description="Main panel description"
+    )
+
+
+class DiskStorage(BaseModel):
+    """Discriminated union variant for local disk storage."""
+
+    backend_type: Literal["disk"] = "disk"
+    root_path: str = Field(default="/var/lib/e2e", description="Filesystem root path")
+    encrypted: bool = Field(default=True, description="Enable encryption at rest")
+
+
+class S3Storage(BaseModel):
+    """Discriminated union variant for S3 storage."""
+
+    backend_type: Literal["s3"] = "s3"
+    bucket: str = Field(default="e2e-config-bucket", description="S3 bucket name")
+    region: str = Field(default="us-east-1", description="AWS region")
+    use_ssl: bool = Field(default=True, description="Use HTTPS transport")
+
+
+class MemoryStorage(BaseModel):
+    """Discriminated union variant for in-memory storage."""
+
+    backend_type: Literal["memory"] = "memory"
+    max_items: int = Field(default=1024, ge=1, description="Maximum in-memory items")
+    persistent_snapshot: bool = Field(
+        default=False, description="Persist snapshots to disk on shutdown"
+    )
+
+
+class ServiceContact(BaseModel):
+    """Nested contact details for deep table rows."""
+
+    team: str = Field(default="platform", description="Owning team")
+    manager: str = Field(default="Alex Kim", description="Manager name")
+    email: str = Field(default="alex.kim@example.com", description="Contact email")
+
+
+class ServiceWindow(BaseModel):
+    """Maintenance window details for deep table rows."""
+
+    start_hour: int = Field(default=1, ge=0, le=23, description="Window start hour")
+    end_hour: int = Field(default=3, ge=0, le=23, description="Window end hour")
+
+
+class ServiceLocation(BaseModel):
+    """Infrastructure location metadata."""
+
+    region: str = Field(default="us-east-1", description="Cloud region")
+    zone: str = Field(default="use1-az2", description="Availability zone")
+    rack: str = Field(default="rack-12", description="Rack identifier")
+
+
+class ServiceDeployment(BaseModel):
+    """Deployment metadata with nested object depth for table view tests."""
+
+    revision: int = Field(default=17, description="Deployment revision")
+    contact: ServiceContact = Field(default_factory=ServiceContact, description="Service contact")
+    window: ServiceWindow = Field(default_factory=ServiceWindow, description="Maintenance window")
+    location: ServiceLocation = Field(default_factory=ServiceLocation, description="Location")
+
+
+class ServiceMetrics(BaseModel):
+    """Performance metrics used by deep table rows."""
+
+    cpu: float = Field(default=61.5, ge=0, le=100, description="CPU utilization %")
+    memory: float = Field(default=72.3, ge=0, le=100, description="Memory utilization %")
+    latency_ms: float = Field(default=18.2, ge=0, description="Latency in milliseconds")
+    error_rate: float = Field(default=0.02, ge=0, le=1, description="Error rate (0-1)")
+
+
+class DeepGridRow(BaseModel):
+    """Deeply nested row model for table view E2E tests."""
+
+    service: str = Field(default="ingest", description="Service name")
+    enabled: bool = Field(default=True, description="Service enabled")
+    deployment: ServiceDeployment = Field(
+        default_factory=ServiceDeployment,
+        description="Deployment details",
+    )
+    metrics: ServiceMetrics = Field(default_factory=ServiceMetrics, description="Service metrics")
 
 
 class Settings(BaseModel):
@@ -115,6 +209,21 @@ class Settings(BaseModel):
     # Nested object
     owner: Person = Field(default_factory=Person, description="Application owner")
 
+    # Discriminated union rendered with card selection UI
+    storage_backend: Annotated[
+        DiskStorage | S3Storage | MemoryStorage,
+        Field(
+            discriminator="backend_type",
+            description="Storage backend configuration (discriminated union)",
+        ),
+    ] = Field(default_factory=DiskStorage)
+
+    # Panel metadata object with explicit tree/detail display overrides
+    panel_metadata: PanelMetadata = Field(
+        default_factory=PanelMetadata,
+        description="Configurable tree/detail labels for E2E tests",
+    )
+
     # Array fields
     tags: list[str] = Field(default=["test", "e2e", "example"], description="Application tags")
     users: list[Person] = Field(
@@ -124,8 +233,57 @@ class Settings(BaseModel):
         ],
         description="List of users",
     )
+    archived_users: list[Person] = Field(
+        default_factory=lambda: [
+            Person(name="Archived User", age=41, email="archived@example.com"),
+        ],
+        description="Archive list used for tree copy/paste tests",
+    )
+    deep_grid_rows: list[DeepGridRow] = Field(
+        default_factory=lambda: [
+            DeepGridRow(
+                service="ingest",
+                enabled=True,
+                deployment=ServiceDeployment(
+                    revision=17,
+                    contact=ServiceContact(
+                        team="platform",
+                        manager="Alex Kim",
+                        email="alex.kim@example.com",
+                    ),
+                    window=ServiceWindow(start_hour=1, end_hour=3),
+                    location=ServiceLocation(region="us-east-1", zone="use1-az2", rack="rack-12"),
+                ),
+                metrics=ServiceMetrics(cpu=61.5, memory=72.3, latency_ms=18.2, error_rate=0.02),
+            ),
+            DeepGridRow(
+                service="worker",
+                enabled=False,
+                deployment=ServiceDeployment(
+                    revision=21,
+                    contact=ServiceContact(
+                        team="compute",
+                        manager="Priya Nair",
+                        email="priya.nair@example.com",
+                    ),
+                    window=ServiceWindow(start_hour=2, end_hour=5),
+                    location=ServiceLocation(region="eu-west-1", zone="euw1-az1", rack="rack-7"),
+                ),
+                metrics=ServiceMetrics(cpu=47.8, memory=58.1, latency_ms=24.6, error_rate=0.01),
+            ),
+        ],
+        description="Deeply nested rows used to exercise table view flattening",
+    )
 
     # Optional fields
+    optional_owner: Person | None = Field(
+        default_factory=lambda: Person(
+            name="Optional Owner",
+            age=29,
+            email="optional.owner@example.com",
+        ),
+        description="An optional nested owner object used for disable/enable card tests",
+    )
     optional_field: str | None = Field(default=None, description="An optional string field")
 
 
@@ -142,7 +300,7 @@ def handle_test_action(data: dict) -> dict:
 # Configure UI
 ui_config = UIConfig(
     title="E2E Test Configuration",
-    description="Configuration UI for E2E testing",
+    subtitle="Configuration UI for E2E testing",
     collapsible_tree=True,
     show_validation=True,
     show_save_reset=True,
@@ -151,6 +309,35 @@ ui_config = UIConfig(
     logo_url="/static/lightlogo.png",
     logo_url_dark="/static/darklogo.png",
     favicon_url="/static/lightlogo.png",
+    class_configs={
+        "DiskStorage": FieldConfig(
+            display=DisplayConfig(
+                card=ViewDisplay(
+                    title="Disk Storage",
+                    subtitle="Local filesystem backend",
+                    help_text="Stores data on local disk",
+                )
+            )
+        ),
+        "S3Storage": FieldConfig(
+            display=DisplayConfig(
+                card=ViewDisplay(
+                    title="S3 Storage",
+                    subtitle="Object storage backend",
+                    help_text="Stores data in an S3 bucket",
+                )
+            )
+        ),
+        "MemoryStorage": FieldConfig(
+            display=DisplayConfig(
+                card=ViewDisplay(
+                    title="Memory Storage",
+                    subtitle="Ephemeral in-memory backend",
+                    help_text="Fast, non-persistent storage",
+                )
+            )
+        ),
+    },
     actions=[
         ActionButton(
             id="test_action",
@@ -174,6 +361,43 @@ ui_config = UIConfig(
                 subtitle="Application owner information",
             ),
         ),
+        "optional_owner": FieldConfig(
+            display=DisplayConfig(
+                title="Optional Owner - {name}",
+                subtitle="Optional nested owner card used in E2E disable confirmation tests",
+            ),
+        ),
+        "storage_backend": FieldConfig(
+            renderer=Renderer.UNION_TABS,
+            display=DisplayConfig(
+                title="Storage Backend",
+                subtitle="Discriminated union rendered as selectable cards",
+                help_text="Select one backend card and edit its fields",
+                tree=ViewDisplay(
+                    title="Storage Backend",
+                    subtitle="Union card selector",
+                ),
+                detail=ViewDisplay(
+                    title="Storage Backend",
+                    subtitle="Main panel union card editor",
+                ),
+            ),
+        ),
+        "panel_metadata": FieldConfig(
+            display=DisplayConfig(
+                title="Panel Metadata",
+                subtitle="Default panel metadata display",
+                tree=ViewDisplay(
+                    title="Tree Labels",
+                    subtitle="Shown in tree navigation",
+                ),
+                detail=ViewDisplay(
+                    title="Main Panel Labels",
+                    subtitle="Shown in detail panel header",
+                    help_text="Used for configurable title/subtitle E2E assertions",
+                ),
+            )
+        ),
         "users": FieldConfig(
             display=DisplayConfig(
                 title="User List",
@@ -185,6 +409,35 @@ ui_config = UIConfig(
                 title="{name}",
                 subtitle="{email}",
             ),
+        ),
+        "archived_users": FieldConfig(
+            display=DisplayConfig(
+                title="Archived Users",
+                subtitle="Secondary list for copy/paste tests",
+            ),
+        ),
+        "archived_users.[]": FieldConfig(
+            display=DisplayConfig(
+                title="{name}",
+                subtitle="{email}",
+            ),
+        ),
+        "deep_grid_rows": FieldConfig(
+            display=DisplayConfig(
+                title="Deep Grid Rows",
+                subtitle="Nested rows for table flattening tests",
+                table=ViewDisplay(
+                    title="Deep Grid Rows Table",
+                    subtitle="Nested service rows",
+                    pinned_columns=["__check", "__row_number", "service"],
+                ),
+            )
+        ),
+        "deep_grid_rows.[]": FieldConfig(
+            display=DisplayConfig(
+                title="{service}",
+                subtitle="rev {deployment.revision} | {deployment.contact.email}",
+            )
         ),
     },
 )

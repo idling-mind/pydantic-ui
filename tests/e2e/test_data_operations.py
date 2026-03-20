@@ -346,6 +346,52 @@ class TestNestedObjectUpdates:
         )
 
 
+class TestNestedCardDisableConfirmation:
+    """Tests confirmation behavior when disabling nested optional cards."""
+
+    def test_disabling_nested_card_requires_confirmation(self, page: Page, base_url: str):
+        """Disabling a nested card should ask for confirmation before clearing data."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        # Open root object editor where nested cards are rendered.
+        page.locator('[data-tree-path=""]').first.click()
+        page.wait_for_timeout(300)
+
+        optional_owner_enabled_card = page.locator(
+            '[data-pydantic-ui="nested-card"][data-pydantic-ui-path="optional_owner"][data-pydantic-ui-enabled="true"]'
+        ).first
+        expect(optional_owner_enabled_card).to_be_visible(timeout=5000)
+
+        optional_owner_enabled_card.get_by_role("button", name="Disable").click()
+
+        confirm_dialog = (
+            page.locator('[role="alertdialog"]').filter(has_text="Disable optional field?").first
+        )
+        expect(confirm_dialog).to_be_visible(timeout=5000)
+
+        # Cancel should keep current values intact.
+        confirm_dialog.get_by_role("button", name="Cancel").click()
+        expect(confirm_dialog).not_to_be_visible(timeout=5000)
+        expect(optional_owner_enabled_card).to_be_visible(timeout=5000)
+        expect(page.locator(SELECTORS["save_button"])).to_be_disabled()
+
+        # Confirming disable should clear the nested value and mark as dirty.
+        optional_owner_enabled_card.get_by_role("button", name="Disable").click()
+        expect(confirm_dialog).to_be_visible(timeout=5000)
+        confirm_dialog.get_by_role("button", name="Disable").click()
+        expect(confirm_dialog).not_to_be_visible(timeout=5000)
+
+        optional_owner_disabled_card = page.locator(
+            '[data-pydantic-ui="nested-card"][data-pydantic-ui-path="optional_owner"][data-pydantic-ui-enabled="false"]'
+        ).first
+        expect(optional_owner_disabled_card).to_be_visible(timeout=5000)
+        expect(
+            optional_owner_disabled_card.get_by_text("Not configured (optional)")
+        ).to_be_visible()
+        expect(page.locator(SELECTORS["save_button"])).to_be_enabled(timeout=5000)
+
+
 class TestDetailPanelUpdates:
     """Tests for detail panel updates when navigating."""
 
