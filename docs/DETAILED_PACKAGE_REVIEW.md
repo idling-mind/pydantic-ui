@@ -143,12 +143,12 @@ The package is generally well structured and readable, but there are several con
 - **Issue:** imported inside endpoint functions, whereas other modules import at top-level.
 - **Suggested fix:** use a consistent module-level import style unless deferred import is intentional.
 
-### 5.2 Documentation/component mismatch: AG Grid language while code uses RevoGrid (Medium)
+### 5.2 Documentation/component mismatch: AG Grid references while current table code uses RevoGrid (Medium)
 - **Files:**
-  - `/home/runner/work/pydantic-ui/pydantic-ui/README.md` (mentions AG Grid)
-  - frontend implementation uses `@revolist/react-datagrid`
+  - `/home/runner/work/pydantic-ui/pydantic-ui/README.md` (contains AG Grid wording)
+  - frontend implementation imports `@revolist/react-datagrid` in `TableView`
 - **Impact:** user confusion, onboarding friction.
-- **Suggested fix:** update README/docs to consistently reflect RevoGrid-based implementation.
+- **Suggested fix:** align documentation and implementation terminology to one grid library choice (either migrate code to AG Grid or update docs to reflect RevoGrid usage).
 
 ### 5.3 Overly loose dependency upper bounds (Medium)
 - **File:** `/home/runner/work/pydantic-ui/pydantic-ui/pyproject.toml`
