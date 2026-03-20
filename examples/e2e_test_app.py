@@ -126,6 +126,14 @@ class Settings(BaseModel):
     )
 
     # Optional fields
+    optional_owner: Person | None = Field(
+        default_factory=lambda: Person(
+            name="Optional Owner",
+            age=29,
+            email="optional.owner@example.com",
+        ),
+        description="An optional nested owner object used for disable/enable card tests",
+    )
     optional_field: str | None = Field(default=None, description="An optional string field")
 
 
@@ -172,6 +180,12 @@ ui_config = UIConfig(
             display=DisplayConfig(
                 title="Owner - {name}",
                 subtitle="Application owner information",
+            ),
+        ),
+        "optional_owner": FieldConfig(
+            display=DisplayConfig(
+                title="Optional Owner - {name}",
+                subtitle="Optional nested owner card used in E2E disable confirmation tests",
             ),
         ),
         "users": FieldConfig(
