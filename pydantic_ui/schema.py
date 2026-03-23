@@ -1,6 +1,8 @@
 """Schema parser for converting Pydantic models to UI schema format."""
 
 import datetime
+import inspect
+import sys
 import types
 from enum import Enum
 from typing import Annotated, Any, Literal, Union, get_args, get_origin
@@ -132,19 +134,154 @@ def get_discriminator_values(variant_type: type, discriminator_field: str) -> li
     return []
 
 
-def get_variant_name(variant_type: type) -> str:
+def _normalize_typing_repr(value: Any) -> str:
+    """Normalize repr strings by removing noisy typing module prefixes."""
+    text = repr(value)
+    return text.replace("typing.", "").replace("typing_extensions.", "")
+
+
+def _format_annotated_metadata(meta: Any) -> str:
+    """Format Annotated metadata in a stable, user-readable way."""
+    meta_repr = _normalize_typing_repr(meta)
+    if " object at 0x" in meta_repr:
+        return meta.__class__.__name__
+    return meta_repr
+
+
+_MODULE_TYPE_ALIAS_LOOKUP_CACHE: dict[str, dict[int, str]] = {}
+
+
+def _is_type_alias_candidate(value: Any) -> bool:
+    """Return True when a module symbol looks like a type alias object."""
+    return get_origin(value) is not None or (
+        hasattr(value, "__origin__") and hasattr(value, "__metadata__")
+    )
+
+
+def _get_module_type_alias_lookup(module_name: str | None) -> dict[int, str]:
+    """Build a lookup of alias object identity to symbol name for a module."""
+    if not module_name:
+        return {}
+
+    cached = _MODULE_TYPE_ALIAS_LOOKUP_CACHE.get(module_name)
+    if cached is not None:
+        return cached
+
+    module = sys.modules.get(module_name)
+    if module is None:
+        _MODULE_TYPE_ALIAS_LOOKUP_CACHE[module_name] = {}
+        return {}
+
+    lookup: dict[int, str] = {}
+    for symbol_name, symbol_value in vars(module).items():
+        if symbol_name.startswith("_"):
+            continue
+        if not _is_type_alias_candidate(symbol_value):
+            continue
+        lookup[id(symbol_value)] = symbol_name
+
+    _MODULE_TYPE_ALIAS_LOOKUP_CACHE[module_name] = lookup
+    return lookup
+
+
+def _get_stack_type_alias_lookup(max_frames: int = 12) -> dict[int, str]:
+    """Build alias lookup from caller stack locals/globals.
+
+    This enables support for aliases declared in local scopes, e.g. inside test
+    functions or factory functions, without hardcoding specific metadata types.
+    """
+    lookup: dict[int, str] = {}
+    frame = inspect.currentframe()
+    if frame is None:
+        return lookup
+
+    # Skip this helper and begin at its caller frame.
+    frame = frame.f_back
+
+    try:
+        depth = 0
+        while frame is not None and depth < max_frames:
+            for namespace in (frame.f_locals, frame.f_globals):
+                for symbol_name, symbol_value in namespace.items():
+                    if symbol_name.startswith("_"):
+                        continue
+                    if not _is_type_alias_candidate(symbol_value):
+                        continue
+                    lookup.setdefault(id(symbol_value), symbol_name)
+
+            frame = frame.f_back
+            depth += 1
+    finally:
+        # Break reference cycles involving frame objects.
+        del frame
+
+    return lookup
+
+
+def _merge_type_alias_lookups(*lookups: dict[int, str] | None) -> dict[int, str] | None:
+    """Merge lookup maps while preserving the first-seen alias for each id."""
+    merged: dict[int, str] = {}
+    for lookup in lookups:
+        if not lookup:
+            continue
+        for obj_id, alias_name in lookup.items():
+            if obj_id not in merged:
+                merged[obj_id] = alias_name
+    return merged or None
+
+
+def _resolve_alias_name(annotation: Any, type_alias_lookup: dict[int, str] | None) -> str | None:
+    """Resolve an annotation object to a module symbol alias, if available."""
+    if not type_alias_lookup:
+        return None
+    return type_alias_lookup.get(id(annotation))
+
+
+def _get_annotated_display_name(annotation: Any) -> str | None:
+    """Return a concise display name for Annotated types."""
+    origin = get_origin(annotation)
+    if origin is not Annotated:
+        return None
+
+    args = get_args(annotation)
+    if not args:
+        return "Annotated"
+
+    base_type = args[0]
+    metadata = tuple(args[1:])
+
+    base_name = get_python_type_name(base_type)
+    if not metadata:
+        return f"Annotated[{base_name}]"
+
+    metadata_str = ", ".join(_format_annotated_metadata(meta) for meta in metadata)
+    return f"Annotated[{base_name}, {metadata_str}]"
+
+
+def get_variant_name(
+    variant_type: type,
+    type_alias_lookup: dict[int, str] | None = None,
+) -> str:
     """Get a display name for a union variant.
 
     For generic types like list[Person], returns the full type name (e.g., "list[Person]")
     to enable proper matching with attr_configs paths.
     """
+    alias_name = _resolve_alias_name(variant_type, type_alias_lookup)
+    if alias_name:
+        return alias_name
+
+    annotated_name = _get_annotated_display_name(variant_type)
+    if annotated_name is not None:
+        return annotated_name
+
     # Handle generic types (List, Dict, etc.) to get full name like "list[Person]"
     origin = get_origin(variant_type)
     if origin is not None:
         args = get_args(variant_type)
         origin_name = getattr(origin, "__name__", str(origin))
         if args:
-            args_str = ", ".join(get_python_type_name(arg) for arg in args)
+            args_str = ", ".join(get_python_type_name(arg, type_alias_lookup) for arg in args)
             return f"{origin_name}[{args_str}]"
         return origin_name
 
@@ -154,9 +291,12 @@ def get_variant_name(variant_type: type) -> str:
     return str(variant_type)
 
 
-def get_python_type_name_for_union(types_list: list[type]) -> str:
+def get_python_type_name_for_union(
+    types_list: list[type],
+    type_alias_lookup: dict[int, str] | None = None,
+) -> str:
     """Generate a Python type name string for a union of types."""
-    type_names = [get_python_type_name(t) for t in types_list]
+    type_names = [get_python_type_name(t, type_alias_lookup) for t in types_list]
     return f"Union[{', '.join(type_names)}]"
 
 
@@ -175,6 +315,7 @@ def parse_union_field(
     max_depth: int,
     current_depth: int,
     class_configs: dict[str, FieldConfig] | None = None,
+    type_alias_lookup: dict[int, str] | None = None,
 ) -> dict[str, Any]:
     """Parse a Union type field, handling discriminated unions.
 
@@ -186,7 +327,13 @@ def parse_union_field(
     # Single type + None = Optional, handle normally
     if len(non_none) == 1:
         single_result = parse_field(
-            name, field_info, non_none[0], max_depth, current_depth, class_configs
+            name,
+            field_info,
+            non_none[0],
+            max_depth,
+            current_depth,
+            class_configs,
+            type_alias_lookup,
         )
         single_result["required"] = not has_none
         return single_result
@@ -206,23 +353,31 @@ def parse_union_field(
     discriminator_mapping: dict[str, int] = {}
 
     for i, variant_type in enumerate(non_none):
+        variant_field_info = FieldInfo()
+        if get_origin(variant_type) is Annotated:
+            variant_field_info.metadata = list(get_args(variant_type)[1:])
+
         # Parse the variant schema
         variant_schema = parse_field(
             f"variant_{i}",
-            FieldInfo(),
+            variant_field_info,
             variant_type,
             max_depth,
             current_depth + 1,
             class_configs,
+            type_alias_lookup,
         )
+
+        variant_display_name = get_variant_name(variant_type, type_alias_lookup)
 
         # Add variant metadata
         variant_schema["variant_index"] = i
-        variant_schema["variant_name"] = get_variant_name(variant_type)
+        variant_schema["variant_name"] = variant_display_name
+        variant_schema["python_type"] = get_python_type_name(variant_type, type_alias_lookup)
 
         # Override the auto-generated title with the actual type name
         # This ensures "Cat" instead of "Variant 0" is displayed
-        variant_schema["title"] = get_variant_name(variant_type)
+        variant_schema["title"] = variant_display_name
 
         # Extract discriminator values for this variant
         if discriminator_info and discriminator_info.get("field"):
@@ -237,7 +392,7 @@ def parse_union_field(
     # Build the union schema
     result: dict[str, Any] = {
         "type": "union",
-        "python_type": get_python_type_name_for_union(non_none),
+        "python_type": get_python_type_name_for_union(non_none, type_alias_lookup),
         "title": field_info.title or name.replace("_", " ").title(),
         "description": field_info.description,
         "required": not has_none,
@@ -300,11 +455,22 @@ def get_json_type(python_type: type) -> str:
     return "string"
 
 
-def get_python_type_name(python_type: type) -> str:
+def get_python_type_name(
+    python_type: type,
+    type_alias_lookup: dict[int, str] | None = None,
+) -> str:
     """Get a human-readable Python type name."""
     # Handle None type
     if python_type is type(None):
         return "None"
+
+    alias_name = _resolve_alias_name(python_type, type_alias_lookup)
+    if alias_name:
+        return alias_name
+
+    annotated_name = _get_annotated_display_name(python_type)
+    if annotated_name is not None:
+        return annotated_name
 
     # Handle generic types (List, Dict, etc.)
     origin = get_origin(python_type)
@@ -312,7 +478,7 @@ def get_python_type_name(python_type: type) -> str:
         args = get_args(python_type)
         origin_name = getattr(origin, "__name__", str(origin))
         if args:
-            args_str = ", ".join(get_python_type_name(arg) for arg in args)
+            args_str = ", ".join(get_python_type_name(arg, type_alias_lookup) for arg in args)
             return f"{origin_name}[{args_str}]"
         return origin_name
 
@@ -497,6 +663,7 @@ def parse_field(
     max_depth: int = 10,
     current_depth: int = 0,
     class_configs: dict[str, FieldConfig] | None = None,
+    type_alias_lookup: dict[int, str] | None = None,
 ) -> dict[str, Any]:
     """Parse a single field to schema format."""
     if current_depth >= max_depth:
@@ -508,11 +675,27 @@ def parse_field(
     # Handle Annotated types - unwrap to get the actual type
     if origin is Annotated:
         actual_type = args[0]
-        return parse_field(name, field_info, actual_type, max_depth, current_depth, class_configs)
+        return parse_field(
+            name,
+            field_info,
+            actual_type,
+            max_depth,
+            current_depth,
+            class_configs,
+            type_alias_lookup,
+        )
 
     # Handle Union types - supports both typing.Union and types.UnionType (X | Y syntax)
     if origin is Union or origin is types.UnionType:
-        return parse_union_field(name, field_info, args, max_depth, current_depth, class_configs)
+        return parse_union_field(
+            name,
+            field_info,
+            args,
+            max_depth,
+            current_depth,
+            class_configs,
+            type_alias_lookup,
+        )
 
     # Handle Literal types
     if origin is Literal:
@@ -588,7 +771,13 @@ def parse_field(
             "description": field_info.description,
             "required": True,
             "items": parse_field(
-                "item", FieldInfo(), item_type, max_depth, current_depth + 1, class_configs
+                "item",
+                FieldInfo(),
+                item_type,
+                max_depth,
+                current_depth + 1,
+                class_configs,
+                type_alias_lookup,
             ),
             "ui_config": ui_config,
         }
@@ -614,13 +803,20 @@ def parse_field(
                 max_depth,
                 current_depth + 1,
                 class_configs,
+                type_alias_lookup,
             ),
             "ui_config": ui_config,
         }
 
     # Handle nested Pydantic models
     if isinstance(field_type, type) and issubclass(field_type, BaseModel):
-        result = parse_model(field_type, max_depth, current_depth + 1, class_configs)
+        result = parse_model(
+            field_type,
+            max_depth,
+            current_depth + 1,
+            class_configs,
+            type_alias_lookup,
+        )
         # Add title from field_info if available, otherwise use field name (not model name)
         result["title"] = field_info.title or name.replace("_", " ").title()
         # Nested models are required by default unless wrapped in Optional
@@ -660,7 +856,7 @@ def parse_field(
 
     result = {
         "type": get_json_type(field_type),
-        "python_type": get_python_type_name(field_type),
+        "python_type": get_python_type_name(field_type, type_alias_lookup),
         "title": field_info.title or name.replace("_", " ").title(),
         "description": field_info.description,
         "required": not is_optional_type(field_info.annotation),
@@ -681,6 +877,7 @@ def parse_model(
     max_depth: int = 10,
     current_depth: int = 0,
     class_configs: dict[str, FieldConfig] | None = None,
+    type_alias_lookup: dict[int, str] | None = None,
 ) -> dict[str, Any]:
     """Convert Pydantic model to UI schema format."""
     if current_depth >= max_depth:
@@ -690,6 +887,14 @@ def parse_model(
             "description": "Max depth reached",
             "fields": {},
         }
+
+    module_lookup = _get_module_type_alias_lookup(getattr(model, "__module__", None))
+    stack_lookup = _get_stack_type_alias_lookup() if current_depth == 0 else None
+    active_type_alias_lookup = _merge_type_alias_lookups(
+        type_alias_lookup,
+        stack_lookup,
+        module_lookup,
+    )
 
     fields = {}
     for field_name, field_info in model.model_fields.items():
@@ -704,6 +909,7 @@ def parse_model(
             max_depth,
             current_depth,
             class_configs,
+            active_type_alias_lookup,
         )
 
     return {

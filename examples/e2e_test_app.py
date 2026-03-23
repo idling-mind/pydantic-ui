@@ -14,7 +14,7 @@ from typing import Annotated, Literal
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, NonPositiveInt, PositiveInt
 
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
@@ -182,6 +182,10 @@ class Settings(BaseModel):
         FieldConfig(renderer=Renderer.SLIDER, props={"min": 1, "max": 1000, "step": 10}),
     ]
     timeout: float = Field(default=30.0, ge=0.1, le=300.0, description="Timeout in seconds")
+    server_timeout: PositiveInt | NonPositiveInt = Field(
+        default=30,
+        description="Server timeout in seconds; set <= 0 to disable timeout",
+    )
 
     # Boolean fields
     debug_mode: Annotated[
@@ -354,6 +358,13 @@ ui_config = UIConfig(
                 subtitle="The name of your application",
                 help_text="This will be displayed in the header",
             ),
+        ),
+        "server_timeout": FieldConfig(
+            display=DisplayConfig(
+                title="Server Timeout Policy",
+                subtitle="Choose positive timeout or disabled timeout mode",
+                help_text="This title verifies DisplayConfig overrides for union fields",
+            )
         ),
         "owner": FieldConfig(
             display=DisplayConfig(

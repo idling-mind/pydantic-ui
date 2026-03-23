@@ -584,9 +584,15 @@ export function UnionInput({
       <div className="grid gap-2" data-pydantic-ui="field-control">
         {variants.map((variant, idx) => {
           const isSelected = selectedVariantIndex === idx;
-          const variantLabel = variant.discriminator_values?.length
-            ? variant.discriminator_values.join(' / ')
-            : getVariantLabel(variant);
+          const hasDisplayLabel = Boolean(
+            variant.ui_config?.display?.card?.title || variant.ui_config?.display?.title
+          );
+          const resolvedVariantLabel = getVariantLabel(variant);
+          const variantLabel = hasDisplayLabel
+            ? resolvedVariantLabel
+            : variant.discriminator_values?.length
+              ? variant.discriminator_values.join(' / ')
+              : resolvedVariantLabel;
           const isComplex = isComplexVariant(variant);
           
           return (

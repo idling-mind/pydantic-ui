@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 
 import uvicorn
 from fastapi import FastAPI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, NonPositiveInt, PositiveInt
 
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
@@ -47,6 +47,7 @@ class DatabaseConfig(BaseModel):
         Field(ge=1, le=100, default=10, description="Connection pool size"),
         FieldConfig(renderer=Renderer.SLIDER, props={"min": 1, "max": 100, "step": 1}),
     ]
+    server_timeout: PositiveInt | NonPositiveInt
 
 
 class LoggingConfig(BaseModel):
@@ -155,6 +156,7 @@ ui_config = UIConfig(
     description="Edit your application configuration",
     collapsible_tree=True,
     show_validation=True,
+    show_save_reset=True,
     attr_configs={
         "server": FieldConfig(
             display=DisplayConfig(
@@ -176,6 +178,18 @@ ui_config = UIConfig(
             renderer=Renderer.PASSWORD,
             display=DisplayConfig(
                 title="Database Password",
+            ),
+        ),
+        "database.server_timeout.PositiveInt": FieldConfig(
+            display=DisplayConfig(
+                title="Positive Server Timeout",
+                subtitle="Set a positive value to enable the server timeout",
+            ),
+        ),
+        "database.server_timeout.NonPositiveInt": FieldConfig(
+            display=DisplayConfig(
+                title="Disabled Server Timeout",
+                subtitle="Set to a non-positive value to disable the timeout",
             ),
         ),
         "server.allowed_hosts.[]": FieldConfig(
