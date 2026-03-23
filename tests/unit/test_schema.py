@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Annotated, Any, Literal
 
 import pytest
+from pydantic import BaseModel
 
 from pydantic_ui.config import DisplayConfig, FieldConfig, Renderer, ViewDisplay
 from pydantic_ui.schema import (
@@ -149,6 +150,31 @@ class TestGetVariantName:
         """Test generic dict type name."""
         result = get_variant_name(dict[str, int])
         assert result == "dict[str, int]"
+
+    def test_annotated_type_uses_metadata_in_name(self):
+        """Annotated variants should include metadata so same-base unions stay distinguishable."""
+        from pydantic import NonPositiveInt, PositiveInt
+
+        positive_name = get_variant_name(PositiveInt)
+        non_positive_name = get_variant_name(NonPositiveInt)
+
+        assert "Annotated[int" in positive_name
+        assert "Gt(gt=0)" in positive_name
+        assert "Annotated[int" in non_positive_name
+        assert "Le(le=0)" in non_positive_name
+        assert positive_name != non_positive_name
+
+    def test_user_defined_annotated_metadata_is_supported(self):
+        """Annotated metadata does not have to come from Pydantic internals."""
+
+        class UserMarker:
+            def __repr__(self) -> str:
+                return "UserMarker(kind='custom')"
+
+        custom_annotated = Annotated[int, UserMarker()]
+        result = get_variant_name(custom_annotated)
+
+        assert result == "Annotated[int, UserMarker(kind='custom')]"
 
 
 # =============================================================================
@@ -387,6 +413,25 @@ class TestParseField:
         result = parse_field("email", FieldInfo(), str | None)
         assert result["required"] is False
 
+    def test_parse_union_field_preserves_annotated_variant_names(self):
+        """Union variants should not collapse to identical primitive names."""
+        from pydantic import NonPositiveInt, PositiveInt
+        from pydantic.fields import FieldInfo
+
+        result = parse_field("server_timeout", FieldInfo(), PositiveInt | NonPositiveInt)
+
+        assert result["type"] == "union"
+        variants = result["variants"]
+        assert len(variants) == 2
+
+        variant_names = [variant["variant_name"] for variant in variants]
+        variant_python_types = [variant["python_type"] for variant in variants]
+
+        assert variant_names[0] != variant_names[1]
+        assert variant_python_types[0] != variant_python_types[1]
+        assert "Gt(gt=0)" in variant_names[0] or "Gt(gt=0)" in variant_names[1]
+        assert "Le(le=0)" in variant_names[0] or "Le(le=0)" in variant_names[1]
+
     def test_parse_list_field(self):
         """Test parsing a List field."""
         from pydantic.fields import FieldInfo
@@ -568,6 +613,42 @@ class TestParseModel:
         assert result["fields"]["created_at"]["format"] == "date-time"
         assert "birth_date" in result["fields"]
         assert result["fields"]["birth_date"]["format"] == "date"
+
+    def test_parse_model_uses_imported_alias_names_for_union_variants(self):
+        """When a module provides alias symbols, union variant labels should use them."""
+        from pydantic import NonPositiveInt, PositiveInt
+
+        class AliasModel(BaseModel):
+            timeout: PositiveInt | NonPositiveInt = 1
+
+        result = parse_model(AliasModel)
+        variants = result["fields"]["timeout"]["variants"]
+        variant_names = {variant["variant_name"] for variant in variants}
+
+        assert variant_names == {"PositiveInt", "NonPositiveInt"}
+
+    def test_parse_model_uses_user_defined_alias_names_for_union_variants(self):
+        """User-defined Annotated aliases should also be preferred when available."""
+
+        class ModeA:
+            def __repr__(self) -> str:
+                return "ModeA()"
+
+        class ModeB:
+            def __repr__(self) -> str:
+                return "ModeB()"
+
+        EnabledTimeout = Annotated[int, ModeA()]
+        DisabledTimeout = Annotated[int, ModeB()]
+
+        class UserAliasModel(BaseModel):
+            timeout: EnabledTimeout | DisabledTimeout = 5
+
+        result = parse_model(UserAliasModel)
+        variants = result["fields"]["timeout"]["variants"]
+        variant_names = {variant["variant_name"] for variant in variants}
+
+        assert variant_names == {"EnabledTimeout", "DisabledTimeout"}
 
 
 # =============================================================================

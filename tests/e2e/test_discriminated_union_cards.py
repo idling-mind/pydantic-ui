@@ -34,15 +34,15 @@ class TestDiscriminatedUnionCards:
         """The storage backend union should render all variants as card options."""
         union_field = open_storage_backend(page, base_url)
 
-        # Current card headings use discriminator values for discriminated unions.
+        # Card headings should respect DisplayConfig card title overrides.
         expect(
-            union_field.get_by_role("heading", name=re.compile(r"^disk$", re.I)).first
+            union_field.get_by_role("heading", name=re.compile(r"^Disk Storage$", re.I)).first
         ).to_be_visible()
         expect(
-            union_field.get_by_role("heading", name=re.compile(r"^s3$", re.I)).first
+            union_field.get_by_role("heading", name=re.compile(r"^S3 Storage$", re.I)).first
         ).to_be_visible()
         expect(
-            union_field.get_by_role("heading", name=re.compile(r"^memory$", re.I)).first
+            union_field.get_by_role("heading", name=re.compile(r"^Memory Storage$", re.I)).first
         ).to_be_visible()
 
         # Card subtitle overrides from class_configs should still be visible.
@@ -61,7 +61,7 @@ class TestDiscriminatedUnionCards:
         """Switching card variants should show confirmation and persist selected variant."""
         union_field = open_storage_backend(page, base_url)
 
-        union_field.get_by_role("heading", name=re.compile(r"^s3$", re.I)).first.click()
+        union_field.get_by_role("heading", name=re.compile(r"^S3 Storage$", re.I)).first.click()
 
         confirm_dialog = page.locator('[role="alertdialog"]').filter(has_text="Change Type?").first
         expect(confirm_dialog).to_be_visible(timeout=5000)
