@@ -354,6 +354,10 @@ class UIConfig(BaseModel):
         default=5,
         description="Maximum number of validation errors to show before collapsing with 'Show more' button.",
     )
+    cookie_secure: bool = Field(
+        default=False,
+        description="Set the Secure flag on the session cookie. Enable when serving over HTTPS.",
+    )
 
     @field_validator("table_column_widths")
     @classmethod

@@ -906,7 +906,7 @@ await page.locator('[data-pydantic-ui="field"][data-pydantic-ui-field-type="sele
 | `data-pydantic-ui="table-add-row"` | Button | Add row button | |
 | `data-pydantic-ui="table-duplicate-rows"` | Button | Duplicate selected rows | |
 | `data-pydantic-ui="table-delete-rows"` | Button | Delete selected rows | |
-| `data-pydantic-ui="table-grid"` | Grid | AG Grid table element | |
+| `data-pydantic-ui="table-grid"` | Grid | RevoGrid table element | |
 
 **Example usage:**
 ```typescript

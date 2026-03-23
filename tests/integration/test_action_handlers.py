@@ -202,7 +202,7 @@ class TestActionHandlers:
             assert response.status_code == 400
             result = response.json()
             assert result["success"] is False
-            assert "Something went wrong" in result["error"]
+            assert result["error"] == "Action failed"
 
     @pytest.mark.asyncio
     async def test_unknown_action_returns_404(self):

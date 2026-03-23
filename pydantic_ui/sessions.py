@@ -1,14 +1,14 @@
 """Session management for Pydantic UI."""
 
 import asyncio
-import contextlib
 import time
 import uuid
-from collections import deque
 from collections.abc import AsyncGenerator
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Optional
+
+from pydantic_ui.events import EventQueue
 
 # Context variable to store the current session
 current_session: ContextVar[Optional["Session"]] = ContextVar("current_session", default=None)
@@ -19,7 +19,7 @@ class Session:
     """Represents a single browser session.
 
     Each session has its own:
-    - Event queue for SSE events
+    - Event queue for SSE events (delegated to :class:`EventQueue`)
     - Data state (copy of the original data)
     - Pending confirmations
     """
@@ -28,10 +28,18 @@ class Session:
     created_at: float = field(default_factory=time.time)
     last_activity: float = field(default_factory=time.time)
     data: dict[str, Any] = field(default_factory=dict)
-    events: deque = field(default_factory=lambda: deque(maxlen=100))  # type: ignore
-    subscribers: list[asyncio.Queue] = field(default_factory=list)  # type: ignore
+    _event_queue: EventQueue = field(default_factory=EventQueue)
     pending_confirmations: dict[str, asyncio.Future] = field(default_factory=dict)  # type: ignore
-    _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+    @property
+    def events(self) -> Any:
+        """Access the underlying event deque (kept for backward compatibility)."""
+        return self._event_queue.events
+
+    @property
+    def subscribers(self) -> list[asyncio.Queue]:  # type: ignore
+        """Access the underlying subscriber list (kept for backward compatibility)."""
+        return self._event_queue.subscribers
 
     async def push_event(self, event_type: str, payload: dict[str, Any] | None = None) -> None:
         """Push an event to this session's subscribers.
@@ -40,12 +48,7 @@ class Session:
             event_type: Type of event (e.g., 'toast', 'validation_errors')
             payload: Event data dictionary
         """
-        event = {"type": event_type, "payload": payload or {}, "timestamp": time.time()}
-        async with self._lock:
-            self.events.append(event)
-            for queue in self.subscribers:
-                with contextlib.suppress(asyncio.QueueFull):
-                    queue.put_nowait(event)
+        await self._event_queue.push(event_type, payload)
 
     async def subscribe(self) -> AsyncGenerator[dict[str, Any], None]:
         """Subscribe to events via SSE.
@@ -53,17 +56,8 @@ class Session:
         Yields:
             Event dictionaries as they are pushed.
         """
-        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=50)
-        async with self._lock:
-            self.subscribers.append(queue)
-        try:
-            while True:
-                event = await queue.get()
-                yield event
-        finally:
-            async with self._lock:
-                if queue in self.subscribers:
-                    self.subscribers.remove(queue)
+        async for event in self._event_queue.subscribe():
+            yield event
 
     async def get_pending_events(self, since: float = 0) -> list[dict[str, Any]]:
         """Get events since a timestamp (for polling fallback).
@@ -74,8 +68,7 @@ class Session:
         Returns:
             List of event dictionaries.
         """
-        async with self._lock:
-            return [e for e in self.events if e["timestamp"] > since]
+        return await self._event_queue.get_pending(since)
 
     def touch(self) -> None:
         """Update the last activity timestamp."""

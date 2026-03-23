@@ -2,6 +2,7 @@
 
 import datetime
 import inspect
+import logging
 import sys
 import types
 from enum import Enum
@@ -12,6 +13,8 @@ from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
 from pydantic_ui.config import DisplayConfig, FieldConfig, Renderer, ViewDisplay
+
+logger = logging.getLogger("pydantic_ui")
 
 
 def is_optional_type(annotation: Any) -> bool:
@@ -852,7 +855,7 @@ def parse_field(
             if isinstance(default_value, (datetime.datetime, datetime.date, datetime.time)):
                 default_value = default_value.isoformat()
         except Exception:
-            pass
+            logger.warning("default_factory failed for field '%s'", name, exc_info=True)
 
     result = {
         "type": get_json_type(field_type),
@@ -956,6 +959,11 @@ def model_to_data(model: type[BaseModel], instance: BaseModel | None = None) -> 
                     factory_val = field_info.default_factory()  # type: ignore
                     data[field_name] = _serialize_value(factory_val)
                 except Exception:
+                    logger.warning(
+                        "default_factory failed for field '%s' in model_to_data",
+                        field_name,
+                        exc_info=True,
+                    )
                     data[field_name] = _get_type_default(field_info.annotation)
             else:
                 data[field_name] = _get_type_default(field_info.annotation)

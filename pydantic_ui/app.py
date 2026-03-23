@@ -1,20 +1,23 @@
 """FastAPI router factory for Pydantic UI."""
 
-import asyncio
 import json
+import logging
 from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from pydantic_ui.config import UIConfig
 from pydantic_ui.controller import PydanticUIController
 from pydantic_ui.handlers import DataHandler
 from pydantic_ui.schema import model_to_data
 from pydantic_ui.sessions import Session, SessionManager, current_session
+from pydantic_ui.utils import format_validation_errors, maybe_await
+
+logger = logging.getLogger("pydantic_ui")
 
 
 def create_pydantic_ui(
@@ -108,6 +111,7 @@ def create_pydantic_ui(
             session.id,
             httponly=True,
             samesite="lax",
+            secure=ui_config.cookie_secure,
             max_age=3600 * 24 * 7,  # 1 week
         )
 
@@ -142,15 +146,13 @@ def create_pydantic_ui(
         # If data loader is defined, use it to get fresh data
         if data_loader is not None:
             try:
-                loaded = data_loader()
-                if hasattr(loaded, "__await__"):
-                    loaded = await loaded
+                loaded = await maybe_await(data_loader())
                 if isinstance(loaded, BaseModel):
                     session.data = loaded.model_dump(mode="json", warnings=False)
                 elif isinstance(loaded, dict):
                     session.data = loaded
             except Exception:
-                pass
+                logger.exception("Data loader failed for session %s", session.id)
 
         resp = JSONResponse(content={"data": session.data})
         set_session_cookie(resp, session)
@@ -165,16 +167,12 @@ def create_pydantic_ui(
 
         # Validate with the model
         try:
-            from pydantic import ValidationError
-
             instance = model.model_validate(data)
             session.data = instance.model_dump(mode="json", warnings=False)
 
             # Call saver if provided
             if data_saver is not None:
-                result = data_saver(instance)
-                if hasattr(result, "__await__"):
-                    await result  # type: ignore
+                await maybe_await(data_saver(instance))
 
             resp = JSONResponse(content={"data": session.data, "valid": True})
             set_session_cookie(resp, session)
@@ -184,14 +182,7 @@ def create_pydantic_ui(
                 content={
                     "data": data,
                     "valid": False,
-                    "errors": [
-                        {
-                            "path": ".".join(str(loc) for loc in err["loc"]),
-                            "message": err["msg"],
-                            "type": err["type"],
-                        }
-                        for err in e.errors()
-                    ],
+                    "errors": format_validation_errors(e),
                 }
             )
             set_session_cookie(resp, session)
@@ -200,8 +191,6 @@ def create_pydantic_ui(
     @router.patch("/api/data")
     async def partial_update(request: Request, _response: Response) -> JSONResponse:
         """Partially update the data for this session."""
-        from pydantic import ValidationError
-
         from pydantic_ui.utils import set_value_at_path
 
         session = await get_session_from_request(request)
@@ -217,9 +206,7 @@ def create_pydantic_ui(
             session.data = instance.model_dump(mode="json", warnings=False)
 
             if data_saver is not None:
-                result = data_saver(instance)
-                if hasattr(result, "__await__"):
-                    await result  # type: ignore
+                await maybe_await(data_saver(instance))
 
             resp = JSONResponse(content={"data": session.data, "valid": True})
             set_session_cookie(resp, session)
@@ -231,14 +218,7 @@ def create_pydantic_ui(
                 content={
                     "data": session.data,
                     "valid": False,
-                    "errors": [
-                        {
-                            "path": ".".join(str(loc) for loc in err["loc"]),
-                            "message": err["msg"],
-                            "type": err["type"],
-                        }
-                        for err in e.errors()
-                    ],
+                    "errors": format_validation_errors(e),
                 }
             )
             set_session_cookie(resp, session)
@@ -318,13 +298,12 @@ def create_pydantic_ui(
             handler_func = action_handlers.get(action_id)
             if handler_func:
                 try:
-                    result = handler_func(current_data, session_controller)
-                    if asyncio.iscoroutine(result):
-                        result = await result
+                    result = await maybe_await(handler_func(current_data, session_controller))
                     return JSONResponse(content={"success": True, "result": result})
-                except Exception as e:
+                except Exception:
+                    logger.exception("Action '%s' failed", action_id)
                     return JSONResponse(
-                        content={"success": False, "error": str(e)}, status_code=400
+                        content={"success": False, "error": "Action failed"}, status_code=400
                     )
             return JSONResponse(
                 content={"success": False, "error": f"Unknown action: {action_id}"}, status_code=404
@@ -372,6 +351,11 @@ def create_pydantic_ui(
         async def serve_asset(file_path: str) -> FileResponse:
             """Serve static assets."""
             asset_file = assets_dir / file_path
+            # Guard against path traversal: resolved path must stay under assets_dir
+            try:
+                asset_file.resolve().relative_to(assets_dir.resolve())
+            except ValueError:
+                raise HTTPException(status_code=404, detail="Asset not found") from None
             if asset_file.exists() and asset_file.is_file():
                 # Determine media type
                 media_type = None

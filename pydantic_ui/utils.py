@@ -1,6 +1,47 @@
 """Utility functions for Pydantic UI."""
 
+import inspect
+import logging
 from typing import Any
+
+from pydantic import ValidationError
+
+logger = logging.getLogger("pydantic_ui")
+
+
+def format_validation_errors(exc: ValidationError) -> list[dict[str, str]]:
+    """Format a Pydantic ValidationError into a list of error dicts for API responses.
+
+    Args:
+        exc: The Pydantic ValidationError
+
+    Returns:
+        List of dicts with 'path', 'message', and 'type' keys.
+    """
+    return [
+        {
+            "path": ".".join(str(loc) for loc in err["loc"]),
+            "message": err["msg"],
+            "type": err["type"],
+        }
+        for err in exc.errors()
+    ]
+
+
+async def maybe_await(result: Any) -> Any:
+    """Await a result if it is a coroutine, otherwise return it directly.
+
+    Uses ``inspect.isawaitable`` for reliable detection.
+
+    Args:
+        result: The value or awaitable to resolve.
+
+    Returns:
+        The resolved value.
+    """
+    if inspect.isawaitable(result):
+        return await result
+    return result
 
 
 def get_value_at_path(data: dict[str, Any], path: str) -> Any:
