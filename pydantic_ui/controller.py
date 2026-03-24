@@ -1,12 +1,16 @@
 """Controller class providing convenience methods for UI interaction."""
 
 import asyncio
+import logging
 import uuid
+import warnings
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from pydantic_ui.sessions import Session, SessionManager, current_session
+
+logger = logging.getLogger("pydantic_ui")
 
 if TYPE_CHECKING:
     from pydantic_ui.handlers import DataHandler
@@ -193,13 +197,19 @@ class PydanticUIController:
     def resolve_confirmation(self, confirmation_id: str, confirmed: bool) -> None:
         """Resolve a pending confirmation (called by API endpoint).
 
-        Note: This method is deprecated when using sessions.
-        Use the session's pending_confirmations directly instead.
+        .. deprecated::
+            Use the session's ``pending_confirmations`` directly instead.
 
         Args:
             confirmation_id: The ID of the confirmation request
             confirmed: Whether the user confirmed or cancelled
         """
+        warnings.warn(
+            "resolve_confirmation is deprecated. "
+            "Use session.pending_confirmations directly instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self._current_session:
             future = self._current_session.pending_confirmations.get(confirmation_id)
             if future and not future.done():
@@ -230,7 +240,10 @@ class PydanticUIController:
         if data:
             try:
                 return self._model.model_validate(data)
+            except ValidationError:
+                return None
             except Exception:
+                logger.exception("Unexpected error validating model instance")
                 return None
         return None
 

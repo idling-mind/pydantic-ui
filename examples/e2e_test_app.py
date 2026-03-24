@@ -14,7 +14,7 @@ from typing import Annotated, Literal
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, NonPositiveInt, PositiveInt
+from pydantic import BaseModel, Field, NegativeInt, PositiveInt
 
 sys.path.insert(0, str(__file__).replace("\\", "/").rsplit("/", 3)[0])
 
@@ -106,6 +106,32 @@ class MemoryStorage(BaseModel):
     )
 
 
+class AggressiveBudget:
+    """Marker metadata for aggressive retry budget alias labels."""
+
+    def __repr__(self) -> str:
+        return "AggressiveBudget()"
+
+
+class ConservativeBudget:
+    """Marker metadata for conservative retry budget alias labels."""
+
+    def __repr__(self) -> str:
+        return "ConservativeBudget()"
+
+
+AggressiveRetryBudget = Annotated[
+    int,
+    AggressiveBudget(),
+    Field(gt=0, le=3, description="Aggressive retry budget range"),
+]
+ConservativeRetryBudget = Annotated[
+    int,
+    ConservativeBudget(),
+    Field(gt=3, le=10, description="Conservative retry budget range"),
+]
+
+
 class ServiceContact(BaseModel):
     """Nested contact details for deep table rows."""
 
@@ -182,9 +208,21 @@ class Settings(BaseModel):
         FieldConfig(renderer=Renderer.SLIDER, props={"min": 1, "max": 1000, "step": 10}),
     ]
     timeout: float = Field(default=30.0, ge=0.1, le=300.0, description="Timeout in seconds")
-    server_timeout: PositiveInt | NonPositiveInt = Field(
+    server_timeout: PositiveInt | NegativeInt = Field(
         default=30,
-        description="Server timeout in seconds; set <= 0 to disable timeout",
+        description="Server timeout in seconds; set < 0 to disable timeout",
+    )
+    request_rate_limit: Annotated[
+        int,
+        Field(ge=1, le=5000, default=1200, description="Maximum requests per minute"),
+        FieldConfig(
+            renderer=Renderer.SLIDER,
+            props={"min": 1, "max": 5000, "step": 50},
+        ),
+    ]
+    retry_budget: AggressiveRetryBudget | ConservativeRetryBudget = Field(
+        default=4,
+        description="Alias-backed annotated union for retry budget profile",
     )
 
     # Boolean fields
@@ -278,6 +316,10 @@ class Settings(BaseModel):
         ],
         description="Deeply nested rows used to exercise table view flattening",
     )
+    maintenance_start_hours: list[Annotated[int, Field(ge=0, le=23)]] = Field(
+        default_factory=lambda: [1, 13, 22],
+        description="Maintenance start hours in 24-hour format (0-23)",
+    )
 
     # Optional fields
     optional_owner: Person | None = Field(
@@ -364,6 +406,32 @@ ui_config = UIConfig(
                 title="Server Timeout Policy",
                 subtitle="Choose positive timeout or disabled timeout mode",
                 help_text="This title verifies DisplayConfig overrides for union fields",
+            )
+        ),
+        "server_timeout.PositiveInt": FieldConfig(
+            display=DisplayConfig(
+                title="Server Timeout (Enabled)",
+            )
+        ),
+        "request_rate_limit": FieldConfig(
+            display=DisplayConfig(
+                title="Request Rate Limit",
+                subtitle="Requests allowed per minute",
+                help_text="Annotated integer with Field constraints and slider renderer",
+            )
+        ),
+        "retry_budget": FieldConfig(
+            display=DisplayConfig(
+                title="Retry Budget Profile",
+                subtitle="Alias-backed annotated union labels",
+                help_text="Switch between aggressive and conservative retry budgets",
+            )
+        ),
+        "maintenance_start_hours": FieldConfig(
+            display=DisplayConfig(
+                title="Maintenance Start Hours",
+                subtitle="Hours in 24-hour format",
+                help_text="Annotated list item constraints (0-23)",
             )
         ),
         "owner": FieldConfig(

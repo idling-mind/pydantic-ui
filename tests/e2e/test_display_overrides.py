@@ -39,3 +39,22 @@ class TestDisplayOverrides:
         expect(detail_title).to_contain_text("Main Panel Labels")
         expect(detail_subtitle).to_be_visible(timeout=5000)
         expect(detail_subtitle).to_contain_text("Shown in detail panel header")
+
+    def test_annotated_scalar_field_uses_configured_display_labels(self, page: Page, base_url: str):
+        """Annotated scalar field should render configured label/subtitle in the root editor."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        page.locator('[data-tree-path=""]').first.click()
+
+        request_rate_limit_field = page.locator(
+            '[data-pydantic-ui="detail-panel"] '
+            '[data-pydantic-ui="field"][data-pydantic-ui-path="request_rate_limit"]'
+        ).first
+        expect(request_rate_limit_field).to_be_visible(timeout=5000)
+
+        field_label = request_rate_limit_field.locator(SELECTORS["field_label"]).first
+        field_subtitle = request_rate_limit_field.locator(SELECTORS["field_subtitle"]).first
+
+        expect(field_label).to_contain_text("Request Rate Limit")
+        expect(field_subtitle).to_contain_text("Requests allowed per minute")

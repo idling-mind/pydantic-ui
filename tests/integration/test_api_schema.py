@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 import pytest
-from httpx import AsyncClient
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+from pydantic import BaseModel, Field
+
+from pydantic_ui import FieldConfig, Renderer, create_pydantic_ui
 
 
 class TestGetSchema:
@@ -94,6 +100,65 @@ class TestSchemaWithConstraints:
         # SimpleModel.value has default=0
         value_field = schema["fields"]["value"]
         assert value_field.get("default") == 0
+
+    @pytest.mark.asyncio
+    async def test_schema_includes_annotated_scalar_constraints_and_ui_config(self):
+        """Annotated Field constraints and FieldConfig metadata should both be serialized."""
+
+        class AnnotatedSchemaModel(BaseModel):
+            request_rate_limit: Annotated[
+                int,
+                Field(ge=1, le=5000, default=1200),
+                FieldConfig(
+                    renderer=Renderer.SLIDER,
+                    props={"min": 1, "max": 5000, "step": 50},
+                ),
+            ]
+
+        app = FastAPI()
+        app.include_router(create_pydantic_ui(AnnotatedSchemaModel, prefix="/editor"))
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/editor/api/schema")
+
+        assert response.status_code == 200
+        schema = response.json()
+        field = schema["fields"]["request_rate_limit"]
+
+        constraints = field.get("constraints", {})
+        assert constraints.get("minimum") == 1 or field.get("minimum") == 1
+        assert constraints.get("maximum") == 5000 or field.get("maximum") == 5000
+
+        ui_config = field["ui_config"]
+        assert ui_config["renderer"] == Renderer.SLIDER.value
+        assert ui_config["props"]["step"] == 50
+
+    @pytest.mark.asyncio
+    async def test_schema_includes_annotated_list_item_constraints(self):
+        """Annotated list item constraints should be emitted in array item schema."""
+
+        class AnnotatedListModel(BaseModel):
+            maintenance_start_hours: list[Annotated[int, Field(ge=0, le=23)]] = Field(
+                default_factory=lambda: [1, 13, 22]
+            )
+
+        app = FastAPI()
+        app.include_router(create_pydantic_ui(AnnotatedListModel, prefix="/editor"))
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/editor/api/schema")
+
+        assert response.status_code == 200
+        schema = response.json()
+        field = schema["fields"]["maintenance_start_hours"]
+
+        assert field["type"] == "array"
+        assert field["items"]["type"] == "integer"
+        constraints = field["items"].get("constraints", {})
+        assert constraints.get("minimum") == 0 or field["items"].get("minimum") == 0
+        assert constraints.get("maximum") == 23 or field["items"].get("maximum") == 23
 
 
 class TestSchemaWithNestedModels:

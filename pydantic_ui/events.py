@@ -49,7 +49,6 @@ class EventQueue:
                 # Skip if queue is full (subscriber is slow)
                 with contextlib.suppress(asyncio.QueueFull):
                     queue.put_nowait(event)
-                    pass
 
     async def subscribe(self) -> AsyncGenerator[dict[str, Any], None]:
         """Subscribe to events via SSE.

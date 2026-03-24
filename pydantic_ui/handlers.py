@@ -1,5 +1,6 @@
 """API route handlers for Pydantic UI."""
 
+import logging
 from collections.abc import Callable
 from typing import Any
 
@@ -15,7 +16,9 @@ from pydantic_ui.models import (
     ValidationError as ValidationErrorModel,
 )
 from pydantic_ui.schema import model_to_data, parse_model
-from pydantic_ui.utils import set_value_at_path
+from pydantic_ui.utils import format_validation_errors, maybe_await, set_value_at_path
+
+logger = logging.getLogger("pydantic_ui")
 
 
 class DataHandler:
@@ -194,16 +197,13 @@ class DataHandler:
         """Get the current data."""
         if self.data_loader is not None:
             try:
-                loaded = self.data_loader()
-                # Handle async loaders
-                if hasattr(loaded, "__await__"):
-                    loaded = await loaded
+                loaded = await maybe_await(self.data_loader())
                 if isinstance(loaded, BaseModel):
                     self._data = loaded.model_dump(mode="json", warnings=False)
                 elif isinstance(loaded, dict):
                     self._data = loaded
             except Exception:
-                pass
+                logger.exception("Data loader failed")
 
         return {"data": self._data}
 
@@ -216,23 +216,14 @@ class DataHandler:
 
             # Call saver if provided
             if self.data_saver is not None:
-                result = self.data_saver(instance)
-                if hasattr(result, "__await__"):
-                    await result  # type: ignore
+                await maybe_await(self.data_saver(instance))
 
             return {"data": self._data, "valid": True}
         except ValidationError as e:
             return {
                 "data": data,
                 "valid": False,
-                "errors": [
-                    {
-                        "path": ".".join(str(loc) for loc in err["loc"]),
-                        "message": err["msg"],
-                        "type": err["type"],
-                    }
-                    for err in e.errors()
-                ],
+                "errors": format_validation_errors(e),
             }
 
     async def partial_update(self, path: str, value: Any) -> dict[str, Any]:
@@ -245,9 +236,7 @@ class DataHandler:
             self._data = instance.model_dump(mode="json", warnings=False)
 
             if self.data_saver is not None:
-                result = self.data_saver(instance)
-                if hasattr(result, "__await__"):
-                    await result  # type: ignore
+                await maybe_await(self.data_saver(instance))
 
             return {"data": self._data, "valid": True}
         except ValidationError as e:
@@ -256,14 +245,7 @@ class DataHandler:
             return {
                 "data": self._data,
                 "valid": False,
-                "errors": [
-                    {
-                        "path": ".".join(str(loc) for loc in err["loc"]),
-                        "message": err["msg"],
-                        "type": err["type"],
-                    }
-                    for err in e.errors()
-                ],
+                "errors": format_validation_errors(e),
             }
 
     async def validate_data(self, data: dict[str, Any]) -> ValidationResponse:

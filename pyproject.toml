@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pydantic-ui"
-version = "0.5.2"
+version = "0.5.3"
 description = "Dynamic UI for editing deeply nested Pydantic models"
 readme = "README.md"
 license = "MIT"
@@ -28,9 +28,9 @@ classifiers = [
 ]
 keywords = ["pydantic", "fastapi", "ui", "form", "editor", "react"]
 dependencies = [
-    "fastapi>=0.100.0",
-    "pydantic>=2.0.0",
-    "uvicorn>=0.23.0",
+    "fastapi>=0.100.0,<1.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "uvicorn>=0.23.0,<1.0.0",
 ]
 
 [project.optional-dependencies]
