@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Annotated, Any, Literal
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from pydantic_ui.config import DisplayConfig, FieldConfig, Renderer, ViewDisplay
 from pydantic_ui.schema import (
@@ -153,16 +153,16 @@ class TestGetVariantName:
 
     def test_annotated_type_uses_metadata_in_name(self):
         """Annotated variants should include metadata so same-base unions stay distinguishable."""
-        from pydantic import NonPositiveInt, PositiveInt
+        from pydantic import NegativeInt, PositiveInt
 
         positive_name = get_variant_name(PositiveInt)
-        non_positive_name = get_variant_name(NonPositiveInt)
+        negative_name = get_variant_name(NegativeInt)
 
         assert "Annotated[int" in positive_name
         assert "Gt(gt=0)" in positive_name
-        assert "Annotated[int" in non_positive_name
-        assert "Le(le=0)" in non_positive_name
-        assert positive_name != non_positive_name
+        assert "Annotated[int" in negative_name
+        assert "Lt(lt=0)" in negative_name
+        assert positive_name != negative_name
 
     def test_user_defined_annotated_metadata_is_supported(self):
         """Annotated metadata does not have to come from Pydantic internals."""
@@ -415,10 +415,10 @@ class TestParseField:
 
     def test_parse_union_field_preserves_annotated_variant_names(self):
         """Union variants should not collapse to identical primitive names."""
-        from pydantic import NonPositiveInt, PositiveInt
+        from pydantic import NegativeInt, PositiveInt
         from pydantic.fields import FieldInfo
 
-        result = parse_field("server_timeout", FieldInfo(), PositiveInt | NonPositiveInt)
+        result = parse_field("server_timeout", FieldInfo(), PositiveInt | NegativeInt)
 
         assert result["type"] == "union"
         variants = result["variants"]
@@ -430,7 +430,7 @@ class TestParseField:
         assert variant_names[0] != variant_names[1]
         assert variant_python_types[0] != variant_python_types[1]
         assert "Gt(gt=0)" in variant_names[0] or "Gt(gt=0)" in variant_names[1]
-        assert "Le(le=0)" in variant_names[0] or "Le(le=0)" in variant_names[1]
+        assert "Lt(lt=0)" in variant_names[0] or "Lt(lt=0)" in variant_names[1]
 
     def test_parse_list_field(self):
         """Test parsing a List field."""
@@ -439,6 +439,42 @@ class TestParseField:
         result = parse_field("tags", FieldInfo(), list[str])
         assert result["type"] == "array"
         assert result["items"]["type"] == "string"
+
+    def test_parse_list_field_preserves_annotated_item_constraints(self):
+        """Annotated constraints on list item types should be reflected in item schema."""
+        from pydantic.fields import FieldInfo
+
+        annotated_hour = Annotated[int, Field(ge=0, le=23)]
+        result = parse_field("maintenance_start_hours", FieldInfo(), list[annotated_hour])
+
+        assert result["type"] == "array"
+        assert result["items"]["type"] == "integer"
+        item_constraints = result["items"].get("constraints", {})
+        assert item_constraints.get("minimum") == 0 or result["items"].get("minimum") == 0
+        assert item_constraints.get("maximum") == 23 or result["items"].get("maximum") == 23
+
+    def test_parse_annotated_field_with_constraints_and_ui_config(self):
+        """Annotated Field constraints and FieldConfig metadata should both be preserved."""
+        from pydantic.fields import FieldInfo
+
+        annotated_rate_limit = Annotated[
+            int,
+            Field(ge=1, le=5000),
+            FieldConfig(
+                renderer=Renderer.SLIDER,
+                props={"min": 1, "max": 5000, "step": 50},
+            ),
+        ]
+
+        result = parse_field("request_rate_limit", FieldInfo(), annotated_rate_limit)
+
+        assert result["type"] == "integer"
+        constraints = result.get("constraints", {})
+        assert constraints.get("minimum") == 1 or result.get("minimum") == 1
+        assert constraints.get("maximum") == 5000 or result.get("maximum") == 5000
+        renderer = result["ui_config"]["renderer"]
+        assert renderer == Renderer.SLIDER or renderer == Renderer.SLIDER.value
+        assert result["ui_config"]["props"]["step"] == 50
 
     def test_parse_list_field_with_pinned_columns(self):
         """Table view pinned columns can be configured per-array field via display.table."""
@@ -616,16 +652,16 @@ class TestParseModel:
 
     def test_parse_model_uses_imported_alias_names_for_union_variants(self):
         """When a module provides alias symbols, union variant labels should use them."""
-        from pydantic import NonPositiveInt, PositiveInt
+        from pydantic import NegativeInt, PositiveInt
 
         class AliasModel(BaseModel):
-            timeout: PositiveInt | NonPositiveInt = 1
+            timeout: PositiveInt | NegativeInt = 1
 
         result = parse_model(AliasModel)
         variants = result["fields"]["timeout"]["variants"]
         variant_names = {variant["variant_name"] for variant in variants}
 
-        assert variant_names == {"PositiveInt", "NonPositiveInt"}
+        assert variant_names == {"PositiveInt", "NegativeInt"}
 
     def test_parse_model_uses_user_defined_alias_names_for_union_variants(self):
         """User-defined Annotated aliases should also be preferred when available."""
@@ -649,6 +685,54 @@ class TestParseModel:
         variant_names = {variant["variant_name"] for variant in variants}
 
         assert variant_names == {"EnabledTimeout", "DisabledTimeout"}
+
+    def test_parse_model_uses_alias_names_for_constrained_annotated_union(self):
+        """Constrained Annotated aliases should retain friendly alias labels in union schema."""
+
+        class AggressiveBudget:
+            def __repr__(self) -> str:
+                return "AggressiveBudget()"
+
+        class ConservativeBudget:
+            def __repr__(self) -> str:
+                return "ConservativeBudget()"
+
+        AggressiveRetryBudget = Annotated[
+            int,
+            AggressiveBudget(),
+            Field(gt=0, le=3),
+        ]
+        ConservativeRetryBudget = Annotated[
+            int,
+            ConservativeBudget(),
+            Field(gt=3, le=10),
+        ]
+
+        class RetryBudgetModel(BaseModel):
+            retry_budget: AggressiveRetryBudget | ConservativeRetryBudget = 4
+
+        result = parse_model(RetryBudgetModel)
+        variants = result["fields"]["retry_budget"]["variants"]
+        variant_names = {variant["variant_name"] for variant in variants}
+
+        assert variant_names == {"AggressiveRetryBudget", "ConservativeRetryBudget"}
+
+    def test_parse_model_preserves_annotated_list_item_constraints(self):
+        """Annotated list item constraints should be visible in parsed model schema."""
+
+        class MaintenanceModel(BaseModel):
+            maintenance_start_hours: list[Annotated[int, Field(ge=0, le=23)]] = Field(
+                default_factory=list
+            )
+
+        result = parse_model(MaintenanceModel)
+        field_schema = result["fields"]["maintenance_start_hours"]
+
+        assert field_schema["type"] == "array"
+        assert field_schema["items"]["type"] == "integer"
+        item_constraints = field_schema["items"].get("constraints", {})
+        assert item_constraints.get("minimum") == 0 or field_schema["items"].get("minimum") == 0
+        assert item_constraints.get("maximum") == 23 or field_schema["items"].get("maximum") == 23
 
 
 # =============================================================================

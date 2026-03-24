@@ -659,6 +659,60 @@ def get_constraints(field_info: FieldInfo, field_type: type) -> dict[str, Any]:
     return constraints
 
 
+def _apply_annotated_metadata(target_field_info: FieldInfo, metadata: list[Any]) -> None:
+    """Apply Annotated metadata to a FieldInfo while flattening nested FieldInfo entries."""
+    for meta in metadata:
+        if isinstance(meta, FieldInfo):
+            if meta.title is not None and target_field_info.title is None:
+                target_field_info.title = meta.title
+            if meta.description is not None and target_field_info.description is None:
+                target_field_info.description = meta.description
+            if (
+                target_field_info.default is PydanticUndefined
+                and meta.default is not PydanticUndefined
+            ):
+                target_field_info.default = meta.default
+            if target_field_info.default_factory is None and meta.default_factory is not None:
+                target_field_info.default_factory = meta.default_factory
+
+            discriminator = getattr(meta, "discriminator", None)
+            if discriminator is not None:
+                target_field_info.discriminator = discriminator
+
+            nested_metadata = list(meta.metadata) if meta.metadata else []
+            if nested_metadata:
+                _apply_annotated_metadata(target_field_info, nested_metadata)
+            continue
+
+        target_field_info.metadata.append(meta)
+
+
+def _merge_field_info_with_annotated_metadata(
+    field_info: FieldInfo,
+    annotated_metadata: tuple[Any, ...],
+) -> FieldInfo:
+    """Merge metadata from Annotated[...] into a FieldInfo instance."""
+    merged_field_info = FieldInfo(
+        default=field_info.default,
+        default_factory=field_info.default_factory,
+        title=field_info.title,
+        description=field_info.description,
+    )
+    merged_field_info.annotation = field_info.annotation
+    merged_field_info.metadata = []
+
+    if field_info.metadata:
+        _apply_annotated_metadata(merged_field_info, list(field_info.metadata))
+
+    _apply_annotated_metadata(merged_field_info, list(annotated_metadata))
+
+    discriminator = getattr(field_info, "discriminator", None)
+    if discriminator is not None:
+        merged_field_info.discriminator = discriminator
+
+    return merged_field_info
+
+
 def parse_field(
     name: str,
     field_info: FieldInfo,
@@ -678,9 +732,10 @@ def parse_field(
     # Handle Annotated types - unwrap to get the actual type
     if origin is Annotated:
         actual_type = args[0]
+        merged_field_info = _merge_field_info_with_annotated_metadata(field_info, args[1:])
         return parse_field(
             name,
-            field_info,
+            merged_field_info,
             actual_type,
             max_depth,
             current_depth,

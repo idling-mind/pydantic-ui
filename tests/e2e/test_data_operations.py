@@ -14,15 +14,19 @@ Run these tests with:
 Requires the e2e_test_app.py example to be running at http://localhost:8000
 """
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
 from .helpers import (
     SELECTORS,
     expand_all_tree_nodes,
+    get_data_from_api,
     has_unsaved_changes,
     is_reset_button_enabled,
     is_save_button_enabled,
+    save_data,
     wait_for_app_load,
     wait_for_tree_loaded,
 )
@@ -417,3 +421,41 @@ class TestDetailPanelUpdates:
 
             # Titles should be different (or at least the UI should update)
             expect(page.locator(SELECTORS["detail_panel"])).to_be_visible()
+
+
+class TestAnnotatedFieldPersistence:
+    """Tests for persistence behavior of newly added Annotated fields."""
+
+    def test_alias_backed_retry_budget_branch_and_value_persist(self, page: Page, base_url: str):
+        """Switching retry budget branch and editing value should persist after save."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        page.locator('[data-tree-path=""]').first.click()
+        page.wait_for_timeout(300)
+
+        retry_union = page.locator(
+            '[data-pydantic-ui="detail-panel"] '
+            '[data-pydantic-ui-field-type="union"][data-pydantic-ui-path="retry_budget"]'
+        ).first
+        expect(retry_union).to_be_visible(timeout=5000)
+
+        retry_union.get_by_role(
+            "heading", name=re.compile(r"^AggressiveRetryBudget$", re.I)
+        ).first.click()
+        page.wait_for_timeout(200)
+
+        confirm_dialog = page.locator('[role="alertdialog"]').filter(has_text="Change Type?").first
+        if confirm_dialog.is_visible():
+            confirm_dialog.get_by_role("button", name="Change Type").click()
+
+        value_input = retry_union.locator('input[type="number"]').first
+        expect(value_input).to_be_visible(timeout=5000)
+        value_input.fill("2")
+
+        save_response = save_data(page)
+        assert save_response is not None, "Expected save response after retry budget update"
+        assert save_response.status == 200
+
+        api_data = get_data_from_api(page, base_url)
+        assert api_data["data"]["retry_budget"] == 2
