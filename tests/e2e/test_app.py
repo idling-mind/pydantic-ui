@@ -229,7 +229,7 @@ class TestFieldEditing:
         wait_for_app_load(page)
 
         # Find a number input field
-        number_input = page.locator('input[type="number"]').first
+        number_input = page.locator('[data-pydantic-ui-field-type="number"]').locator(SELECTORS["field_control"]).first
         number_input.wait_for(state="visible", timeout=5000)
 
         number_input.click()

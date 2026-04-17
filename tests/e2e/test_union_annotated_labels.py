@@ -60,7 +60,16 @@ class TestAnnotatedUnionLabels:
         expect(confirm_dialog).to_be_visible(timeout=5000)
         confirm_dialog.get_by_role("button", name="Change Type").click()
 
-        number_input = union_field.locator('input[type="number"]').first
+        number_input = union_field.locator(
+            'input[data-pydantic-ui="field-control"], '
+            'textarea[data-pydantic-ui="field-control"], '
+            'select[data-pydantic-ui="field-control"], '
+            '[data-pydantic-ui="field-control"][contenteditable="true"], '
+            '[data-pydantic-ui="field-control"] input, '
+            '[data-pydantic-ui="field-control"] textarea, '
+            '[data-pydantic-ui="field-control"] select, '
+            '[data-pydantic-ui="field-control"] [contenteditable="true"]'
+        ).first
         expect(number_input).to_be_visible(timeout=5000)
         number_input.fill("-7")
 
@@ -90,7 +99,16 @@ class TestAnnotatedUnionLabels:
         expect(confirm_dialog).to_be_visible(timeout=5000)
         confirm_dialog.get_by_role("button", name="Change Type").click()
 
-        negative_input = union_field.locator('input[type="number"]').first
+        negative_input = union_field.locator(
+            'input[data-pydantic-ui="field-control"], '
+            'textarea[data-pydantic-ui="field-control"], '
+            'select[data-pydantic-ui="field-control"], '
+            '[data-pydantic-ui="field-control"][contenteditable="true"], '
+            '[data-pydantic-ui="field-control"] input, '
+            '[data-pydantic-ui="field-control"] textarea, '
+            '[data-pydantic-ui="field-control"] select, '
+            '[data-pydantic-ui="field-control"] [contenteditable="true"]'
+        ).first
         expect(negative_input).to_be_visible(timeout=5000)
         negative_input.fill("-3")
 
@@ -101,7 +119,16 @@ class TestAnnotatedUnionLabels:
         expect(confirm_dialog).to_be_visible(timeout=5000)
         confirm_dialog.get_by_role("button", name="Change Type").click()
 
-        positive_input = union_field.locator('input[type="number"]').first
+        positive_input = union_field.locator(
+            'input[data-pydantic-ui="field-control"], '
+            'textarea[data-pydantic-ui="field-control"], '
+            'select[data-pydantic-ui="field-control"], '
+            '[data-pydantic-ui="field-control"][contenteditable="true"], '
+            '[data-pydantic-ui="field-control"] input, '
+            '[data-pydantic-ui="field-control"] textarea, '
+            '[data-pydantic-ui="field-control"] select, '
+            '[data-pydantic-ui="field-control"] [contenteditable="true"]'
+        ).first
         expect(positive_input).to_be_visible(timeout=5000)
         positive_input.fill("45")
 
