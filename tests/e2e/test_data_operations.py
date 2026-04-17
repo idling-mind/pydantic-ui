@@ -235,7 +235,7 @@ class TestDataValidation:
         page.goto(f"{base_url}/config")
         wait_for_app_load(page)
 
-        number_input = page.locator('input[type="number"]').first
+        number_input = page.locator('[data-pydantic-ui-field-type="number"]').locator(SELECTORS["field_control"]).first
         number_input.wait_for(state="visible", timeout=5000)
 
         min_val = number_input.get_attribute("min")
@@ -449,7 +449,16 @@ class TestAnnotatedFieldPersistence:
         if confirm_dialog.is_visible():
             confirm_dialog.get_by_role("button", name="Change Type").click()
 
-        value_input = retry_union.locator('input[type="number"]').first
+        value_input = retry_union.locator(
+            'input[data-pydantic-ui="field-control"], '
+            'textarea[data-pydantic-ui="field-control"], '
+            'select[data-pydantic-ui="field-control"], '
+            '[data-pydantic-ui="field-control"][contenteditable="true"], '
+            '[data-pydantic-ui="field-control"] input, '
+            '[data-pydantic-ui="field-control"] textarea, '
+            '[data-pydantic-ui="field-control"] select, '
+            '[data-pydantic-ui="field-control"] [contenteditable="true"]'
+        ).first
         expect(value_input).to_be_visible(timeout=5000)
         value_input.fill("2")
 

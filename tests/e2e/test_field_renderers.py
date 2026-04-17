@@ -88,7 +88,7 @@ class TestNumberInputRenderers:
         page.goto(f"{base_url}/config")
         wait_for_app_load(page)
 
-        number_input = page.locator('input[type="number"]').first
+        number_input = page.locator(get_field_by_type("number")).locator(SELECTORS["field_control"]).first
         number_input.wait_for(state="visible", timeout=5000)
 
         number_input.click()
@@ -122,7 +122,7 @@ class TestNumberInputRenderers:
         page.goto(f"{base_url}/config")
         wait_for_app_load(page)
 
-        number_input = page.locator('input[type="number"]').first
+        number_input = page.locator(get_field_by_type("number")).locator(SELECTORS["field_control"]).first
         number_input.wait_for(state="visible", timeout=5000)
 
         # Test decimal input
@@ -130,6 +130,40 @@ class TestNumberInputRenderers:
         value = number_input.input_value()
         # Value should be set (may be rounded based on step)
         assert value is not None and len(value) > 0
+
+    def test_preserves_trailing_zero_while_typing_decimal(self, page: Page, base_url: str):
+        """Regression test: typing 0.01 should not collapse 0.0 to 0 while editing."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        timeout_field = page.locator(get_field_by_path("timeout")).locator(SELECTORS["field_control"])
+        timeout_field.wait_for(state="visible", timeout=5000)
+
+        timeout_field.click()
+        timeout_field.press("Control+a")
+        timeout_field.press("Backspace")
+
+        page.keyboard.type("0.0")
+        expect(timeout_field).to_have_value("0.0")
+
+        page.keyboard.type("1")
+        expect(timeout_field).to_have_value("0.01")
+
+    def test_shows_inline_validation_for_invalid_numeric_text(self, page: Page, base_url: str):
+        """Numeric inputs should allow free typing and show inline validation feedback."""
+        page.goto(f"{base_url}/config")
+        wait_for_app_load(page)
+
+        timeout_field = page.locator(get_field_by_path("timeout")).locator(SELECTORS["field_control"])
+        timeout_field.wait_for(state="visible", timeout=5000)
+
+        timeout_field.click()
+        timeout_field.press("Control+a")
+        timeout_field.press("Backspace")
+        page.keyboard.type("abc")
+
+        expect(timeout_field).to_have_value("abc")
+        expect(page.get_by_text("Enter a valid number.").first).to_be_visible(timeout=5000)
 
 
 class TestBooleanInputRenderers:

@@ -9,26 +9,94 @@ import type { RendererProps } from './types';
 
 export function NumberInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
   const hasError = errors && errors.length > 0;
-  const props = schema.ui_config?.props || {};
   const label = getFieldLabel(schema, name);
   const helpText = getFieldHelpText(schema);
   const subtitle = getFieldSubtitle(schema);
-  const step = props.step as number | undefined;
   const min = schema.minimum ?? schema.exclusive_minimum;
   const max = schema.maximum ?? schema.exclusive_maximum;
   const isReadOnly = disabled || schema.ui_config?.read_only === true;
   
   // Use default value from schema if value is undefined/null
-  const effectiveValue = getValueWithDefault<number | null>(value, schema, null);
+  const effectiveValue = getValueWithDefault<number | null>(value, schema, null) as number | null;
+
+  const formatValue = React.useCallback(
+    (nextValue: number | null | undefined): string =>
+      nextValue !== null && nextValue !== undefined ? String(nextValue) : '',
+    [],
+  );
+
+  // Keep a text draft while typing so values like "0.0" are not collapsed to "0" mid-edit.
+  const [inputValue, setInputValue] = React.useState<string>(() => formatValue(effectiveValue));
+  const lastSyncedValueRef = React.useRef<string>(formatValue(effectiveValue));
+
+  React.useEffect(() => {
+    const nextFormattedValue = formatValue(effectiveValue);
+    if (nextFormattedValue !== lastSyncedValueRef.current) {
+      setInputValue(nextFormattedValue);
+      lastSyncedValueRef.current = nextFormattedValue;
+    }
+  }, [effectiveValue, formatValue]);
+
+  const validationMessage = React.useMemo(() => {
+    if (inputValue.trim() === '') {
+      return null;
+    }
+
+    if (schema.type === 'integer') {
+      if (!/^-?\d+$/.test(inputValue.trim())) {
+        return 'Enter a whole number.';
+      }
+
+      const parsedInt = Number.parseInt(inputValue, 10);
+      if (!Number.isFinite(parsedInt)) {
+        return 'Enter a valid number.';
+      }
+      if (min !== undefined && parsedInt < min) {
+        return `Must be >= ${min}.`;
+      }
+      if (max !== undefined && parsedInt > max) {
+        return `Must be <= ${max}.`;
+      }
+      return null;
+    }
+
+    const parsedFloat = Number(inputValue);
+    if (!Number.isFinite(parsedFloat)) {
+      return 'Enter a valid number.';
+    }
+    if (min !== undefined && parsedFloat < min) {
+      return `Must be >= ${min}.`;
+    }
+    if (max !== undefined && parsedFloat > max) {
+      return `Must be <= ${max}.`;
+    }
+
+    return null;
+  }, [inputValue, max, min, schema.type]);
+
+  const hasInlineValidationError = validationMessage !== null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
+    setInputValue(val);
+
     if (val === '') {
       onChange(null);
     } else {
-      const num = schema.type === 'integer' ? parseInt(val, 10) : parseFloat(val);
-      if (!isNaN(num)) {
-        onChange(num);
+      if (schema.type === 'integer') {
+        if (!/^-?\d+$/.test(val.trim())) {
+          return;
+        }
+        const intVal = Number.parseInt(val, 10);
+        if (!Number.isNaN(intVal)) {
+          onChange(intVal);
+        }
+        return;
+      }
+
+      const floatVal = Number(val);
+      if (!Number.isNaN(floatVal) && Number.isFinite(floatVal)) {
+        onChange(floatVal);
       }
     }
   };
@@ -50,17 +118,20 @@ export function NumberInput({ name, path, schema, value, errors, disabled, onCha
       <div className="flex items-center gap-1">
         <Input
           id={path}
-          type="number"
-          value={effectiveValue !== null && effectiveValue !== undefined ? String(effectiveValue) : ''}
+          type="text"
+          inputMode={schema.type === 'integer' ? 'numeric' : 'decimal'}
+          value={inputValue}
           onChange={handleChange}
           placeholder={`Enter ${label.toLowerCase()}`}
           disabled={isReadOnly}
           readOnly={isReadOnly}
-          step={step || (schema.type === 'integer' ? 1 : 'any')}
-          min={min}
           data-pydantic-ui="field-control"
-          max={max}
-          className={cn('flex-1', hasError && 'border-destructive focus-visible:ring-destructive', isReadOnly && 'bg-muted cursor-not-allowed')}
+          aria-invalid={hasError || hasInlineValidationError}
+          className={cn(
+            'flex-1',
+            (hasError || hasInlineValidationError) && 'border-destructive focus-visible:ring-destructive',
+            isReadOnly && 'bg-muted cursor-not-allowed',
+          )}
         />
         <ClearResetButtons
           schema={schema}
@@ -71,6 +142,9 @@ export function NumberInput({ name, path, schema, value, errors, disabled, onCha
         />
       </div>
       {/* description now shown as subtitle above, help_text shown via FieldHelp */}
+      {hasInlineValidationError && (
+        <p className="text-xs text-destructive">{validationMessage}</p>
+      )}
       {hasError && (
         <p className="text-xs text-destructive">{errors[0].message}</p>
       )}
