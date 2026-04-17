@@ -24,19 +24,21 @@ const defaultProps: RendererProps = {
 describe('NumberInput', () => {
   it('renders with initial value', () => {
     render(<NumberInput {...defaultProps} />);
-    const input = screen.getByRole('spinbutton');
-    expect(input).toHaveValue(42);
+    const input = screen.getByRole('textbox', { name: 'Count *' });
+    expect(input).toHaveValue('42');
   });
 
   it('calls onChange when typing', async () => {
     const onChange = vi.fn();
     render(<NumberInput {...defaultProps} onChange={onChange} />);
     
-    const input = screen.getByRole('spinbutton');
+    const input = screen.getByRole('textbox', { name: 'Count *' });
     await userEvent.clear(input);
     await userEvent.type(input, '100');
     
     expect(onChange).toHaveBeenCalled();
+    expect(onChange).toHaveBeenLastCalledWith(100);
+    expect(input).toHaveValue('100');
   });
 
   it('displays error message', () => {
@@ -46,26 +48,26 @@ describe('NumberInput', () => {
 
   it('applies disabled state', () => {
     render(<NumberInput {...defaultProps} disabled />);
-    const input = screen.getByRole('spinbutton');
+    const input = screen.getByRole('textbox', { name: 'Count *' });
     expect(input).toBeDisabled();
   });
 
   it('handles undefined value', () => {
     render(<NumberInput {...defaultProps} value={undefined} />);
-    const input = screen.getByRole('spinbutton');
-    expect(input).toHaveValue(null);
+    const input = screen.getByRole('textbox', { name: 'Count *' });
+    expect(input).toHaveValue('');
   });
 
   it('handles null value', () => {
     render(<NumberInput {...defaultProps} value={null} />);
-    const input = screen.getByRole('spinbutton');
-    expect(input).toHaveValue(null);
+    const input = screen.getByRole('textbox', { name: 'Count *' });
+    expect(input).toHaveValue('');
   });
 
-  it('handles string value (converts to number)', () => {
+  it('handles string value input', () => {
     render(<NumberInput {...defaultProps} value="123" />);
-    const input = screen.getByRole('spinbutton');
-    expect(input).toHaveValue(123);
+    const input = screen.getByRole('textbox', { name: 'Count *' });
+    expect(input).toHaveValue('123');
   });
 
   it('shows subtitle from description', () => {

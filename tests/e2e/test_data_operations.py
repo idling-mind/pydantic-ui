@@ -235,7 +235,11 @@ class TestDataValidation:
         page.goto(f"{base_url}/config")
         wait_for_app_load(page)
 
-        number_input = page.locator('[data-pydantic-ui-field-type="number"]').locator(SELECTORS["field_control"]).first
+        number_input = (
+            page.locator('[data-pydantic-ui-field-type="number"]')
+            .locator(SELECTORS["field_control"])
+            .first
+        )
         number_input.wait_for(state="visible", timeout=5000)
 
         min_val = number_input.get_attribute("min")
