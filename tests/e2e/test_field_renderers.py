@@ -88,7 +88,9 @@ class TestNumberInputRenderers:
         page.goto(f"{base_url}/config")
         wait_for_app_load(page)
 
-        number_input = page.locator(get_field_by_type("number")).locator(SELECTORS["field_control"]).first
+        number_input = (
+            page.locator(get_field_by_type("number")).locator(SELECTORS["field_control"]).first
+        )
         number_input.wait_for(state="visible", timeout=5000)
 
         number_input.click()
@@ -122,7 +124,9 @@ class TestNumberInputRenderers:
         page.goto(f"{base_url}/config")
         wait_for_app_load(page)
 
-        number_input = page.locator(get_field_by_type("number")).locator(SELECTORS["field_control"]).first
+        number_input = (
+            page.locator(get_field_by_type("number")).locator(SELECTORS["field_control"]).first
+        )
         number_input.wait_for(state="visible", timeout=5000)
 
         # Test decimal input
@@ -136,7 +140,9 @@ class TestNumberInputRenderers:
         page.goto(f"{base_url}/config")
         wait_for_app_load(page)
 
-        timeout_field = page.locator(get_field_by_path("timeout")).locator(SELECTORS["field_control"])
+        timeout_field = page.locator(get_field_by_path("timeout")).locator(
+            SELECTORS["field_control"]
+        )
         timeout_field.wait_for(state="visible", timeout=5000)
 
         timeout_field.click()
@@ -154,7 +160,9 @@ class TestNumberInputRenderers:
         page.goto(f"{base_url}/config")
         wait_for_app_load(page)
 
-        timeout_field = page.locator(get_field_by_path("timeout")).locator(SELECTORS["field_control"])
+        timeout_field = page.locator(get_field_by_path("timeout")).locator(
+            SELECTORS["field_control"]
+        )
         timeout_field.wait_for(state="visible", timeout=5000)
 
         timeout_field.click()
