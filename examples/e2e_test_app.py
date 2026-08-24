@@ -355,7 +355,7 @@ ui_config = UIConfig(
     logo_url="/static/lightlogo.png",
     logo_url_dark="/static/darklogo.png",
     favicon_url="/static/lightlogo.png",
-    footer_text="Custom footer",
+    footer_text="Custom Footer",
     footer_url="http://example.org",
     class_configs={
         "DiskStorage": FieldConfig(
