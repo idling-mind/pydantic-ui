@@ -297,6 +297,8 @@ class DataHandler:
             show_types=self.ui_config.show_types,
             actions=actions,
             show_save_reset=self.ui_config.show_save_reset,
+            footer_text=self.ui_config.footer_text,
+            footer_url=self.ui_config.footer_url,
             table_pinned_columns=self.ui_config.table_pinned_columns,
             table_column_widths=self.ui_config.table_column_widths,
             responsive_columns=self.ui_config.responsive_columns,

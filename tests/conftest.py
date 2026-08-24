@@ -295,6 +295,8 @@ def custom_ui_config() -> UIConfig:
             ActionButton(id="export", label="Export", variant="outline"),
         ],
         show_save_reset=True,
+        footer_text="Custom Footer",
+        footer_url="https://example.com",
         attr_configs={
             "name": FieldConfig(
                 display=DisplayConfig(title="Full Name", help_text="Your legal name"),

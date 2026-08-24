@@ -217,6 +217,8 @@ class TestUIConfig:
         assert config.show_types is True
         assert config.actions == []
         assert config.show_save_reset is False
+        assert config.footer_text == "Powered by Pydantic UI"
+        assert config.footer_url == "https://github.com/idling-mind/pydantic-ui"
         assert config.table_pinned_columns == ["__check", "__row_number"]
         assert config.table_column_widths is None
 
@@ -242,6 +244,8 @@ class TestUIConfig:
             show_types=False,
             actions=actions,
             show_save_reset=True,
+            footer_text="My App",
+            footer_url=None,
             table_pinned_columns=["__check", "__row_number", "email"],
             table_column_widths={"name": 220, "email": 260},
         )
@@ -260,6 +264,8 @@ class TestUIConfig:
         assert config.show_types is False
         assert len(config.actions) == 2
         assert config.show_save_reset is True
+        assert config.footer_text == "My App"
+        assert config.footer_url is None
         assert config.table_pinned_columns == ["__check", "__row_number", "email"]
         assert config.table_column_widths == {"name": 220, "email": 260}
 

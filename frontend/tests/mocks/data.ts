@@ -190,6 +190,8 @@ export const testConfig: UIConfig = {
     },
   ],
   show_save_reset: true,
+  footer_text: 'Custom Footer',
+  footer_url: 'https://example.org',
   table_pinned_columns: ['__check', '__row_number'],
   table_column_widths: null,
   responsive_columns: { 640: 1, 1000: 2, 1600: 3 },

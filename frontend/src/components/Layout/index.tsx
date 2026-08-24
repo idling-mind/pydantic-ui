@@ -95,7 +95,7 @@ export function Layout({}: LayoutProps) {
         </div>
       </div>
 
-      <Footer/>
+      <Footer text={config?.footer_text} url={config?.footer_url} />
     </div>
   );
 }

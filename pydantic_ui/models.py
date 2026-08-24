@@ -99,6 +99,8 @@ class ConfigResponse(BaseModel):
     show_types: bool
     actions: list[ActionButtonResponse] = Field(default_factory=list)
     show_save_reset: bool = False
+    footer_text: str = "Powered by Pydantic UI"
+    footer_url: str | None = "https://github.com/idling-mind/pydantic-ui"
     table_pinned_columns: list[str] = Field(default_factory=lambda: ["__check", "__row_number"])
     table_column_widths: int | dict[str, int] | None = None
     responsive_columns: dict[int, int] = Field(default_factory=dict)

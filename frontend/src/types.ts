@@ -120,6 +120,8 @@ export interface UIConfig {
   show_types: boolean;
   actions: ActionButton[];
   show_save_reset: boolean;
+  footer_text: string;
+  footer_url: string | null;
   table_pinned_columns: string[];
   table_column_widths: number | Record<string, number> | null;
   responsive_columns: Record<number, number>;
