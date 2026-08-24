@@ -12,8 +12,8 @@ interface FooterProps {
 const DEFAULT_LOGO_URL = './logo.png';
 
 export function Footer({
-  text = 'Powered by Pydantic UI',
-  url = 'https://github.com/idling-mind/pydantic-ui',
+  text = '',
+  url = '',
   className
 }: FooterProps) {
   const [logoError, setLogoError] = useState(false);
