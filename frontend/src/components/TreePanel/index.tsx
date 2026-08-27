@@ -294,7 +294,7 @@ export function TreePanel({ className }: TreePanelProps) {
         });
       }
     },
-    [searchQuery, data, getValueAtPath]
+    [searchQuery, data]
   );
 
   // Get all paths that match the search, including parent paths
@@ -316,7 +316,7 @@ export function TreePanel({ className }: TreePanelProps) {
       matches.add(path);
       
       // Add all parent paths
-      const parts = path.split(/[\.\[]/).filter(p => p && p !== ']');
+      const parts = path.split(/[.[]/).filter(p => p && p !== ']');
       for (let i = 1; i < parts.length; i++) {
         // Reconstruct path up to this point
         let parentPath = '';
@@ -353,7 +353,7 @@ export function TreePanel({ className }: TreePanelProps) {
           }
         } else {
           // This is a direct match, expand its parents
-          const parts = path.split(/[\.\[]/).filter(p => p && p !== ']');
+          const parts = path.split(/[.[]/).filter(p => p && p !== ']');
           for (let i = 1; i < parts.length; i++) {
             let parentPath = '';
             for (let j = 0; j < i; j++) {
@@ -374,7 +374,7 @@ export function TreePanel({ className }: TreePanelProps) {
         }
       });
     }
-  }, [searchQuery, matchedPaths, directMatches]);
+  }, [searchQuery, matchedPaths, directMatches, expandedPaths, toggleExpanded]);
 
   // Keyboard shortcuts
   React.useEffect(() => {

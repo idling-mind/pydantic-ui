@@ -85,23 +85,23 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
               components={{
-                img: ({ node, alt, ...props }) => (
+                img: ({ node: _node, alt, ...props }) => (
                   <img 
                     className="max-w-full h-auto rounded" 
                     alt={alt ?? 'Help image'} 
                     {...props} 
                   />
                 ),
-                table: ({ node, ...props }) => (
+                table: ({ node: _node, ...props }) => (
                   <table className="min-w-full border-collapse text-sm" {...props} />
                 ),
-                th: ({ node, ...props }) => (
+                th: ({ node: _node, ...props }) => (
                   <th className="border border-border px-2 py-1 bg-muted text-left" {...props} />
                 ),
-                td: ({ node, ...props }) => (
+                td: ({ node: _node, ...props }) => (
                   <td className="border border-border px-2 py-1" {...props} />
                 ),
-                pre: ({ node, children, ...props }) => (
+                pre: ({ node: _node, children, ...props }) => (
                   <pre 
                     className="!bg-muted/50 p-3 rounded overflow-auto text-sm max-h-[30rem]" 
                     {...props}
@@ -109,7 +109,7 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
                     {children}
                   </pre>
                 ),
-                code: ({ node, inline, className: codeClassName, children, ...props }: any) => {
+                code: ({ node: _node, inline, className: codeClassName, children, ...props }: React.ComponentPropsWithoutRef<'code'> & { inline?: boolean; node?: unknown }) => {
                   if (inline) {
                     return (
                       <code 

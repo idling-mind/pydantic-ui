@@ -259,7 +259,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
 
     // Parse the path, handling both dot notation and array index notation
     // e.g., "users[0].name" or "settings.items[2]"
-    const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+    const pathRegex = /([^.[\]]+)|\[(\d+)\]/g;
     const parts: { key: string; isIndex: boolean }[] = [];
     let match;
     while ((match = pathRegex.exec(selectedPath)) !== null) {
@@ -373,7 +373,7 @@ export function DetailPanel({ className }: DetailPanelProps) {
       return { title: config?.title || 'Data Editor', helpText: null, subtitle: null };
     }
     
-    const name = basePath ? basePath.split(/[.\[]/).pop()?.replace(']', '') || '' : '';
+    const name = basePath ? basePath.split(/[.[]/).pop()?.replace(']', '') || '' : '';
     
     // For array items, use the array item display resolver with data
     if (basePath && isArrayItemPath(basePath)) {

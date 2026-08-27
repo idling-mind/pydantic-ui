@@ -144,7 +144,7 @@ export function TableView({
   const [columnSizesByProp, setColumnSizesByProp] = useState<Record<string, number>>({});
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const items = value || [];
+  const items = useMemo(() => value || [], [value]);
   const itemSchema = schema.items;
   const minItems = schema.min_items;
   const maxItems = schema.max_items;

@@ -27,7 +27,7 @@ import type { SchemaField, FieldError, UIConfig } from '@/types';
  */
 function useResponsiveColumns(config: UIConfig | null): {
   style: React.CSSProperties;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 } {
   const [columns, setColumns] = React.useState(1);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -148,24 +148,28 @@ export function ObjectEditor({
 
   // Separate primitive and nested fields
   // Union fields are treated as primitive (they have their own editor)
-  const primitiveFields: [string, SchemaField][] = [];
-  const nestedFields: [string, SchemaField][] = [];
-  
-  visibleFields.forEach(([fieldName, field]) => {
-    // If a specific renderer is configured (and not 'auto'), treat as primitive (rendered inline)
-    // This allows arrays to be rendered as checklists, tags, etc.
-    if (field.ui_config?.renderer && field.ui_config.renderer !== 'auto') {
-      primitiveFields.push([fieldName, field]);
-      return;
-    }
+  const { primitiveFields, nestedFields } = React.useMemo(() => {
+    const prim: [string, SchemaField][] = [];
+    const nest: [string, SchemaField][] = [];
+    
+    visibleFields.forEach(([fieldName, field]) => {
+      // If a specific renderer is configured (and not 'auto'), treat as primitive (rendered inline)
+      // This allows arrays to be rendered as checklists, tags, etc.
+      if (field.ui_config?.renderer && field.ui_config.renderer !== 'auto') {
+        prim.push([fieldName, field]);
+        return;
+      }
 
-    if (field.type === 'object' || field.type === 'array') {
-      nestedFields.push([fieldName, field]);
-    } else {
-      // Include union types with primitives (they render their own editor)
-      primitiveFields.push([fieldName, field]);
-    }
-  });
+      if (field.type === 'object' || field.type === 'array') {
+        nest.push([fieldName, field]);
+      } else {
+        // Include union types with primitives (they render their own editor)
+        prim.push([fieldName, field]);
+      }
+    });
+
+    return { primitiveFields: prim, nestedFields: nest };
+  }, [visibleFields]);
 
   // Group primitive fields by group name
   const groupedPrimitiveFields = React.useMemo(() => {

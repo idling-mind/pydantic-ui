@@ -54,7 +54,7 @@ export function ActionButtons({ actions }: ActionButtonsProps) {
       return apiBase;
     }
     const { protocol, host, pathname } = window.location;
-    let base = pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+    const base = pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
     return `${protocol}//${host}${base}`;
   };
 

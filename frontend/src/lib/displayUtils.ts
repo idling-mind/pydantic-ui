@@ -114,7 +114,7 @@ export function resolveTemplate(template: string, data: unknown): TemplateResult
   });
 
   // Replace escaped braces back
-  result = result.replace(/\x00OPEN\x00/g, '{').replace(/\x00CLOSE\x00/g, '}');
+  result = result.split('\x00OPEN\x00').join('{').split('\x00CLOSE\x00').join('}');
 
   // If we have escaped braces, we consider that as having resolved values
   if (template.includes('{{')) {

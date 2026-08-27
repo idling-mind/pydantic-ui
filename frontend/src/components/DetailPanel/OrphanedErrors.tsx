@@ -41,7 +41,7 @@ function getRelativePath(errorPath: string, basePath: string): string | null {
 }
 
 function parsePath(path: string): PathPart[] {
-  const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+  const pathRegex = /([^.[\]]+)|\[(\d+)\]/g;
   const parts: PathPart[] = [];
   let match;
 

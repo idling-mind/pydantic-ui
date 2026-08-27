@@ -10,7 +10,7 @@ function BooleanEditorComponent({ column, save }: EditorType) {
   useEffect(() => {
     const currentVal = column.model[column.prop];
     save(!currentVal, true);
-  }, []);
+  }, [column.model, column.prop, save]);
 
   return <div style={{ display: 'none' }} />;
 }

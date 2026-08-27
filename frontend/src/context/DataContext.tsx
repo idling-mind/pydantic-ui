@@ -213,7 +213,7 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
       const newData = JSON.parse(JSON.stringify(prevData)); // Deep clone
       
       // Parse path with array index support: e.g., "users[0].name" or "items[2]"
-      const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+      const pathRegex = /([^.[\]]+)|\[(\d+)\]/g;
       const parts: { key: string; isIndex: boolean }[] = [];
       let match;
       while ((match = pathRegex.exec(path)) !== null) {
@@ -344,7 +344,7 @@ export function DataProvider({ children, apiBase = '/api' }: DataProviderProps) 
     // Helper to build all parent paths from a normalized path
     const buildParentPaths = (normalizedPath: string): string[] => {
       const parts: string[] = [''];  // Start with root (empty string)
-      const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+      const pathRegex = /([^.[\]]+)|\[(\d+)\]/g;
       let match;
       let currentPath = '';
       

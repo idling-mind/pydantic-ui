@@ -123,11 +123,12 @@ describe('cn utility', () => {
   });
 
   it('handles complex nesting', () => {
+    const isIncluded = false;
     const result = cn(
       'base',
       ['array-class'],
       { 'object-class': true },
-      false && 'conditional',
+      isIncluded && 'conditional',
       null,
       undefined
     );
