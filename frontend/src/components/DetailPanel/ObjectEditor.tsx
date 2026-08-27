@@ -17,8 +17,9 @@ import { cn, createDefaultFromSchema, isFieldVisible } from '@/lib/utils';
 import { getFieldLabel, resolveArrayItemDisplay } from '@/lib/displayUtils';
 import { FieldRenderer } from '@/components/Renderers';
 import { NestedFieldCard } from './NestedFieldCard';
-import { TableView } from '@/components/TableView';
 import { useData } from '@/context/DataContext';
+
+const TableView = React.lazy(() => import('@/components/TableView'));
 import type { SchemaField, FieldError, UIConfig } from '@/types';
 
 /**
@@ -867,15 +868,26 @@ export function ArrayListEditor({
 
       {/* Table View */}
       {viewMode === 'table' && canShowTableView && items.length > 0 ? (
-        <TableView
-          name={path || 'root'}
-          path={path || 'root'}
-          schema={schema}
-          value={items}
-          errors={errors}
-          disabled={disabled}
-          onChange={onChange}
-        />
+        <React.Suspense
+          fallback={
+            <div className="flex items-center justify-center py-12 border rounded-md text-muted-foreground text-sm">
+              <span className="inline-flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                Loading table view...
+              </span>
+            </div>
+          }
+        >
+          <TableView
+            name={path || 'root'}
+            path={path || 'root'}
+            schema={schema}
+            value={items}
+            errors={errors}
+            disabled={disabled}
+            onChange={onChange}
+          />
+        </React.Suspense>
       ) : (
         /* List View */
         <>

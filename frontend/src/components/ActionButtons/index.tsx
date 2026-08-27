@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+import { getActionIconComponent } from './iconRegistry';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -23,22 +23,6 @@ interface ActionButtonsProps {
 interface PendingConfirmation {
   action: ActionButton;
   message: string;
-}
-
-// Helper to get icon component by name
-function getIconComponent(iconName: string | undefined): React.ComponentType<{ className?: string }> | null {
-  if (!iconName) return null;
-  
-  // Convert kebab-case to PascalCase (e.g., 'check-circle' -> 'CheckCircle')
-  const pascalCase = iconName
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('');
-  
-  // Use unknown first to satisfy TypeScript
-  const icons = LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>;
-  const IconComponent = icons[pascalCase];
-  return IconComponent || null;
 }
 
 export function ActionButtons({ actions }: ActionButtonsProps) {
@@ -159,7 +143,7 @@ export function ActionButtons({ actions }: ActionButtonsProps) {
       />
       <div className="flex items-center gap-2">
         {actions.map((action) => {
-          const IconComponent = getIconComponent(action.icon);
+          const IconComponent = getActionIconComponent(action.icon);
           const isLoading = loadingAction === action.id;
           
           return (
@@ -174,7 +158,9 @@ export function ActionButtons({ actions }: ActionButtonsProps) {
               {isLoading ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : IconComponent ? (
-                <IconComponent className="h-4 w-4 mr-2" />
+                <Suspense fallback={<span className="w-4 h-4 mr-2" />}>
+                  <IconComponent className="h-4 w-4 mr-2" />
+                </Suspense>
               ) : null}
               {action.label}
             </Button>

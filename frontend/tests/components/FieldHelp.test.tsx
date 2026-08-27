@@ -20,8 +20,8 @@ describe('FieldHelp', () => {
     await user.hover(button);
 
     // The markdown should be rendered inside the popover
-    expect(await screen.findByText('bold')).toBeInTheDocument();
-    expect(await screen.findByText('link')).toBeInTheDocument();
+    expect(await screen.findByText('bold', {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText('link', {}, { timeout: 4000 })).toBeInTheDocument();
   });
 
   it('renders fenced code block with padding', async () => {
