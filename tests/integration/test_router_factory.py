@@ -320,3 +320,20 @@ class TestStaticServing:
                 assert "max-age=31536000" in response.headers.get("cache-control", "")
                 if (static_assets / f"{file_name}.gz").exists():
                     assert response.headers.get("content-encoding") == "gzip"
+
+    @pytest.mark.asyncio
+    async def test_placeholder_index_headers(self):
+        """Test placeholder HTML has no-cache header when frontend is not built."""
+        from unittest.mock import patch
+
+        with patch("pathlib.Path.exists", return_value=False):
+            app = FastAPI()
+            router = create_pydantic_ui(SampleModel, prefix="/test")
+            app.include_router(router)
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.get("/test/")
+                assert response.status_code == 200
+                assert "no-cache" in response.headers.get("cache-control", "")
+                assert "Frontend not built" in response.text

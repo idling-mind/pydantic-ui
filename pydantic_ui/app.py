@@ -438,6 +438,7 @@ def create_pydantic_ui(
 </html>
 """.replace("{prefix}", prefix),
                 status_code=200,
+                headers={"Cache-Control": "no-cache"},
             )
 
     # Decorator methods for custom data handlers
