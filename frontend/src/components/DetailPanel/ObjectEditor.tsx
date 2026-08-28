@@ -942,6 +942,7 @@ export function ArrayListEditor({
                     variant="ghost"
                     size="icon"
                     className="h-auto px-2"
+                    data-pydantic-ui="item-menu-trigger"
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   >
                     <MoreVertical className="h-4 w-4" />
@@ -1122,6 +1123,7 @@ export function ArrayListEditor({
                         variant="ghost"
                         size="icon"
                         className="h-auto px-2"
+                        data-pydantic-ui="item-menu-trigger"
                         onClick={(e: React.MouseEvent) => e.stopPropagation()}
                       >
                         <MoreVertical className="h-4 w-4" />
@@ -1209,6 +1211,7 @@ export function ArrayListEditor({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                    data-pydantic-ui="item-menu-trigger"
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   >
                     <MoreVertical className="h-4 w-4" />

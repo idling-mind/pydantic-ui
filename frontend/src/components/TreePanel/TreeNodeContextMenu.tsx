@@ -87,13 +87,16 @@ export function TreeNodeContextMenu({
 
   const handlePaste = useCallback(() => {
     if (!clipboard) return;
-    // Show confirmation dialog when overwriting existing data
-    setPasteOverwriteDialogOpen(true);
+    // Show confirmation dialog when overwriting existing data (deferred to allow context menu cleanup)
+    setTimeout(() => {
+      setPasteOverwriteDialogOpen(true);
+    }, 0);
   }, [clipboard]);
 
   const handleConfirmPaste = useCallback(() => {
     executePaste();
     setPasteOverwriteDialogOpen(false);
+    document.dispatchEvent(new CustomEvent('pydantic-ui:clear-selection'));
   }, [executePaste]);
 
   const handleClearWithDialog = useCallback(() => {
@@ -128,7 +131,10 @@ export function TreeNodeContextMenu({
     <>
       <ContextMenu>
         {children}
-        <ContextMenuContent className="w-64">
+        <ContextMenuContent
+          className="w-64"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
           <ContextMenuItem onClick={handleCopy}>
             <Copy className="mr-2 h-4 w-4" />
             Copy
@@ -148,11 +154,13 @@ export function TreeNodeContextMenu({
           
           <ContextMenuItem
             onClick={() => {
-              if (isArrayType && isCompatibleForPaste) {
-                setPasteArrayDialogOpen(true);
-              } else {
-                setPasteDialogOpen(true);
-              }
+              setTimeout(() => {
+                if (isArrayType && isCompatibleForPaste) {
+                  setPasteArrayDialogOpen(true);
+                } else {
+                  setPasteDialogOpen(true);
+                }
+              }, 0);
             }}
             disabled={!hasClipboard || !isCompatibleForPaste || (!isObjectType && !isArrayType)}
           >
@@ -175,7 +183,7 @@ export function TreeNodeContextMenu({
             <>
               <ContextMenuSeparator />
               <ContextMenuItem
-                onClick={() => setDuplicateDialogOpen(true)}
+                onClick={() => setTimeout(() => setDuplicateDialogOpen(true), 0)}
                 data-pydantic-ui="context-menu-duplicate"
               >
                 <CopyPlus className="mr-2 h-4 w-4" />
@@ -188,7 +196,7 @@ export function TreeNodeContextMenu({
           <ContextMenuSeparator />
           
           <ContextMenuItem
-            onClick={() => setClearDialogOpen(true)}
+            onClick={() => setTimeout(() => setClearDialogOpen(true), 0)}
             disabled={!isClearable}
             className="text-destructive focus:text-destructive"
           >
@@ -200,7 +208,7 @@ export function TreeNodeContextMenu({
           {/* Delete array item */}
           {canDelete && (
             <ContextMenuItem
-              onClick={() => setDeleteDialogOpen(true)}
+              onClick={() => setTimeout(() => setDeleteDialogOpen(true), 0)}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 h-4 w-4" />

@@ -325,6 +325,8 @@ export function useTreeActions({ path, schema, currentValue, selectedPaths = [] 
           updateValue(key, null);
         }
       }
+    } else if (schema.type === 'array') {
+      updateValue(path, []);
     } else {
       updateValue(path, null);
     }
