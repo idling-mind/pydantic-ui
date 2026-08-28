@@ -304,6 +304,7 @@ class TestStaticServing:
         app.include_router(router)
 
         from pathlib import Path
+
         static_assets = Path(__file__).parent.parent.parent / "pydantic_ui" / "static" / "assets"
         js_files = list(static_assets.glob("*.js"))
         if js_files:
@@ -319,4 +320,3 @@ class TestStaticServing:
                 assert "max-age=31536000" in response.headers.get("cache-control", "")
                 if (static_assets / f"{file_name}.gz").exists():
                     assert response.headers.get("content-encoding") == "gzip"
-
