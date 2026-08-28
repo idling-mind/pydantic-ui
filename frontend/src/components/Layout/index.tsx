@@ -49,7 +49,7 @@ export function Layout({}: LayoutProps) {
   }, [isDragging]);
 
   return (
-    <div className="h-screen flex flex-col bg-background relative" data-pydantic-ui="app-container">
+    <div className="h-screen flex flex-col bg-background relative overflow-hidden" data-pydantic-ui="app-container">
       {progress !== null && (
         <div className="absolute top-0 left-0 right-0 h-1 bg-secondary z-50 overflow-hidden">
           <div 

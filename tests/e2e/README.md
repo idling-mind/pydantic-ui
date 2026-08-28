@@ -325,8 +325,7 @@ Example:
 ```python
 @pytest.mark.e2e
 class TestApplicationLoading:
-    def test_loads_main_ui(self, page: Page, base_url: str):
-        ...
+    def test_loads_main_ui(self, page: Page, base_url: str): ...
 ```
 
 ## Helper Functions
