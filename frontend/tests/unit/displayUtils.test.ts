@@ -6,7 +6,7 @@ import {
   getFieldLabel,
   getFieldHelpText,
 } from '@/lib/displayUtils';
-import type { SchemaField, ViewType } from '@/types';
+import type { SchemaField } from '@/types';
 
 describe('resolveTemplate', () => {
   it('returns empty string if template has placeholders but no data', () => {
@@ -428,8 +428,6 @@ describe('getFieldHelpText', () => {
 });
 
 describe('view-specific resolution', () => {
-  const views: ViewType[] = ['tree', 'detail', 'table', 'card'];
-
   it('respects view override for each view type', () => {
     const schema: SchemaField = {
       type: 'string',

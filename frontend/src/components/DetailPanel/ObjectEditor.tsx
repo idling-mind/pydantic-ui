@@ -17,8 +17,9 @@ import { cn, createDefaultFromSchema, isFieldVisible } from '@/lib/utils';
 import { getFieldLabel, resolveArrayItemDisplay } from '@/lib/displayUtils';
 import { FieldRenderer } from '@/components/Renderers';
 import { NestedFieldCard } from './NestedFieldCard';
-import { TableView } from '@/components/TableView';
 import { useData } from '@/context/DataContext';
+
+const TableView = React.lazy(() => import('@/components/TableView'));
 import type { SchemaField, FieldError, UIConfig } from '@/types';
 
 /**
@@ -27,7 +28,7 @@ import type { SchemaField, FieldError, UIConfig } from '@/types';
  */
 function useResponsiveColumns(config: UIConfig | null): {
   style: React.CSSProperties;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 } {
   const [columns, setColumns] = React.useState(1);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -148,24 +149,28 @@ export function ObjectEditor({
 
   // Separate primitive and nested fields
   // Union fields are treated as primitive (they have their own editor)
-  const primitiveFields: [string, SchemaField][] = [];
-  const nestedFields: [string, SchemaField][] = [];
-  
-  visibleFields.forEach(([fieldName, field]) => {
-    // If a specific renderer is configured (and not 'auto'), treat as primitive (rendered inline)
-    // This allows arrays to be rendered as checklists, tags, etc.
-    if (field.ui_config?.renderer && field.ui_config.renderer !== 'auto') {
-      primitiveFields.push([fieldName, field]);
-      return;
-    }
+  const { primitiveFields, nestedFields } = React.useMemo(() => {
+    const prim: [string, SchemaField][] = [];
+    const nest: [string, SchemaField][] = [];
+    
+    visibleFields.forEach(([fieldName, field]) => {
+      // If a specific renderer is configured (and not 'auto'), treat as primitive (rendered inline)
+      // This allows arrays to be rendered as checklists, tags, etc.
+      if (field.ui_config?.renderer && field.ui_config.renderer !== 'auto') {
+        prim.push([fieldName, field]);
+        return;
+      }
 
-    if (field.type === 'object' || field.type === 'array') {
-      nestedFields.push([fieldName, field]);
-    } else {
-      // Include union types with primitives (they render their own editor)
-      primitiveFields.push([fieldName, field]);
-    }
-  });
+      if (field.type === 'object' || field.type === 'array') {
+        nest.push([fieldName, field]);
+      } else {
+        // Include union types with primitives (they render their own editor)
+        prim.push([fieldName, field]);
+      }
+    });
+
+    return { primitiveFields: prim, nestedFields: nest };
+  }, [visibleFields]);
 
   // Group primitive fields by group name
   const groupedPrimitiveFields = React.useMemo(() => {
@@ -863,15 +868,26 @@ export function ArrayListEditor({
 
       {/* Table View */}
       {viewMode === 'table' && canShowTableView && items.length > 0 ? (
-        <TableView
-          name={path || 'root'}
-          path={path || 'root'}
-          schema={schema}
-          value={items}
-          errors={errors}
-          disabled={disabled}
-          onChange={onChange}
-        />
+        <React.Suspense
+          fallback={
+            <div className="flex items-center justify-center py-12 border rounded-md text-muted-foreground text-sm">
+              <span className="inline-flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                Loading table view...
+              </span>
+            </div>
+          }
+        >
+          <TableView
+            name={path || 'root'}
+            path={path || 'root'}
+            schema={schema}
+            value={items}
+            errors={errors}
+            disabled={disabled}
+            onChange={onChange}
+          />
+        </React.Suspense>
       ) : (
         /* List View */
         <>
@@ -926,6 +942,7 @@ export function ArrayListEditor({
                     variant="ghost"
                     size="icon"
                     className="h-auto px-2"
+                    data-pydantic-ui="item-menu-trigger"
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   >
                     <MoreVertical className="h-4 w-4" />
@@ -1106,6 +1123,7 @@ export function ArrayListEditor({
                         variant="ghost"
                         size="icon"
                         className="h-auto px-2"
+                        data-pydantic-ui="item-menu-trigger"
                         onClick={(e: React.MouseEvent) => e.stopPropagation()}
                       >
                         <MoreVertical className="h-4 w-4" />
@@ -1193,6 +1211,7 @@ export function ArrayListEditor({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                    data-pydantic-ui="item-menu-trigger"
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   >
                     <MoreVertical className="h-4 w-4" />

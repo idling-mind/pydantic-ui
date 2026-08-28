@@ -165,7 +165,6 @@ export function evaluateVisibility(
   try {
     // Create a function that evaluates the condition
     // Using Function constructor to create a sandboxed evaluation context
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
     const evaluator = new Function('data', 'value', `return Boolean(${condition});`);
     const result = evaluator(data, value);
     return result === true;
@@ -215,7 +214,7 @@ export function resolveOptionsFromData(
   if (!path || !data) return [];
 
   const parts = path.split('.');
-  let current: any = data;
+  let current: unknown = data;
 
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
@@ -248,7 +247,7 @@ export function resolveOptionsFromData(
     }
 
     if (current === undefined || current === null) return [];
-    current = current[part];
+    current = (current as Record<string, unknown>)[part];
   }
 
   if (Array.isArray(current)) {
@@ -261,12 +260,12 @@ export function resolveOptionsFromData(
   return [];
 }
 
-function getNestedValue(obj: any, path: string): any {
+function getNestedValue(obj: unknown, path: string): unknown {
   const parts = path.split('.');
-  let current = obj;
+  let current: unknown = obj;
   for (const part of parts) {
     if (current === undefined || current === null) return undefined;
-    current = current[part];
+    current = (current as Record<string, unknown>)[part];
   }
   return current;
 }

@@ -43,7 +43,7 @@ export function EventProvider({
     // For relative paths, construct from current location
     const { protocol, host, pathname } = window.location;
     // Remove trailing slash and index.html if present
-    let base = pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+    const base = pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
     return `${protocol}//${host}${base}`;
   }, [apiBase]);
 
@@ -211,7 +211,8 @@ export function EventProvider({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirmed }),
       });
-    } catch (e) {
+    } catch (_e) {
+      // Ignore confirmation response errors
     } finally {
       setConfirmationRequest(null);
     }

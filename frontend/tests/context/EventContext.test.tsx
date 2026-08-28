@@ -3,9 +3,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { EventProvider, useEvents } from '@/context/EventContext';
-import type { FieldError } from '@/types';
 
 // Test component that uses the context
 function TestConsumer({
@@ -198,18 +197,10 @@ describe('removeToast', () => {
 describe('Event callbacks', () => {
   it('calls onValidationErrors when validation_errors event received', () => {
     const onValidationErrors = vi.fn();
-    const errors: FieldError[] = [{ path: 'name', message: 'Required', type: 'missing' }];
-
-    let capturedContext: ReturnType<typeof useEvents> | null = null;
-
-    function CaptureContext() {
-      capturedContext = useEvents();
-      return null;
-    }
 
     render(
       <EventProvider onValidationErrors={onValidationErrors}>
-        <CaptureContext />
+        <TestConsumer />
       </EventProvider>
     );
 

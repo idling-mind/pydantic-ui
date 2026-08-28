@@ -8,11 +8,7 @@ import { DetailPanel } from '@/components/DetailPanel';
 import { useData } from '@/context/DataContext';
 import { useEvents } from '@/context/EventContext';
 
-interface LayoutProps {
-  children?: React.ReactNode;
-}
-
-export function Layout({}: LayoutProps) {
+export function Layout() {
   const { config } = useData();
   const { progress } = useEvents();
   const [panelWidth, setPanelWidth] = React.useState(300);

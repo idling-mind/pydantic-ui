@@ -10,7 +10,7 @@ import type {
 function getBaseUrl(): string {
   const { pathname } = window.location;
   // Remove trailing slash and index.html if present
-  let base = pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+  const base = pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
   return base;
 }
 

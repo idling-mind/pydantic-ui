@@ -221,7 +221,7 @@ test.describe('Save and Reset', () => {
       await textInput.fill('Modified Value');
       
       // Look for save button
-      const saveButton = page.getByRole('button', { name: /save/i }).or(
+      const _saveButton = page.getByRole('button', { name: /save/i }).or(
         page.locator('button').filter({ hasText: /save/i })
       );
       

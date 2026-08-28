@@ -334,28 +334,39 @@ def create_pydantic_ui(
     if index_file.exists() and assets_dir.exists():
         # Serve index.html for the root
         @router.get("/")
-        async def serve_index() -> FileResponse:
+        async def serve_index(request: Request) -> FileResponse:
             """Serve the main UI."""
-            return FileResponse(index_file)
+            headers = {"Cache-Control": "no-cache"}
+            accept_encoding = request.headers.get("accept-encoding", "")
+            gz_file = index_file.with_name(index_file.name + ".gz")
+            if "gzip" in accept_encoding and gz_file.exists():
+                headers["Content-Encoding"] = "gzip"
+                return FileResponse(gz_file, media_type="text/html", headers=headers)
+            return FileResponse(index_file, media_type="text/html", headers=headers)
 
         # Serve the bundled logo
         @router.get("/logo.png")
         async def serve_logo() -> FileResponse:
             """Serve the bundled logo."""
             if logo_file.exists():
-                return FileResponse(logo_file, media_type="image/png")
+                return FileResponse(
+                    logo_file,
+                    media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=86400"},
+                )
             raise HTTPException(status_code=404, detail="Logo not found")
 
-        # Serve individual asset files explicitly
+        # Serve individual asset files explicitly with immutable caching
         @router.get("/assets/{file_path:path}")
-        async def serve_asset(file_path: str) -> FileResponse:
-            """Serve static assets."""
+        async def serve_asset(file_path: str, request: Request) -> FileResponse:
+            """Serve static assets with caching and pre-compressed gzip support."""
             asset_file = assets_dir / file_path
             # Guard against path traversal: resolved path must stay under assets_dir
             try:
                 asset_file.resolve().relative_to(assets_dir.resolve())
             except ValueError:
                 raise HTTPException(status_code=404, detail="Asset not found") from None
+
             if asset_file.exists() and asset_file.is_file():
                 # Determine media type
                 media_type = None
@@ -363,7 +374,20 @@ def create_pydantic_ui(
                     media_type = "application/javascript"
                 elif file_path.endswith(".css"):
                     media_type = "text/css"
-                return FileResponse(asset_file, media_type=media_type)
+                elif file_path.endswith(".svg"):
+                    media_type = "image/svg+xml"
+                elif file_path.endswith(".png"):
+                    media_type = "image/png"
+
+                headers = {"Cache-Control": "public, max-age=31536000, immutable"}
+                accept_encoding = request.headers.get("accept-encoding", "")
+                gz_file = asset_file.with_name(asset_file.name + ".gz")
+
+                if "gzip" in accept_encoding and gz_file.exists():
+                    headers["Content-Encoding"] = "gzip"
+                    return FileResponse(gz_file, media_type=media_type, headers=headers)
+
+                return FileResponse(asset_file, media_type=media_type, headers=headers)
             raise HTTPException(status_code=404, detail="Asset not found")
     else:
         # Serve a placeholder if static files don't exist
@@ -414,6 +438,7 @@ def create_pydantic_ui(
 </html>
 """.replace("{prefix}", prefix),
                 status_code=200,
+                headers={"Cache-Control": "no-cache"},
             )
 
     # Decorator methods for custom data handlers

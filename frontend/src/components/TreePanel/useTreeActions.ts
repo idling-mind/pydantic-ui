@@ -11,7 +11,7 @@ import type { PasteArrayMode } from './PasteArrayDialog';
 export function getValueAtPath(data: unknown, path: string): unknown {
   if (!path || !data) return data;
   
-  const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+  const pathRegex = /([^.[\]]+)|\[(\d+)\]/g;
   const parts: { key: string; isIndex: boolean }[] = [];
   let match;
   while ((match = pathRegex.exec(path)) !== null) {
@@ -80,7 +80,7 @@ export function getSchemaAtPath(rootSchema: SchemaField | null, path: string): S
   if (!rootSchema) return null;
   if (!path) return rootSchema;
   
-  const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+  const pathRegex = /([^.[\]]+)|\[(\d+)\]/g;
   const parts: { key: string; isIndex: boolean }[] = [];
   let match;
   while ((match = pathRegex.exec(path)) !== null) {
@@ -325,6 +325,8 @@ export function useTreeActions({ path, schema, currentValue, selectedPaths = [] 
           updateValue(key, null);
         }
       }
+    } else if (schema.type === 'array') {
+      updateValue(path, []);
     } else {
       updateValue(path, null);
     }

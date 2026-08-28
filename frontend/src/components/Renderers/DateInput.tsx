@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import FieldHelp from '@/components/FieldHelp';
@@ -15,6 +14,8 @@ import { cn, getValueWithDefault } from '@/lib/utils';
 import { getFieldLabel, getFieldHelpText, getFieldSubtitle } from '@/lib/displayUtils';
 import { ClearResetButtons } from './ClearResetButtons';
 import type { RendererProps } from './types';
+
+const Calendar = lazy(() => import('@/components/ui/calendar').then(m => ({ default: m.Calendar })));
 
 export function DateInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
   const [open, setOpen] = React.useState(false);
@@ -119,13 +120,17 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={handleDateSelect}
-                captionLayout="dropdown"
-                disabled={isReadOnly}
-              />
+              {open && (
+                <Suspense fallback={<div className="p-4 text-center text-xs text-muted-foreground">Loading calendar...</div>}>
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={handleDateSelect}
+                    captionLayout="dropdown"
+                    disabled={isReadOnly}
+                  />
+                </Suspense>
+              )}
             </PopoverContent>
           </Popover>
           {includeTime && (
@@ -158,3 +163,5 @@ export function DateInput({ name, path, schema, value, errors, disabled, onChang
     </div>
   );
 }
+
+export default DateInput;

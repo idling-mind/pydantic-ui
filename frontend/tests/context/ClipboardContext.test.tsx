@@ -2,7 +2,7 @@
  * Tests for ClipboardContext
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { ClipboardProvider, useClipboard } from '@/context/ClipboardContext';
 import type { SchemaField } from '@/types';

@@ -4,7 +4,6 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { DateInput } from '@/components/Renderers/DateInput';
 import type { RendererProps } from '@/components/Renderers/types';
 

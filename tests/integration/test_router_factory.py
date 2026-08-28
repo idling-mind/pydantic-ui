@@ -272,3 +272,68 @@ class TestFieldConfigs:
             ui_config_field = name_field.get("ui_config")
             if ui_config_field:
                 assert ui_config_field.get("display", {}).get("title") == "Full Name"
+
+
+class TestStaticServing:
+    """Tests for static asset serving, caching headers, and gzip compression."""
+
+    @pytest.mark.asyncio
+    async def test_static_index_headers(self):
+        """Test index.html has no-cache header and gzip support."""
+        app = FastAPI()
+        router = create_pydantic_ui(SampleModel, prefix="/test")
+        app.include_router(router)
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/test/")
+            assert response.status_code == 200
+            assert "no-cache" in response.headers.get("cache-control", "")
+
+            # Test with gzip header
+            gz_response = await client.get("/test/", headers={"accept-encoding": "gzip"})
+            assert gz_response.status_code == 200
+            if "content-encoding" in gz_response.headers:
+                assert gz_response.headers["content-encoding"] == "gzip"
+
+    @pytest.mark.asyncio
+    async def test_static_asset_immutable_cache(self):
+        """Test static assets have immutable Cache-Control headers."""
+        app = FastAPI()
+        router = create_pydantic_ui(SampleModel, prefix="/test")
+        app.include_router(router)
+
+        from pathlib import Path
+
+        static_assets = Path(__file__).parent.parent.parent / "pydantic_ui" / "static" / "assets"
+        js_files = list(static_assets.glob("*.js"))
+        if js_files:
+            file_name = js_files[0].name
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.get(
+                    f"/test/assets/{file_name}",
+                    headers={"accept-encoding": "gzip"},
+                )
+                assert response.status_code == 200
+                assert "immutable" in response.headers.get("cache-control", "")
+                assert "max-age=31536000" in response.headers.get("cache-control", "")
+                if (static_assets / f"{file_name}.gz").exists():
+                    assert response.headers.get("content-encoding") == "gzip"
+
+    @pytest.mark.asyncio
+    async def test_placeholder_index_headers(self):
+        """Test placeholder HTML has no-cache header when frontend is not built."""
+        from unittest.mock import patch
+
+        with patch("pathlib.Path.exists", return_value=False):
+            app = FastAPI()
+            router = create_pydantic_ui(SampleModel, prefix="/test")
+            app.include_router(router)
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.get("/test/")
+                assert response.status_code == 200
+                assert "no-cache" in response.headers.get("cache-control", "")
+                assert "Frontend not built" in response.text

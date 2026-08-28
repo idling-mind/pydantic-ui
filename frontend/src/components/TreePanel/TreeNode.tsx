@@ -72,7 +72,7 @@ function getValueAtPath(data: unknown, path: string): unknown {
   if (!path || !data) return data;
   
   // Parse the path, handling both dot notation and array index notation
-  const pathRegex = /([^.\[\]]+)|\[(\d+)\]/g;
+  const pathRegex = /([^.[\]]+)|\[(\d+)\]/g;
   const parts: { key: string; isIndex: boolean }[] = [];
   let match;
   while ((match = pathRegex.exec(path)) !== null) {

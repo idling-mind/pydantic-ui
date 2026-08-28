@@ -1,17 +1,19 @@
 /**
- * Build script to copy the compiled frontend to the Python package.
+ * Build script to copy the compiled frontend to the Python package
+ * and generate pre-compressed gzip assets (.gz).
  * 
  * This script copies the Vite build output to pydantic_ui/static/
- * so it can be served by the FastAPI backend.
+ * so it can be served with zero compression CPU overhead by FastAPI.
  */
 
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 const SOURCE_DIR = path.join(__dirname, '..', 'frontend', 'dist');
 const TARGET_DIR = path.join(__dirname, '..', 'pydantic_ui', 'static');
 
-function copyRecursive(src, dest) {
+function copyAndCompressRecursive(src, dest) {
   // Create destination directory if it doesn't exist
   if (!fs.existsSync(dest)) {
     fs.mkdirSync(dest, { recursive: true });
@@ -24,10 +26,19 @@ function copyRecursive(src, dest) {
     const destPath = path.join(dest, entry.name);
 
     if (entry.isDirectory()) {
-      copyRecursive(srcPath, destPath);
+      copyAndCompressRecursive(srcPath, destPath);
     } else {
       fs.copyFileSync(srcPath, destPath);
       console.log(`  Copied: ${entry.name}`);
+
+      // Pre-compress text assets (.js, .css, .html, .svg, .json)
+      const ext = path.extname(entry.name).toLowerCase();
+      if (['.js', '.css', '.html', '.svg', '.json'].includes(ext)) {
+        const content = fs.readFileSync(srcPath);
+        const compressed = zlib.gzipSync(content, { level: 9 });
+        fs.writeFileSync(`${destPath}.gz`, compressed);
+        console.log(`  Gzipped: ${entry.name}.gz (${(compressed.length / 1024).toFixed(2)} KB)`);
+      }
     }
   }
 }
@@ -53,9 +64,9 @@ function main() {
   console.log('Cleaning target directory...');
   cleanDirectory(TARGET_DIR);
 
-  // Copy files
-  console.log('\nCopying build files...');
-  copyRecursive(SOURCE_DIR, TARGET_DIR);
+  // Copy files and pre-compress
+  console.log('\nCopying and compressing build files...');
+  copyAndCompressRecursive(SOURCE_DIR, TARGET_DIR);
 
   // Verify copy
   const files = fs.readdirSync(TARGET_DIR);

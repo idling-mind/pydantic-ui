@@ -10,6 +10,4 @@ export interface RendererProps {
   onChange: (value: unknown) => void;
 }
 
-export interface RendererComponentProps extends RendererProps {
-  // Additional props can be added here
-}
+export type RendererComponentProps = RendererProps;

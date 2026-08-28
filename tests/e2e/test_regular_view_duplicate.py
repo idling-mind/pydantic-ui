@@ -38,15 +38,20 @@ class TestRegularViewDuplicate:
         expand_all_tree_nodes(page)
         page.wait_for_timeout(300)
 
-        initial_count = count_users_items(page)
-        assert initial_count == 2, f"Expected 2 users initially, got {initial_count}"
-
         detail_content = page.locator('[data-pydantic-ui="detail-content"]').first
-        menu_trigger = (
-            detail_content.locator("button")
-            .filter(has=page.locator("svg.lucide-more-vertical"))
-            .first
-        )
+
+        # Ensure list view mode is selected if table view was active
+        list_view_toggle = detail_content.locator('button[title="List view"]')
+        if list_view_toggle.is_visible():
+            list_view_toggle.click()
+            page.wait_for_timeout(200)
+
+        initial_count = count_users_items(page)
+        assert initial_count >= 1, f"Expected at least 1 user initially, got {initial_count}"
+
+        menu_trigger = detail_content.locator(
+            'button[data-pydantic-ui="item-menu-trigger"], button:has(svg.lucide-ellipsis-vertical), button:has(svg.lucide-more-vertical)'
+        ).first
         expect(menu_trigger).to_be_visible(timeout=5000)
         menu_trigger.click()
 

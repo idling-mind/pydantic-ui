@@ -1,12 +1,8 @@
+import { useState, useRef, Suspense, lazy } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/github.css';
-import 'highlight.js/styles/github-dark.css';
-import { useState, useRef } from 'react';
-import { cn } from '@/lib/utils';
+
+const MarkdownViewer = lazy(() => import('./MarkdownViewer'));
 
 interface FieldHelpProps {
   helpText?: string | null;
@@ -52,8 +48,6 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
             clickLockRef.current = true;
             setTimeout(() => (clickLockRef.current = false), 100);
           }}
-          // onFocus={() => setOpen(true)}
-          // onBlur={() => setOpen(false)}
         >
           <HelpCircle className="h-4 w-4" />
         </button>
@@ -80,63 +74,15 @@ export function FieldHelp({ helpText, className }: FieldHelpProps) {
         onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="text-sm text-muted-foreground">
-          <div className="prose prose-sm dark:prose-invert max-w-none field-help-content">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeHighlight]}
-              components={{
-                img: ({ node, alt, ...props }) => (
-                  <img 
-                    className="max-w-full h-auto rounded" 
-                    alt={alt ?? 'Help image'} 
-                    {...props} 
-                  />
-                ),
-                table: ({ node, ...props }) => (
-                  <table className="min-w-full border-collapse text-sm" {...props} />
-                ),
-                th: ({ node, ...props }) => (
-                  <th className="border border-border px-2 py-1 bg-muted text-left" {...props} />
-                ),
-                td: ({ node, ...props }) => (
-                  <td className="border border-border px-2 py-1" {...props} />
-                ),
-                pre: ({ node, children, ...props }) => (
-                  <pre 
-                    className="!bg-muted/50 p-3 rounded overflow-auto text-sm max-h-[30rem]" 
-                    {...props}
-                  >
-                    {children}
-                  </pre>
-                ),
-                code: ({ node, inline, className: codeClassName, children, ...props }: any) => {
-                  if (inline) {
-                    return (
-                      <code 
-                        className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" 
-                        {...props}
-                      >
-                        {children}
-                      </code>
-                    );
-                  }
-                  return (
-                    <code 
-                      className={cn(
-                        'block p-3 rounded text-sm font-mono whitespace-pre overflow-auto',
-                        codeClassName
-                      )} 
-                      {...props}
-                    >
-                      {children}
-                    </code>
-                  );
-                },
-              }}
-            >
-              {helpText}
-            </ReactMarkdown>
-          </div>
+          {open && (
+            <Suspense fallback={
+              <div className="py-2 text-xs text-muted-foreground animate-pulse">
+                Loading...
+              </div>
+            }>
+              <MarkdownViewer content={helpText} />
+            </Suspense>
+          )}
         </div>
       </PopoverContent>
     </Popover>

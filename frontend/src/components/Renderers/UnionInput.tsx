@@ -310,12 +310,14 @@ function getVariantDescription(variant: UnionVariant): string {
   }
   
   switch (variant.type) {
-    case 'object':
+    case 'object': {
       const fieldCount = variant.fields ? Object.keys(variant.fields).length : 0;
       return `Object with ${fieldCount} field${fieldCount !== 1 ? 's' : ''}`;
-    case 'array':
+    }
+    case 'array': {
       const itemType = variant.items?.python_type || variant.items?.type || 'items';
       return `List of ${itemType}`;
+    }
     case 'string':
       return 'Text value';
     case 'integer':
@@ -324,9 +326,10 @@ function getVariantDescription(variant: UnionVariant): string {
       return 'Decimal number';
     case 'boolean':
       return 'True/False';
-    case 'union':
+    case 'union': {
       const variantCount = variant.variants?.length || 0;
       return `Union with ${variantCount} option${variantCount !== 1 ? 's' : ''}`;
+    }
     default:
       return variant.python_type || variant.type;
   }
@@ -456,7 +459,7 @@ export function UnionInput({
     if (!newVariant) return;
 
     // Create default value for the new variant
-    let newValue = createDefaultFromSchema(newVariant);
+    const newValue = createDefaultFromSchema(newVariant);
     
     // If discriminated, set the discriminator field
     if (hasDiscriminator && discriminatorField && newVariant.discriminator_values?.length) {

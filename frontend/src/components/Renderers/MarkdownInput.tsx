@@ -1,5 +1,4 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { Suspense, lazy } from 'react';
 import { Label } from '@/components/ui/label';
 import FieldHelp from '@/components/FieldHelp';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn, getValueWithDefault } from '@/lib/utils';
 import { getFieldLabel, getFieldHelpText, getFieldSubtitle } from '@/lib/displayUtils';
 import type { RendererProps } from './types';
+
+const MarkdownViewer = lazy(() => import('@/components/FieldHelp/MarkdownViewer'));
 
 export function MarkdownInput({ name, path, schema, value, errors, disabled, onChange }: RendererProps) {
   const hasError = errors && errors.length > 0;
@@ -61,9 +62,9 @@ export function MarkdownInput({ name, path, schema, value, errors, disabled, onC
             "prose prose-sm dark:prose-invert max-w-none overflow-y-auto"
           )}>
             {stringValue ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {stringValue}
-              </ReactMarkdown>
+              <Suspense fallback={<span className="text-muted-foreground text-xs animate-pulse">Rendering preview...</span>}>
+                <MarkdownViewer content={stringValue} />
+              </Suspense>
             ) : (
               <span className="text-muted-foreground italic">Nothing to preview</span>
             )}
@@ -78,3 +79,5 @@ export function MarkdownInput({ name, path, schema, value, errors, disabled, onC
     </div>
   );
 }
+
+export default MarkdownInput;
