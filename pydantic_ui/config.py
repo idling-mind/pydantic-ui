@@ -330,6 +330,14 @@ class UIConfig(BaseModel):
         default=False,
         description="Show Save and Reset buttons in the footer",
     )
+    footer_text: str = Field(
+        default="Powered by Pydantic UI",
+        description="Text shown in the footer. Set to an empty string to hide the footer entirely.",
+    )
+    footer_url: str | None = Field(
+        default="https://github.com/idling-mind/pydantic-ui",
+        description="URL the footer text links to. Set to None for plain text with no link.",
+    )
     table_pinned_columns: list[str] = Field(
         default_factory=lambda: ["__check", "__row_number"],
         description="Columns to pin at the start of table view. Supports '__check' for the selection checkbox, '__row_number' for the row index column, and flattened field paths such as 'name' or 'address.city'.",

@@ -3,18 +3,18 @@ import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FooterProps {
-  text?: string;
-  url?: string;
+  text?: string | null;
+  url?: string | null;
   className?: string;
 }
 
 // Default logo path - bundled with the package
 const DEFAULT_LOGO_URL = './logo.png';
 
-export function Footer({ 
-  text = 'Powered by Pydantic UI', 
-  url = 'https://github.com/idling-mind/pydantic-ui',
-  className 
+export function Footer({
+  text = '',
+  url = '',
+  className
 }: FooterProps) {
   const [logoError, setLogoError] = useState(false);
 
@@ -26,9 +26,9 @@ export function Footer({
   const content = (
     <>
       {!logoError && (
-        <img 
-          src={DEFAULT_LOGO_URL} 
-          alt="Pydantic UI" 
+        <img
+          src={DEFAULT_LOGO_URL}
+          alt="Pydantic UI"
           className="h-4 w-4 object-contain"
           onError={() => setLogoError(true)}
         />
@@ -45,7 +45,7 @@ export function Footer({
     )}>
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
         {url ? (
-          <a 
+          <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"

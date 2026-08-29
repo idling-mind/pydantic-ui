@@ -28,6 +28,8 @@ class TestGetConfig:
         assert config["show_types"] is True
         assert config["actions"] == []
         assert config["show_save_reset"] is False
+        assert config["footer_text"] == "Powered by Pydantic UI"
+        assert config["footer_url"] == "https://github.com/idling-mind/pydantic-ui"
         assert config["table_pinned_columns"] == ["__check", "__row_number"]
         assert config["table_column_widths"] is None
 
@@ -45,6 +47,8 @@ class TestGetConfig:
         assert config["auto_save"] is True
         assert config["auto_save_delay"] == 500
         assert config["show_save_reset"] is True
+        assert config["footer_text"] == "Custom Footer"
+        assert config["footer_url"] == "https://example.com"
         assert config["table_pinned_columns"] == ["__check", "__row_number"]
         assert config["table_column_widths"] is None
 
@@ -86,6 +90,8 @@ class TestGetConfig:
             "show_types",
             "actions",
             "show_save_reset",
+            "footer_text",
+            "footer_url",
             "table_pinned_columns",
             "table_column_widths",
         ]
